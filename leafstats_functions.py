@@ -5,11 +5,14 @@
 from PIL import Image
 import numpy as np
 
+import math
+
 from skimage.filters import threshold_otsu, threshold_triangle
 from skimage.measure import label, regionprops
 
 from scipy.signal import correlate
     # from scipy.signal import correlate2d # VERY SLOW
+from scipy.spatial.distance import pdist
 
 import matplotlib.pyplot as plt
 
@@ -153,7 +156,7 @@ def get_autocorrelation(img, mask_user=None):
     img_masked[~mask_user] = 0
     
     # calculate autocorrelation    
-    acf = correlate(img_masked.astype(float), img_masked.astype(float), method='fft', mode='same')
+    acf = correlate(img_masked.astype(float), img_masked.astype(float), method='fft', mode='full')
     
     # normalize
     acf_norm = acf / np.max(acf)
@@ -162,6 +165,73 @@ def get_autocorrelation(img, mask_user=None):
     acf_center = np.round(np.array(acf.shape)/2).astype(int)
     
     return acf, acf_norm, acf_center
+
+def get_ripley_k(mask, r_max, step = 1):
+    """
+    Fast Ripley's K for a binary mask (no edge-correction).
+    """
+    # mask = mask_damage['disk']; r_max=30; step=1
+    
+    coords = np.column_stack(np.nonzero(mask))
+    
+    n = coords.shape[0]
+    if n < 2:
+        return np.zeros((r_max + step - 1) // step, dtype=float)
+
+    # condensed distance vector (length n*(n-1)//2)
+    d = pdist(coords, metric='euclidean')
+
+    XXXX THINGS ARENT RIGHT BELOW HERE
+
+    # histogram the pairwise distances once
+    bins = np.arange(0, r_max + step, step, dtype=float)
+    hist, _ = np.histogram(d, bins=bins)
+    
+    # cumulative → number of pairs with distance ≤ r
+    cum_pairs = np.cumsum(hist)
+
+    # normalise by A / N, where N = 
+    # total number of unique ordered pairs (n*(n-1))/2
+    k_values = cum_pairs * (2) / (n * (n - 1))
+    
+    effective_area_size = (np.shape(mask)[0] + r_max) * (np.shape(mask)[1] + r_max)
+    effective_area_size = (np.shape(mask)[0]) * (np.shape(mask)[1])
+    k_values_uniform = np.cumsum((2 * math.pi * bins) / effective_area_size)
+
+    plt.plot(k_values, color='blue', label='observed K(r)')
+    plt.plot(k_values_uniform, color='red', label='uniform K(r)')
+    plt.legend()
+    plt.show(); plt.close()
+
+    # now also determine Ripley's L
+    # L(r) = sqrt(K(r)/pi)
+    l_values = np.sqrt(k_values / np.pi)
+    
+    # and now also formulate the r values
+    r_values = np.arange(0, r_max, step, dtype=float)
+
+    return r_values, k_values, l_values
+
+#%% ################################################################################
+# standard analysis function
+
+def standard_analysis(img_leaf, img_damage):
+    
+    mask_leaf = get_largest_mask(img_leaf, method='otsu')
+    mask_damage = get_mask(img_damage, mask_leaf, method='bg2') # bg2
+    centroid_leaf = regionprops(mask_leaf.astype(int))[0].centroid
+
+    plot_images(img_leaf, img_damage, mask_leaf, mask_damage, centroid_leaf)
+
+    # now get the acf
+    acf_msk, acf_norm_msk, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
+
+    # plot the acf centerline
+    plt.imshow(img_damage)
+    plt.show()
+    x_axis = np.arange(acf_norm_msk.shape[1]) - acf_center[1]
+    plt.plot(x_axis, acf_norm_msk[acf_center[0],:])
+    plt.show(); plt.close()
 
 #%% ################################################################################
 
@@ -201,8 +271,6 @@ plt.show(); plt.close()
 # - histogram of damage
 # - plot the center of the leaf, radial distribution
 # - apply metrics
-
-
 
 radial_count_msk, radial_sum_msk, radial_avg_msk, radial_pdf_msk, r_max_msk = \
     get_radial_pdf(mask_damage, centroid_leaf, mask_leaf)
@@ -254,33 +322,88 @@ plt.show(); plt.close()
 
 
 #%% ################################################################################
-# Try with synthetic data
+# Load the synthetic data
 
 # open tiff stack image
 from skimage import io
-img_test_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendisk.tif'
-img_test = io.imread(img_test_path) # io.read required for img stack
-    # img_test.shape
 
-img_leaf   = img_test[:,:,1]  # green channel (leaf)
-img_damage = img_test[:,:,2]  # blue channel (damage)
+img_leaf = {}
+img_damage = {}
 
-mask_leaf = get_largest_mask(img_leaf, method='otsu')
-mask_damage = get_mask(img_damage, mask_leaf, method='bg2') # bg2
-centroid_leaf = regionprops(mask_leaf.astype(int))[0].centroid
+# Load the leaf w/ eaten disk
+img_disk_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendisk.tif'
+img_disk = io.imread(img_disk_path) # io.read required for img stack
+img_leaf['disk'] = img_disk[:,:,1]  # green channel (leaf)
+img_damage['disk'] = img_disk[:,:,2]  # blue channel (damage)
 
-plot_images(img_leaf, img_damage, mask_leaf, mask_damage, centroid_leaf)
+# Load the leaf w/ eaten spots
+img_spots_damage_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatenspots.tif'
+img_spots_damage = io.imread(img_spots_damage_path) # io.read required for img stack
+img_leaf['spots']   = img_spots_damage[:,:,1]  # green channel (leaf)
+img_damage['spots'] = img_spots_damage[:,:,2]  # blue channel (damage
 
-# now get the acf
-acf_msk, acf_norm_msk, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
+# Load the image w/ eaten donut
+img_donut_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendonut.tif'
+img_donut = io.imread(img_donut_path) # io.read required for img stack
+img_leaf['donut']   = img_donut[:,:,1]  # green channel (leaf)
+img_damage['donut'] = img_donut[:,:,2]  # blue channel (damage
+
+#%% ################################################################################
 
 # plot the acf centerline
-plt.imshow(img_damage)
-plt.show()
-plt.plot(acf_norm_msk[acf_center[0],:])
-plt.show(); plt.close()
+def plot_img_n_acf(img_damage, acf_norm, acf_center, name):
+    
+    fig, axs = plt.subplots(1, 2, figsize=(15*cm_to_inch, 5*cm_to_inch))
+    axs[0].imshow(img_damage, cmap='gray')
+    
+    x_axis = np.arange(acf_norm.shape[1]) - acf_center[1]
+    axs[1].plot(x_axis, acf_norm[acf_center[0],:])
+    axs[1].set_title(f'ACF Centerline for {name}')
+    
+    plt.show(); plt.close()
 
-########################################
+# now get masks for leaf and damage, plus centroid for all 
+mask_leaf = {}; mask_damage = {}; centroids ={}
+for key in img_leaf.keys():
+    mask_leaf[key] = get_largest_mask(img_leaf[key], method='otsu')
+    mask_damage[key] = get_mask(img_damage[key], mask_leaf[key], method='bg2') # bg2, otsu, triangle, pct10
+    centroids[key] = regionprops(mask_leaf[key].astype(int))[0].centroid
+
+for key in img_leaf.keys():
+    plot_images(img_leaf[key], img_damage[key], mask_leaf[key], mask_damage[key], centroids[key], img0=img_disk)
+
+# now get the acf for all
+acf = {}; acf_norm = {}; acf_center={}
+for key in img_leaf.keys():
+    acf[key], acf_norm[key], acf_center[key] = get_autocorrelation(img_damage[key], mask_user=mask_leaf[key])
+
+# now plot 
+for key in img_leaf.keys():    
+    # key = list(img_leaf.keys())[0]
+    plot_img_n_acf(img_damage[key], acf_norm[key], acf_center[key], key)
+    
+# now calculate the ripley functions
+r_values = {}; k_values = {}; l_values = {}
+for n, key in enumerate(mask_damage.keys()):
+    # key = list(mask_damage.keys())[0]
+    r_values[key], k_values[key], l_values[key] = get_ripley_k(mask_damage[key], r_max=30, step=1)
+    print(f'Calculation {1+n} done')
+
+# now print all k_values
+for key in k_values.keys():
+    fig, axs = plt.subplots(1, 2, figsize=(15*cm_to_inch, 5*cm_to_inch))    
+    axs[0].imshow(mask_damage[key])
+    axs[1].plot(r_values[key], l_values[key], label=key)
+    axs[1].plot(r_values[key], r_values[key], linestyle='--', color='black')
+    plt.show(); plt.close()
+
+# # plot the acf centerline
+# plt.imshow(img_damage)
+# plt.show()
+# plt.plot(acf_norm_msk[acf_center[0],:])
+# plt.show(); plt.close()
+
+#%% ########################################
 # now the same for the eatenspots
 img_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatenspots.tif'
 
@@ -290,19 +413,34 @@ img_test = io.imread(img_path) # io.read required for img stack
 img_leaf   = img_test[:,:,1]  # green channel (leaf)
 img_damage = img_test[:,:,2]  # blue channel (damage)
 
+standard_analysis(img_leaf, img_damage)
+
+# now the same for donut
+img_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendonut.tif'
+img_donut = io.imread(img_path) # io.read required for img stack
+
+img_leaf_donut = img_donut[:,:,1]  # green channel (leaf)
+img_damage_donut = img_donut[:,:,2]  # blue channel (damage)
+
+standard_analysis(img_leaf_donut, img_damage_donut)
+
+# %% ################################################################################
+
+# let's try some real data again
+
+img_test_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/Tomato GFP 8 X3Y3.tif'
+img_test = np.array(Image.open(img_test_path))
+img_leaf = img_test[:,:,1]  # green channel (leaf)
+img_damage = img_test[:,:,2]  # blue channel (damage)
+
+standard_analysis(img_leaf, img_damage)
+
+# Let's also calculate Ripley's K
 mask_leaf = get_largest_mask(img_leaf, method='otsu')
-mask_damage = get_mask(img_damage, mask_leaf, method='bg2') # bg2
-centroid_leaf = regionprops(mask_leaf.astype(int))[0].centroid
+k_values = get_ripley_k(mask_leaf, r_max=100, step=1)
 
-plot_images(img_leaf, img_damage, mask_leaf, mask_damage, centroid_leaf)
-
-# now get the acf
-acf_msk, acf_norm_msk, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
-
-# plot the acf centerline
-plt.imshow(img_damage)
-plt.show()
-plt.plot(acf_norm_msk[acf_center[0],:])
+plt.plot(k_values)
 plt.show(); plt.close()
 
-# %%
+
+
