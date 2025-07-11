@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt
 
 import time # for debugging/optimization
 
+import glob
+
 cm_to_inch = 1/2.54
 
 
@@ -424,52 +426,143 @@ plt.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
 
 
 
-#%% ########################################
-# Let's try to get the inter-island distance metric to work
+#%% ######################################################################
+# Now let's get real data working
+
+# get all files from the "infected" condition
+data_file_paths = {}
+data_file_paths['infected'] = \
+    glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected/*.tif')
+data_file_paths['noninfected'] = \
+    glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/*.tif')
 
 
+def run_complete_analysis(data_file_paths):
+    """
+    Run all analyses (as for synthetic data) for all files in data_file_paths.
+    Stores results in dicts for easy plotting and further analysis.
+    """
+
+    # Prepare output structures
+    img_leafs = {}
+    img_damages = {}
+    mask_leafs = {}
+    mask_damages = {}
+    centroids = {}
+    acfs = {}
+    acf_norms = {}
+    acf_centers = {}
+    acf_norms_avgrs = {}
+    radial_pdfs = {}
+    total_interisland_distances = {}
+
+    for condition, file_list in data_file_paths.items():
+        img_leafs[condition] = []
+        img_damages[condition] = []
+        mask_leafs[condition] = []
+        mask_damages[condition] = []
+        centroids[condition] = []
+        acfs[condition] = []
+        acf_norms[condition] = []
+        acf_centers[condition] = []
+        acf_norms_avgrs[condition] = []
+        radial_pdfs[condition] = []
+        total_interisland_distances[condition] = []
+
+        for file_path in file_list:
+            
+            # Update user on what's happening
+            print(f'Processing {file_path} for condition: {condition}')
+            
+            img = np.array(Image.open(file_path))
+            img_leaf = img[:, :, 1]
+            img_damage = img[:, :, 2]
+
+            mask_leaf = get_largest_mask(img_leaf, method='otsu')
+            mask_damage = get_mask(img_damage, mask_leaf, method='bg2')
+            centroid = regionprops(mask_leaf.astype(int))[0].centroid
+
+            acf, acf_norm, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
+            _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center)
+            _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
+            interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
+            total_interisland = np.sum(interisland_distances)
+
+            img_leafs[condition].append(img_leaf)
+            img_damages[condition].append(img_damage)
+            mask_leafs[condition].append(mask_leaf)
+            mask_damages[condition].append(mask_damage)
+            centroids[condition].append(centroid)
+            acfs[condition].append(acf)
+            acf_norms[condition].append(acf_norm)
+            acf_centers[condition].append(acf_center)
+            acf_norms_avgrs[condition].append(acf_norm_avgr)
+            radial_pdfs[condition].append(radial_pdf)
+            total_interisland_distances[condition].append(total_interisland)
+
+    # Return all results as a dictionary of dictionaries/lists
+    return {
+        'img_leafs': img_leafs,
+        'img_damages': img_damages,
+        'mask_leafs': mask_leafs,
+        'mask_damages': mask_damages,
+        'centroids': centroids,
+        'acfs': acfs,
+        'acf_norms': acf_norms,
+        'acf_centers': acf_centers,
+        'acf_norms_avgrs': acf_norms_avgrs,
+        'radial_pdfs': radial_pdfs,
+        'total_interisland_distances': total_interisland_distances
+    }
+
+data_all = run_complete_analysis(data_file_paths)
+
+# %% ########################################################################
+
+# Generate a plot of the acf_norms_avgrs, all in the same panel, and 
+# annotated per condition
+def plot_acf_norms_avgrs(data_all):
+    """
+    Plot the average radial autocorrelation for each condition.
+    """
+    
+    fig, ax = plt.subplots(figsize=(10*cm_to_inch, 5*cm_to_inch))
+    
+    mycolors = ['blue', 'red']
+    
+    # loop over keys to get conditions
+    for idx, condition in enumerate(data_all['acf_norms_avgrs'].keys()):
+        # loop over the different acf_norms_avgrs for each condition
+        for acf_norms_avgr in data_all['acf_norms_avgrs'][condition]:
+            
+            ax.plot(acf_norms_avgr, color=mycolors[idx])
+    
+    ax.set_title('Radial Autocorrelation')
+    ax.set_xlabel('Radius (pixels)')
+    ax.set_ylabel('Normalized Autocorrelation')
+    ax.legend()
+    
+    plt.show(); plt.close()
+    
+plot_acf_norms_avgrs(data_all)    
+
+# Now the same for the inter-island distance metric
+def plot_interisland_distances(data_all):
+    """
+    Plot the total inter-island distances for each condition.
+    """
+    
+    fig, ax = plt.subplots(figsize=(10*cm_to_inch, 5*cm_to_inch))
+    
+    conditions = list(data_all['total_interisland_distances'].keys())
+    distances = [np.mean(data_all['total_interisland_distances'][cond]) for cond in conditions]
+    
+    ax.bar(conditions, distances, color=['blue', 'red'])
+    
+    ax.set_title('Total Inter-Island Distances')
+    ax.set_ylabel('Distance (pixels)')
+    
+    plt.show(); plt.close()
 
 
-
-
-#%% ########################################
-# now the same for the eatenspots
-img_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatenspots.tif'
-
-img_test = io.imread(img_path) # io.read required for img stack
-    # img_test.shape
-
-img_leaf   = img_test[:,:,1]  # green channel (leaf)
-img_damage = img_test[:,:,2]  # blue channel (damage)
-
-standard_analysis(img_leaf, img_damage)
-
-# now the same for donut
-img_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendonut.tif'
-img_donut = io.imread(img_path) # io.read required for img stack
-
-img_leaf_donut = img_donut[:,:,1]  # green channel (leaf)
-img_damage_donut = img_donut[:,:,2]  # blue channel (damage)
-
-standard_analysis(img_leaf_donut, img_damage_donut)
-
-# %% ################################################################################
-
-# let's try some real data again
-
-img_test_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/Tomato GFP 8 X3Y3.tif'
-img_test = np.array(Image.open(img_test_path))
-img_leaf = img_test[:,:,1]  # green channel (leaf)
-img_damage = img_test[:,:,2]  # blue channel (damage)
-
-standard_analysis(img_leaf, img_damage)
-
-# Let's also calculate Ripley's K
-mask_leaf = get_largest_mask(img_leaf, method='otsu')
-k_values = get_ripley_k(mask_leaf, r_max=100, step=1)
-
-plt.plot(k_values)
-plt.show(); plt.close()
-
-
-
+plot_interisland_distances(data_all)
