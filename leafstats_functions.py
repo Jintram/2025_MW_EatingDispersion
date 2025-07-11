@@ -4,6 +4,7 @@
 
 from PIL import Image
 import numpy as np
+import pandas as pd 
 
 import math
 
@@ -18,10 +19,11 @@ import cv2
 import scipy.ndimage as ndi
 
 import matplotlib.pyplot as plt
-
+import seaborn as sns
 import time # for debugging/optimization
 
 import glob
+import os
 
 cm_to_inch = 1/2.54
 
@@ -212,6 +214,22 @@ def get_inter_island_distances(mask_leaf, mask_damage):
             distances[lbl-1] = np.min(img_dist[lbl_damage==lbl])
             
     return distances
+
+def get_island_counts(mask_leaf, mask_damage):
+    '''
+    Calculate nr of detected islands (regions)
+    '''
+    # mask_damage = mask_damages['disk']; mask_leaf=mask_leafs['disk']
+    
+    # get bounding box of the leaf
+    zm = get_zoombox(mask_leaf, margin=0)
+    
+    # get the labels of the damage mask
+    lbl_damage = label(mask_damage[zm[0]:zm[1], zm[2]:zm[3]])
+        # plt.imshow(lbl_damage); plt.show(); plt.close()
+        
+    return np.max(lbl_damage)
+     
 
 #%% ################################################################################
 # standard analysis function
@@ -424,7 +442,12 @@ for key in img_leafs.keys():
 # now plot
 plt.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
 
-
+# now also calculate and count the amount of islands
+island_counts = {}
+for key in img_leafs.keys():
+    island_counts[key] = get_island_counts(mask_leafs[key], mask_damages[key])
+    
+plt.bar(list(island_counts.keys()), list(island_counts.values()))
 
 #%% ######################################################################
 # Now let's get real data working
@@ -455,8 +478,10 @@ def run_complete_analysis(data_file_paths):
     acf_norms_avgrs = {}
     radial_pdfs = {}
     total_interisland_distances = {}
+    island_counts = {}
 
     for condition, file_list in data_file_paths.items():
+        # condition, file_list = list(data_file_paths.items())[0]
         img_leafs[condition] = []
         img_damages[condition] = []
         mask_leafs[condition] = []
@@ -468,8 +493,10 @@ def run_complete_analysis(data_file_paths):
         acf_norms_avgrs[condition] = []
         radial_pdfs[condition] = []
         total_interisland_distances[condition] = []
+        island_counts[condition] = []
 
         for file_path in file_list:
+            # file_path = file_list[0]
             
             # Update user on what's happening
             print(f'Processing {file_path} for condition: {condition}')
@@ -478,7 +505,7 @@ def run_complete_analysis(data_file_paths):
             img_leaf = img[:, :, 1]
             img_damage = img[:, :, 2]
 
-            mask_leaf = get_largest_mask(img_leaf, method='otsu')
+            mask_leaf = get_largest_mask(img_leaf, method='bg10')
             mask_damage = get_mask(img_damage, mask_leaf, method='bg2')
             centroid = regionprops(mask_leaf.astype(int))[0].centroid
 
@@ -487,6 +514,7 @@ def run_complete_analysis(data_file_paths):
             _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
             interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
             total_interisland = np.sum(interisland_distances)
+            island_count = get_island_counts(mask_leaf, mask_damage)
 
             img_leafs[condition].append(img_leaf)
             img_damages[condition].append(img_damage)
@@ -499,6 +527,7 @@ def run_complete_analysis(data_file_paths):
             acf_norms_avgrs[condition].append(acf_norm_avgr)
             radial_pdfs[condition].append(radial_pdf)
             total_interisland_distances[condition].append(total_interisland)
+            island_counts[condition].append(island_count)
 
     # Return all results as a dictionary of dictionaries/lists
     return {
@@ -512,7 +541,8 @@ def run_complete_analysis(data_file_paths):
         'acf_centers': acf_centers,
         'acf_norms_avgrs': acf_norms_avgrs,
         'radial_pdfs': radial_pdfs,
-        'total_interisland_distances': total_interisland_distances
+        'total_interisland_distances': total_interisland_distances,
+        'island_counts': island_counts
     }
 
 data_all = run_complete_analysis(data_file_paths)
@@ -532,16 +562,37 @@ def plot_acf_norms_avgrs(data_all):
     
     # loop over keys to get conditions
     for idx, condition in enumerate(data_all['acf_norms_avgrs'].keys()):
+        
         # loop over the different acf_norms_avgrs for each condition
         for acf_norms_avgr in data_all['acf_norms_avgrs'][condition]:
             
-            ax.plot(acf_norms_avgr, color=mycolors[idx])
+            ax.plot(acf_norms_avgr, color=mycolors[idx], linewidth=.5)
+    
+    mylinestyles = ['-',':']
+    for idx, condition in enumerate(data_all['acf_norms_avgrs'].keys()):
+
+        # determine the average line per condition, using
+        # df like done below
+        acf_norms_avgr_avg = pd.DataFrame(data_all['acf_norms_avgrs'][condition]).mean()        
+        # plot the average line
+        ax.plot(acf_norms_avgr_avg, color='black', linewidth=2, 
+                label=f'Avg {condition}', linestyle=mylinestyles[idx])
+        # ax.plot(acf_norms_avgr_avg, color=mycolors[idx], linewidth=.5, label=f'Avg {condition}')
+
     
     ax.set_title('Radial Autocorrelation')
     ax.set_xlabel('Radius (pixels)')
     ax.set_ylabel('Normalized Autocorrelation')
-    ax.legend()
+    ax.legend()    
     
+    plt.tight_layout()
+    plt.savefig(outputdir+'/plots/Radial_acf.pdf', dpi=150)
+    
+    ax.set_xlim([0,200])
+    
+    plt.tight_layout()
+    plt.savefig(outputdir+'/plots/Radial_acf_lims.pdf', dpi=150)
+        
     plt.show(); plt.close()
     
 plot_acf_norms_avgrs(data_all)    
@@ -550,19 +601,156 @@ plot_acf_norms_avgrs(data_all)
 def plot_interisland_distances(data_all):
     """
     Plot the total inter-island distances for each condition.
-    """
+    """    
     
-    fig, ax = plt.subplots(figsize=(10*cm_to_inch, 5*cm_to_inch))
+    # create df with separate points 
+    df_dist = pd.DataFrame({'cond':[],'total_dist':[],'island_count':[]})
+    for cond in data_all['total_interisland_distances'].keys():
+        # create df with points for this condition, append to total df
+        df_dist = \
+            pd.concat([df_dist, 
+                    pd.DataFrame({'cond':cond,
+                                'total_dist':data_all['total_interisland_distances'][cond],
+                                'island_count':data_all['island_counts'][cond]})])
+        
+    fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 10*cm_to_inch))
     
-    conditions = list(data_all['total_interisland_distances'].keys())
-    distances = [np.mean(data_all['total_interisland_distances'][cond]) for cond in conditions]
+    # plot strippplot using seaborn
+    sns.barplot(x='cond', y='total_dist', 
+                data=df_dist, ax=axs[0], palette=['blue', 'red'])
+    sns.violinplot(x='cond', y='total_dist', 
+                   data=df_dist, ax=axs[0], color='black', alpha=0.2)
+    sns.stripplot(x='cond', y='total_dist', 
+                  data=df_dist, ax=axs[0], color='black')
     
-    ax.bar(conditions, distances, color=['blue', 'red'])
+    axs[0].set_title('Total Inter-Island Distances')
+    axs[0].set_ylabel('Distance (pixels)')
+    axs[0].set_ylim([0, np.max(df_dist['total_dist']) * 1.02])
+    # rotate axis 90 deg
+    axs[0].tick_params(axis='x', rotation=45)
     
-    ax.set_title('Total Inter-Island Distances')
-    ax.set_ylabel('Distance (pixels)')
+    # now also plot the island counts
+    sns.barplot(x='cond', y='island_count', 
+                data=df_dist, ax=axs[1], palette=['blue', 'red'])
+    sns.violinplot(x='cond', y='island_count',
+                     data=df_dist, ax=axs[1], color='black', alpha=0.2)
+    sns.stripplot(x='cond', y='island_count',
+                  data=df_dist, ax=axs[1], color='black')
+    axs[1].set_ylim([0, np.max(df_dist['island_count']) * 1.02])
+    axs[1].tick_params(axis='x', rotation=45)
     
+    plt.tight_layout()
     plt.show(); plt.close()
 
 
 plot_interisland_distances(data_all)
+
+# plot the radial distribution functions similar to the acf above
+# for all samples, in one panel, colored by condition
+def plot_radial_pdfs(data_all, outputdir):
+    """
+    Plot the radial PDFs for each condition.
+    """
+    
+    os.makedirs(outputdir+'/plots/', exist_ok=True)
+    
+    fig, ax = plt.subplots(figsize=(10*cm_to_inch, 5*cm_to_inch))
+    
+    mycolors = ['blue', 'red']
+    
+    # loop over keys to get conditions
+    for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
+        # loop over the different radial_pdfs for each condition
+        for radial_pdf in data_all['radial_pdfs'][condition]:
+            ax.plot(radial_pdf, color=mycolors[idx], alpha=0.5)
+        
+    # now in black, add average line per condition
+    mylinestyles=['-',':']
+    for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
+        # calculate mean, using df since that handles different lengths well
+        radial_pdf_avg = pd.DataFrame(data_all['radial_pdfs'][condition]).mean()
+        ax.plot(radial_pdf_avg, color='black', linewidth=2, label=f'Avg {condition}',
+                linestyle=mylinestyles[idx])
+    
+    ax.set_title('Radial PDF')
+    ax.set_xlabel('Radius (pixels)')
+    ax.set_ylabel('PDF')
+    ax.legend()
+    
+    # save as pdf to outputdir
+    plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
+    
+    plt.show(); plt.close()
+
+# %%
+
+outputdir = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT/'
+
+# now create a copy of "plot_images()", which
+# can be used in a loop over each of the datafiles, to create
+# a plot of the images masks etc, and store 
+# the plot in outputdir + 'plots/', saved in subdirectories
+# according to the original directory structure 
+
+def plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_leaf=None, img0=None, 
+                         file_path=None, outputdir=None):
+    """
+    Plots the images and masks, and saves the figure to outputdir/plots/ preserving subdirectory structure.
+    file_path: original file path of the image (used to reconstruct subdirectory structure)
+    outputdir: base output directory where plots/ will be created
+    """
+    zm = get_zoombox(mask_leaf, margin=10)
+    fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 5*cm_to_inch))
+    
+    if img0 is not None:
+        axs[0].imshow(img0[:,:,0][zm[0]:zm[1],zm[2]:zm[3]])
+        axs[0].set_title('Red channel')
+    else:
+        axs[0].axis('off')
+    
+    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
+    axs[1].set_title('Green channel (leaf)')
+    axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+    if centroid_leaf is not None:
+        axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
+            
+    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
+    axs[2].set_title('Blue channel (damage)')
+    axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+    
+    plt.tight_layout()
+
+    # Save figure if file_path and outputdir are provided
+    if file_path is not None and outputdir is not None:
+        # Get relative path after the data root (e.g., after 'Infected/' or 'Non infected/')
+        rel_path = os.path.relpath(file_path, start=os.path.commonpath([file_path, outputdir]))
+        # Remove file extension and replace with .png
+        rel_path_noext = os.path.splitext(rel_path)[0] + '.png'
+        # Compose output path
+        save_path = os.path.join(outputdir, 'plots', rel_path_noext)
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=150)
+    plt.close(fig)
+
+# now write a loop as described above
+def run_plot_and_save(data_all, outputdir):
+    """
+    Run the plot_and_save_images function for each image in data_all.
+    Saves the plots in outputdir/plots/ preserving subdirectory structure.
+    """
+    
+    for condition, img_leafs in data_all['img_leafs'].items():
+        for idx, img_leaf in enumerate(img_leafs):
+            img_dmg = data_all['img_damages'][condition][idx]
+            mask_leaf = data_all['mask_leafs'][condition][idx]
+            mask_damage = data_all['mask_damages'][condition][idx]
+            centroid_leaf = data_all['centroids'][condition][idx]
+            file_path = data_file_paths[condition][idx]  # original file path
+            
+            plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, 
+                                 centroid_leaf, img0=img_disk,
+                                 file_path=file_path, outputdir=outputdir)
+
+run_plot_and_save(data_all, outputdir)
+
+# %%
