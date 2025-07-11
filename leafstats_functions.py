@@ -14,7 +14,12 @@ from scipy.signal import correlate
     # from scipy.signal import correlate2d # VERY SLOW
 from scipy.spatial.distance import pdist
 
+import cv2
+import scipy.ndimage as ndi
+
 import matplotlib.pyplot as plt
+
+import time # for debugging/optimization
 
 cm_to_inch = 1/2.54
 
@@ -166,51 +171,45 @@ def get_autocorrelation(img, mask_user=None):
     
     return acf, acf_norm, acf_center
 
-def get_ripley_k(mask, r_max, step = 1):
-    """
-    Fast Ripley's K for a binary mask (no edge-correction).
-    """
-    # mask = mask_damage['disk']; r_max=30; step=1
+
+# now a function that goes over each separate region, ignores the region itself,
+# but calculates the distances to nearest neighbors pixels from the other regions
+def get_inter_island_distances(mask_leaf, mask_damage):
+    '''
+    Calculate inter-island distances.
+    '''
+    # mask_damage = mask_damages['disk']; mask_leaf=mask_leafs['disk']
     
-    coords = np.column_stack(np.nonzero(mask))
+    # get bounding box of the leaf
+    zm = get_zoombox(mask_leaf, margin=0)
     
-    n = coords.shape[0]
-    if n < 2:
-        return np.zeros((r_max + step - 1) // step, dtype=float)
-
-    # condensed distance vector (length n*(n-1)//2)
-    d = pdist(coords, metric='euclidean')
-
-    XXXX THINGS ARENT RIGHT BELOW HERE
-
-    # histogram the pairwise distances once
-    bins = np.arange(0, r_max + step, step, dtype=float)
-    hist, _ = np.histogram(d, bins=bins)
-    
-    # cumulative → number of pairs with distance ≤ r
-    cum_pairs = np.cumsum(hist)
-
-    # normalise by A / N, where N = 
-    # total number of unique ordered pairs (n*(n-1))/2
-    k_values = cum_pairs * (2) / (n * (n - 1))
-    
-    effective_area_size = (np.shape(mask)[0] + r_max) * (np.shape(mask)[1] + r_max)
-    effective_area_size = (np.shape(mask)[0]) * (np.shape(mask)[1])
-    k_values_uniform = np.cumsum((2 * math.pi * bins) / effective_area_size)
-
-    plt.plot(k_values, color='blue', label='observed K(r)')
-    plt.plot(k_values_uniform, color='red', label='uniform K(r)')
-    plt.legend()
-    plt.show(); plt.close()
-
-    # now also determine Ripley's L
-    # L(r) = sqrt(K(r)/pi)
-    l_values = np.sqrt(k_values / np.pi)
-    
-    # and now also formulate the r values
-    r_values = np.arange(0, r_max, step, dtype=float)
-
-    return r_values, k_values, l_values
+    # get the labels of the damage mask
+    lbl_damage = label(mask_damage[zm[0]:zm[1], zm[2]:zm[3]])
+        # plt.imshow(lbl_damage); plt.show(); plt.close()
+        
+    # loop over the labels
+    if np.max(lbl_damage)<2:
+        return [0]
+    else:
+        distances = [None]*(np.max(lbl_damage))
+        for lbl in np.unique(lbl_damage):
+            # lbl=1
+            
+            # generate lbl map with current island removed
+            current_lbl = lbl_damage.copy()
+            current_lbl[current_lbl==lbl] = 0        
+                # plt.imshow(current_lbl); plt.show(); plt.close()
+            
+            # generate distance map to closest non-zero pixel 
+            # (Speed-test with 1000x running this, showed cv2 is 5x faster than ndi.distance_transform_edt)
+            img_dist = cv2.distanceTransform(src = (current_lbl==0).astype(np.uint8),
+                                        distanceType=cv2.DIST_L2, 
+                                        maskSize=cv2.DIST_MASK_PRECISE)
+                # plt.imshow(img_dist); plt.show(); plt.close()
+            
+            distances[lbl-1] = np.min(img_dist[lbl_damage==lbl])
+            
+    return distances
 
 #%% ################################################################################
 # standard analysis function
@@ -327,81 +326,111 @@ plt.show(); plt.close()
 # open tiff stack image
 from skimage import io
 
-img_leaf = {}
-img_damage = {}
+img_leafs = {}
+img_damages = {}
 
 # Load the leaf w/ eaten disk
 img_disk_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendisk.tif'
 img_disk = io.imread(img_disk_path) # io.read required for img stack
-img_leaf['disk'] = img_disk[:,:,1]  # green channel (leaf)
-img_damage['disk'] = img_disk[:,:,2]  # blue channel (damage)
+img_leafs['disk'] = img_disk[:,:,1]  # green channel (leaf)
+img_damages['disk'] = img_disk[:,:,2]  # blue channel (damage)
 
 # Load the leaf w/ eaten spots
 img_spots_damage_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatenspots.tif'
 img_spots_damage = io.imread(img_spots_damage_path) # io.read required for img stack
-img_leaf['spots']   = img_spots_damage[:,:,1]  # green channel (leaf)
-img_damage['spots'] = img_spots_damage[:,:,2]  # blue channel (damage
+img_leafs['spots']   = img_spots_damage[:,:,1]  # green channel (leaf)
+img_damages['spots'] = img_spots_damage[:,:,2]  # blue channel (damage
 
 # Load the image w/ eaten donut
 img_donut_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendonut.tif'
 img_donut = io.imread(img_donut_path) # io.read required for img stack
-img_leaf['donut']   = img_donut[:,:,1]  # green channel (leaf)
-img_damage['donut'] = img_donut[:,:,2]  # blue channel (damage
+img_leafs['donut']   = img_donut[:,:,1]  # green channel (leaf)
+img_damages['donut'] = img_donut[:,:,2]  # blue channel (damage
+
+img_donut_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_dualspot.tif'
+img_donut = io.imread(img_donut_path) # io.read required for img stack
+img_leafs['dualspot']   = img_donut[:,:,1]  # green channel (leaf)
+img_damages['dualspot'] = img_donut[:,:,2]  # blue channel (damage
+
 
 #%% ################################################################################
+# Analysis for multiple synthetic samples
 
 # plot the acf centerline
-def plot_img_n_acf(img_damage, acf_norm, acf_center, name):
+def plot_img_n_acf(img_damage, acf_norm, acf_center, acf_norms_avgr, name):
+    # img_damage = img_damages['disk']; acf_norm = acf_norms['disk']; acf_center = acf_centers['disk']; acf_norms_avgr = acf_norms_avgrs['disk']
     
     fig, axs = plt.subplots(1, 2, figsize=(15*cm_to_inch, 5*cm_to_inch))
     axs[0].imshow(img_damage, cmap='gray')
     
     x_axis = np.arange(acf_norm.shape[1]) - acf_center[1]
-    axs[1].plot(x_axis, acf_norm[acf_center[0],:])
-    axs[1].set_title(f'ACF Centerline for {name}')
+    
+    axs[1].plot(x_axis, acf_norm[acf_center[0],:], color='grey', linestyle=':', label='1d')
+    axs[1].plot(acf_norms_avgr, color='black', linestyle='-', label='Radial average')
+    axs[1].set_title(f'Autocorrelation for {name}')
+    # axs[1].legend()
     
     plt.show(); plt.close()
 
 # now get masks for leaf and damage, plus centroid for all 
-mask_leaf = {}; mask_damage = {}; centroids ={}
-for key in img_leaf.keys():
-    mask_leaf[key] = get_largest_mask(img_leaf[key], method='otsu')
-    mask_damage[key] = get_mask(img_damage[key], mask_leaf[key], method='bg2') # bg2, otsu, triangle, pct10
-    centroids[key] = regionprops(mask_leaf[key].astype(int))[0].centroid
+mask_leafs = {}; mask_damages = {}; centroids ={}
+for key in img_leafs.keys():
+    mask_leafs[key] = get_largest_mask(img_leafs[key], method='otsu')
+    mask_damages[key] = get_mask(img_damages[key], mask_leafs[key], method='bg2') # bg2, otsu, triangle, pct10
+    centroids[key] = regionprops(mask_leafs[key].astype(int))[0].centroid
 
-for key in img_leaf.keys():
-    plot_images(img_leaf[key], img_damage[key], mask_leaf[key], mask_damage[key], centroids[key], img0=img_disk)
+for key in img_leafs.keys():
+    plot_images(img_leafs[key], img_damages[key], mask_leafs[key], mask_damages[key], centroids[key], img0=img_disk)
 
 # now get the acf for all
-acf = {}; acf_norm = {}; acf_center={}
-for key in img_leaf.keys():
-    acf[key], acf_norm[key], acf_center[key] = get_autocorrelation(img_damage[key], mask_user=mask_leaf[key])
+acfs = {}; acf_norms = {}; acf_centers={}; acf_norms_avgrs={}
+for key in img_leafs.keys():
+    acfs[key], acf_norms[key], acf_centers[key] = get_autocorrelation(img_damages[key], mask_user=mask_leafs[key])
+    _, _, acf_norms_avgrs[key], _, _ = get_radial_pdf(acf_norms[key], acf_centers[key])
 
 # now plot 
-for key in img_leaf.keys():    
-    # key = list(img_leaf.keys())[0]
-    plot_img_n_acf(img_damage[key], acf_norm[key], acf_center[key], key)
+for key in img_leafs.keys():    
+    # key = list(img_leafs.keys())[0]
+    plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
     
-# now calculate the ripley functions
-r_values = {}; k_values = {}; l_values = {}
-for n, key in enumerate(mask_damage.keys()):
-    # key = list(mask_damage.keys())[0]
-    r_values[key], k_values[key], l_values[key] = get_ripley_k(mask_damage[key], r_max=30, step=1)
-    print(f'Calculation {1+n} done')
 
-# now print all k_values
-for key in k_values.keys():
-    fig, axs = plt.subplots(1, 2, figsize=(15*cm_to_inch, 5*cm_to_inch))    
-    axs[0].imshow(mask_damage[key])
-    axs[1].plot(r_values[key], l_values[key], label=key)
-    axs[1].plot(r_values[key], r_values[key], linestyle='--', color='black')
+# Loop over and get the radial distribution functions
+radial_pdf = {}
+for key in img_leafs.keys():
+    # key = list(img_leafs.keys())[0]
+    # radial_count_msk, radial_sum_msk, radial_avg_msk, radial_pdf_msk, r_max_msk = \
+    _, _, _, radial_pdf[key], _ = \
+        get_radial_pdf(mask_damages[key], centroids[key], mask_leafs[key])
+
+for key in img_leafs.keys():
+    
+    fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))    
+    
+    axs[0].imshow(mask_damages[key])
+    
+    axs[1].plot(radial_pdf[key])
+    
     plt.show(); plt.close()
 
-# # plot the acf centerline
-# plt.imshow(img_damage)
-# plt.show()
-# plt.plot(acf_norm_msk[acf_center[0],:])
-# plt.show(); plt.close()
+# now also calculate the sum of the inter-island distances for each
+total_interisland_distances = {}
+for key in img_leafs.keys():
+    
+    interisland_distances = get_inter_island_distances(mask_leafs[key], mask_damages[key])    
+    total_interisland_distances[key] = np.sum(interisland_distances)
+    
+# now plot
+plt.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
+
+
+
+#%% ########################################
+# Let's try to get the inter-island distance metric to work
+
+
+
+
+
 
 #%% ########################################
 # now the same for the eatenspots
