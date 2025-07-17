@@ -556,7 +556,7 @@ def plot_acf_norms_avgrs(data_all):
     Plot the average radial autocorrelation for each condition.
     """
     
-    fig, ax = plt.subplots(figsize=(10*cm_to_inch, 5*cm_to_inch))
+    fig, axs = plt.subplots(2, 1, figsize=(10*cm_to_inch, 10*cm_to_inch))
     
     mycolors = ['blue', 'red']
     
@@ -566,7 +566,7 @@ def plot_acf_norms_avgrs(data_all):
         # loop over the different acf_norms_avgrs for each condition
         for acf_norms_avgr in data_all['acf_norms_avgrs'][condition]:
             
-            ax.plot(acf_norms_avgr, color=mycolors[idx], linewidth=.5)
+            axs[0].plot(acf_norms_avgr, color=mycolors[idx], linewidth=.5)
     
     mylinestyles = ['-',':']
     for idx, condition in enumerate(data_all['acf_norms_avgrs'].keys()):
@@ -575,20 +575,21 @@ def plot_acf_norms_avgrs(data_all):
         # df like done below
         acf_norms_avgr_avg = pd.DataFrame(data_all['acf_norms_avgrs'][condition]).mean()        
         # plot the average line
-        ax.plot(acf_norms_avgr_avg, color='black', linewidth=2, 
-                label=f'Avg {condition}', linestyle=mylinestyles[idx])
+        axs[1].plot(acf_norms_avgr_avg, linewidth=2, 
+                label=f'Avg {condition}', color=mycolors[idx])#)linestyle=mylinestyles[idx])
         # ax.plot(acf_norms_avgr_avg, color=mycolors[idx], linewidth=.5, label=f'Avg {condition}')
-
+        
+    fig.suptitle('Radial Autocorrelation')    
+    axs[0].set_xlabel('Radius (pixels)')
     
-    ax.set_title('Radial Autocorrelation')
-    ax.set_xlabel('Radius (pixels)')
-    ax.set_ylabel('Normalized Autocorrelation')
-    ax.legend()    
+    axs[1].set_xlabel('Radius (pixels)')
+    axs[1].set_ylabel('Normalized Autocorrelation')
     
     plt.tight_layout()
     plt.savefig(outputdir+'/plots/Radial_acf.pdf', dpi=150)
     
-    ax.set_xlim([0,200])
+    axs[0].set_xlim([0,200]); axs[1].set_xlim([0,200])
+    axs[1].legend()
     
     plt.tight_layout()
     plt.savefig(outputdir+'/plots/Radial_acf_lims.pdf', dpi=150)
@@ -598,13 +599,16 @@ def plot_acf_norms_avgrs(data_all):
 plot_acf_norms_avgrs(data_all)    
 
 # Now the same for the inter-island distance metric
-def plot_interisland_distances(data_all):
+def plot_interisland_distances(data_all, remove_zerocnt=True):
     """
     Plot the total inter-island distances for each condition.
     """    
     
+    os.makedirs(outputdir+'/plots/', exist_ok=True)
+    
     # create df with separate points 
     df_dist = pd.DataFrame({'cond':[],'total_dist':[],'island_count':[]})
+    
     for cond in data_all['total_interisland_distances'].keys():
         # create df with points for this condition, append to total df
         df_dist = \
@@ -612,6 +616,10 @@ def plot_interisland_distances(data_all):
                     pd.DataFrame({'cond':cond,
                                 'total_dist':data_all['total_interisland_distances'][cond],
                                 'island_count':data_all['island_counts'][cond]})])
+
+    # Now remove datapoints with zero islands
+    if remove_zerocnt:
+        df_dist = df_dist[df_dist['island_count'] > 0]
         
     fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 10*cm_to_inch))
     
@@ -623,7 +631,7 @@ def plot_interisland_distances(data_all):
     sns.stripplot(x='cond', y='total_dist', 
                   data=df_dist, ax=axs[0], color='black')
     
-    axs[0].set_title('Total Inter-Island Distances')
+    axs[0].set_title(f'Total Closest-Island\nDistances')
     axs[0].set_ylabel('Distance (pixels)')
     axs[0].set_ylim([0, np.max(df_dist['total_dist']) * 1.02])
     # rotate axis 90 deg
@@ -638,12 +646,18 @@ def plot_interisland_distances(data_all):
                   data=df_dist, ax=axs[1], color='black')
     axs[1].set_ylim([0, np.max(df_dist['island_count']) * 1.02])
     axs[1].tick_params(axis='x', rotation=45)
+    axs[1].set_title(f'Total Islands')
     
     plt.tight_layout()
+    
+    # save
+    nozero_string = '_nozero' if remove_zerocnt else ''
+    fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.pdf', dpi=150)
     plt.show(); plt.close()
 
 
-plot_interisland_distances(data_all)
+plot_interisland_distances(data_all, remove_zerocnt=False)
+plot_interisland_distances(data_all, remove_zerocnt=True)
 
 # plot the radial distribution functions similar to the acf above
 # for all samples, in one panel, colored by condition
@@ -654,7 +668,7 @@ def plot_radial_pdfs(data_all, outputdir):
     
     os.makedirs(outputdir+'/plots/', exist_ok=True)
     
-    fig, ax = plt.subplots(figsize=(10*cm_to_inch, 5*cm_to_inch))
+    fig, axs = plt.subplots(2,1,figsize=(10*cm_to_inch, 10*cm_to_inch))
     
     mycolors = ['blue', 'red']
     
@@ -662,20 +676,24 @@ def plot_radial_pdfs(data_all, outputdir):
     for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
         # loop over the different radial_pdfs for each condition
         for radial_pdf in data_all['radial_pdfs'][condition]:
-            ax.plot(radial_pdf, color=mycolors[idx], alpha=0.5)
+            axs[0].plot(radial_pdf, color=mycolors[idx], alpha=1, linewidth=.2)
         
     # now in black, add average line per condition
     mylinestyles=['-',':']
     for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
         # calculate mean, using df since that handles different lengths well
         radial_pdf_avg = pd.DataFrame(data_all['radial_pdfs'][condition]).mean()
-        ax.plot(radial_pdf_avg, color='black', linewidth=2, label=f'Avg {condition}',
+        axs[1].plot(radial_pdf_avg, color=mycolors[idx], linewidth=2, label=f'Avg {condition}',
                 linestyle=mylinestyles[idx])
     
-    ax.set_title('Radial PDF')
-    ax.set_xlabel('Radius (pixels)')
-    ax.set_ylabel('PDF')
-    ax.legend()
+    axs[0].set_xlabel('Radius (pixels)')
+    axs[0].set_ylabel('Radial PDF')
+        
+    axs[1].set_xlabel('Radius (pixels)')
+    axs[1].set_ylabel('Radial PDF')
+    axs[1].legend()
+    
+    plt.tight_layout()
     
     # save as pdf to outputdir
     plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
