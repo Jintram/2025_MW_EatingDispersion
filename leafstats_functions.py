@@ -1,6 +1,14 @@
 
 
 #%% ################################################################################
+# Set these parameters according to file locations on local computer
+
+# Where to put plots
+OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT/'
+# Where to find synthetic images
+SYNTHETIC_IMAGE_PATH = '/Users/m.wehrens/Documents/git_repos/_UVA/_bioDSC-smallprojects/2025_MW_EatingDispersion/Synthetic_data/'
+
+#%% ################################################################################
 
 from PIL import Image
 import numpy as np
@@ -26,7 +34,6 @@ import glob
 import os
 
 cm_to_inch = 1/2.54
-
 
 #%% ################################################################################
 # Functions
@@ -95,7 +102,6 @@ def get_zoombox(mask, margin=0):
     return [z1, z2, z3, z4]
     
     
-
 def plot_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_leaf=None, img0=None):
     
     zm = get_zoombox(mask_leaf, margin=10)
@@ -231,116 +237,9 @@ def get_island_counts(mask_leaf, mask_damage):
     return np.max(lbl_damage)
      
 
-#%% ################################################################################
-# standard analysis function
-
-def standard_analysis(img_leaf, img_damage):
-    
-    mask_leaf = get_largest_mask(img_leaf, method='otsu')
-    mask_damage = get_mask(img_damage, mask_leaf, method='bg2') # bg2
-    centroid_leaf = regionprops(mask_leaf.astype(int))[0].centroid
-
-    plot_images(img_leaf, img_damage, mask_leaf, mask_damage, centroid_leaf)
-
-    # now get the acf
-    acf_msk, acf_norm_msk, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
-
-    # plot the acf centerline
-    plt.imshow(img_damage)
-    plt.show()
-    x_axis = np.arange(acf_norm_msk.shape[1]) - acf_center[1]
-    plt.plot(x_axis, acf_norm_msk[acf_center[0],:])
-    plt.show(); plt.close()
 
 #%% ################################################################################
-
-# Images are RGB images.
-# In green, there's the leaf image, and in blue, there's the "damage intensity" (based on infrared profile).
-
-# let's open a test image
-img_test_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/Tomato GFP 6 X5Y1.tif'
-img_test_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/Tomato GFP 8 X3Y3.tif'
-img_test = np.array(Image.open(img_test_path))
-    # img_test.shape
-
-img_leaf   = img_test[:,:,1]  # green channel (leaf)
-img_damage = img_test[:,:,2]  # blue channel (damage)
-
-# let's threshold the leaf using Otsu
-mask_leaf   = get_largest_mask(img_test[:,:,1])
-mask_damage = get_mask(img_test[:,:,2], mask_leaf, method='bg2') # bg2, otsu, triangle, pct10
-
-# get the center of mass of the leaf mask
-centroid_leaf = regionprops(mask_leaf.astype(int))[0].centroid
-
-# visual inspeection of leaf damage channel
-# channels next to each other
-zm = get_zoombox(mask_leaf, margin=10)
-fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 5*cm_to_inch))
-axs[0].imshow(img_test[:,:,0][zm[0]:zm[1],zm[2]:zm[3]]); axs[0].set_title('Red channel')
-axs[1].imshow(img_test[:,:,1][zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title('Green channel (leaf)')
-axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
-axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
-# axs[1].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
-axs[2].imshow(img_test[:,:,2][zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title('Blue channel (damage)')
-axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
-plt.show(); plt.close()
-
-# Now quantify some things
-# - histogram of damage
-# - plot the center of the leaf, radial distribution
-# - apply metrics
-
-radial_count_msk, radial_sum_msk, radial_avg_msk, radial_pdf_msk, r_max_msk = \
-    get_radial_pdf(mask_damage, centroid_leaf, mask_leaf)
-
-radial_count_dmg, radial_sum_dmg, radial_avg_dmg, radial_pdf_dmg, r_max_dmg = \
-    get_radial_pdf(img_damage, centroid_leaf, mask_leaf)
-
-plt.plot(radial_sum_dmg); 
-plt.plot(radial_count_dmg); 
-plt.xlim([0,r_max_dmg])
-plt.show(); plt.close()
-
-plt.plot(radial_pdf_msk, '-', label='binary damage')
-plt.plot(radial_pdf_dmg, '--', label='damage')
-plt.legend()
-plt.show(); plt.close()
-
-########################################
-
-# get and display the mask
-acf_msk, acf_norm_msk = get_autocorrelation(mask_leaf, mask_user=mask_leaf)
-
-
-plt.imshow(acf_norm_msk, cmap='gray')
-plt.imshow(acf_msk, cmap='gray')
-plt.show(); plt.close()
-
-# now radially integrate acf_norm_msk using around its center
-acf_center = np.round(np.array(acf_norm_msk.shape)/2).astype(int)
-acf_norm_msk_radius = get_radial_pdf(acf_norm_msk, acf_center, mask_leaf)[2]
-plt.plot(acf_norm_msk_radius)
-plt.show(); plt.close()
-
-# get centerline acf
-plt.plot(acf_norm_msk[acf_center[0],:])
-plt.show(); plt.close()
-
-
-plt.imshow(img_test)
-plt.contour(mask_leaf, colors='white', linewidths=1)
-plt.contour(mask_damage, colors='blue', linewidths=1)
-plt.show(); plt.close()
-
-# show mask projected on original image
-fig, axs = plt.subplots(1, 2, figsize=(15*cm_to_inch, 5*cm_to_inch))
-axs[0].imshow(img_test)
-axs[1].imshow(mask_damage)
-plt.show(); plt.close()
-
-
-#%% ################################################################################
+# Now let's first look at data I generated myself
 # Load the synthetic data
 
 # open tiff stack image
@@ -350,24 +249,24 @@ img_leafs = {}
 img_damages = {}
 
 # Load the leaf w/ eaten disk
-img_disk_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendisk.tif'
+img_disk_path = SYNTHETIC_IMAGE_PATH + 'synthetic_eatendisk.tif'
 img_disk = io.imread(img_disk_path) # io.read required for img stack
 img_leafs['disk'] = img_disk[:,:,1]  # green channel (leaf)
 img_damages['disk'] = img_disk[:,:,2]  # blue channel (damage)
 
 # Load the leaf w/ eaten spots
-img_spots_damage_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatenspots.tif'
+img_spots_damage_path = SYNTHETIC_IMAGE_PATH + 'synthetic_eatenspots.tif'
 img_spots_damage = io.imread(img_spots_damage_path) # io.read required for img stack
 img_leafs['spots']   = img_spots_damage[:,:,1]  # green channel (leaf)
 img_damages['spots'] = img_spots_damage[:,:,2]  # blue channel (damage
 
 # Load the image w/ eaten donut
-img_donut_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_eatendonut.tif'
+img_donut_path = SYNTHETIC_IMAGE_PATH + 'synthetic_eatendonut.tif'
 img_donut = io.imread(img_donut_path) # io.read required for img stack
 img_leafs['donut']   = img_donut[:,:,1]  # green channel (leaf)
 img_damages['donut'] = img_donut[:,:,2]  # blue channel (damage
 
-img_donut_path = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Synthetic_data/synthetic_dualspot.tif'
+img_donut_path = SYNTHETIC_IMAGE_PATH + 'synthetic_dualspot.tif'
 img_donut = io.imread(img_donut_path) # io.read required for img stack
 img_leafs['dualspot']   = img_donut[:,:,1]  # green channel (leaf)
 img_damages['dualspot'] = img_donut[:,:,2]  # blue channel (damage
@@ -551,7 +450,7 @@ data_all = run_complete_analysis(data_file_paths)
 
 # Generate a plot of the acf_norms_avgrs, all in the same panel, and 
 # annotated per condition
-def plot_acf_norms_avgrs(data_all):
+def plot_acf_norms_avgrs(data_all, outputdir):
     """
     Plot the average radial autocorrelation for each condition.
     """
@@ -596,10 +495,10 @@ def plot_acf_norms_avgrs(data_all):
         
     plt.show(); plt.close()
     
-plot_acf_norms_avgrs(data_all)    
+plot_acf_norms_avgrs(data_all, OUTPUTDIR)    
 
 # Now the same for the inter-island distance metric
-def plot_interisland_distances(data_all, remove_zerocnt=True):
+def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
     """
     Plot the total inter-island distances for each condition.
     """    
@@ -656,8 +555,8 @@ def plot_interisland_distances(data_all, remove_zerocnt=True):
     plt.show(); plt.close()
 
 
-plot_interisland_distances(data_all, remove_zerocnt=False)
-plot_interisland_distances(data_all, remove_zerocnt=True)
+plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
+plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 
 # plot the radial distribution functions similar to the acf above
 # for all samples, in one panel, colored by condition
@@ -699,10 +598,10 @@ def plot_radial_pdfs(data_all, outputdir):
     plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
     
     plt.show(); plt.close()
+    
+plot_radial_pdfs(data_all, OUTPUTDIR)
 
 # %%
-
-outputdir = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT/'
 
 # now create a copy of "plot_images()", which
 # can be used in a loop over each of the datafiles, to create
@@ -748,6 +647,7 @@ def plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_lea
         save_path = os.path.join(outputdir, 'plots', rel_path_noext)
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=150)
+        
     plt.close(fig)
 
 # now write a loop as described above
@@ -769,6 +669,6 @@ def run_plot_and_save(data_all, outputdir):
                                  centroid_leaf, img0=img_disk,
                                  file_path=file_path, outputdir=outputdir)
 
-run_plot_and_save(data_all, outputdir)
+run_plot_and_save(data_all, OUTPUTDIR)
 
 # %%
