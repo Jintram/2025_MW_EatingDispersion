@@ -671,4 +671,73 @@ def run_plot_and_save(data_all, outputdir):
 
 run_plot_and_save(data_all, OUTPUTDIR)
 
+# %% ################################################################################
+# Export some data
+
+def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['total_interisland_distances', 'island_counts']):
+    '''
+    For metrics quantified as a single parameter, store those
+    in a single dataframe. 
+    Also include file paths as column.
+    '''
+    # data_singledatapoint=['total_interisland_distances', 'island_counts']
+    
+    # Set up dataframe with condition and filename first
+    cond_fp = [[cond, fp] for cond, fp_list in data_file_paths.items() for fp in fp_list]
+    df_singledata = pd.DataFrame(cond_fp, columns=['condition','file_path'])
+    
+    # Now add metrics that were calculated before
+    # (This assumes these are in the same order!!)
+    for metric in data_singledatapoint:
+        # Gather both value and conditions
+        data_cond = np.array([[val, cond] for cond, val_list in data_all[metric].items() for val in val_list])
+        # Double check that conditions match
+        if df_singledata['condition'].tolist() == data_cond[:,1].tolist():
+            # if so, add data
+            df_singledata[metric] = data_cond[:,0].astype(float)
+        else:
+            # else raise error
+            raise ValueError(f'Conditions do not match for metric {metric}!')
+    
+    return df_singledata
+        
+# now generate and export to dataframe metrics with single data points
+df_singledata = export_singledatapoints(data_all, data_file_paths,
+                                        data_singledatapoint=['total_interisland_distances', 'island_counts'])
+df_singledata.to_csv(OUTPUTDIR+'/leaf_damage_singlemetrics.csv', index=False)
+
+        
+        
+# Also create two example plots using the dataframe       
+def simplebarplotseaborn(df_singledata):
+    '''
+    Example code how to make simple dataplot
+    '''    
+    
+    # plot with condition vs. island_count
+    sns.violinplot(x='condition', y='island_counts', data=df_singledata)
+    sns.stripplot(x='condition', y='island_counts', data=df_singledata, color='black')
+    sns.barplot(x='condition', y='island_counts', data=df_singledata, alpha=0.5, color='grey')
+    plt.ylim([0,None])
+    plt.show()
+    
+    # same for interisland distances
+    sns.violinplot(x='condition', y='total_interisland_distances', data=df_singledata)
+    sns.stripplot(x='condition', y='total_interisland_distances', data=df_singledata, color='black')
+    sns.barplot(x='condition', y='total_interisland_distances', data=df_singledata, alpha=0.5, color='grey')
+    plt.ylim([0,None])
+    plt.show()
+    
+    
+    
+    
+        
+        
+    
+    
+
+    
+
+
+
 # %%
