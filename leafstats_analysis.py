@@ -701,10 +701,13 @@ def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['to
     
     return df_singledata
         
+        
+        
 # now generate and export to dataframe metrics with single data points
 df_singledata = export_singledatapoints(data_all, data_file_paths,
                                         data_singledatapoint=['total_interisland_distances', 'island_counts'])
 df_singledata.to_csv(OUTPUTDIR+'/leaf_damage_singlemetrics.csv', index=False)
+df_singledata.to_excel(OUTPUTDIR+'/leaf_damage_singlemetrics.xlsx', index=False)
 
         
         
