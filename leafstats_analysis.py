@@ -44,7 +44,7 @@ cm_to_inch = 1/2.54
 #%% ################################################################################
 # Functions
 
-def get_largest_mask(img, method='bg10'):
+def get_largest_mask(img, method='bg10', return_status=False):
     """
     Finds Otsu threshold for image, applies threshold, and
     then selects the largest continuous region.
@@ -56,25 +56,40 @@ def get_largest_mask(img, method='bg10'):
     
     if method == 'otsu':
         threshold_val = threshold_otsu(img)
+    elif method == 'triangle':
+        threshold_val = threshold_triangle(img)
     elif method == 'bg10':
         # using percentile
         # threshold_val = 10*np.percentile(img.ravel(), 3)
         # determine mode
         threshold_val = 10 * np.bincount(img.ravel()).argmax()
+    else:
+        raise ValueError(f"Invalid method: {method}. Choose from 'otsu', 'triangle', or 'bg10'.")
         
     img_mask = img > threshold_val
+    if not np.any(img_mask):
+        if return_status:
+            return np.zeros(img.shape, dtype=bool), False
+        return np.zeros(img.shape, dtype=bool)
+
     img_lbl = label(img_mask)
     
     lbl_largest = np.argmax([region.area for region in regionprops(img_lbl)]) + 1
     
     img_mask = img_lbl == lbl_largest
-    
+    if return_status:
+        return img_mask, True
     return img_mask
 
-def get_mask(img, mask_user=None, method='otsu'):
+def get_mask(img, mask_user=None, method='otsu', return_status=False):
     
     if mask_user is None:
         mask_user = np.ones(img.shape, dtype=bool)
+
+    if not np.any(mask_user):
+        if return_status:
+            return np.zeros(img.shape, dtype=bool), False
+        return np.zeros(img.shape, dtype=bool)
         
     if method == 'otsu':
         threshold_val = threshold_otsu(img[mask_user])
@@ -86,7 +101,9 @@ def get_mask(img, mask_user=None, method='otsu'):
         threshold_val = 10 * np.percentile(img[mask_user], 10)
         
     img_mask = img > threshold_val
-    
+    found = np.any(img_mask & mask_user)
+    if return_status:
+        return img_mask, found
     return img_mask
       
    
@@ -98,7 +115,13 @@ def get_zoombox(mask, margin=0):
     '''
     
     # get bbox
-    thebbox = regionprops(mask.astype(int))[0].bbox
+    regions = regionprops(mask.astype(int))
+    if len(regions) == 0:
+        # return whole image box if regions don't exist
+        print("WARNING: TAKING WHOLE IMAGE, NO BBOX IDENTIFIED")
+        return [0, mask.shape[0], 0, mask.shape[1]]
+
+    thebbox = regions[0].bbox
     
     # add margin on all sides, taking original mask size into account
     z1 = max(0, thebbox[0] - margin)
@@ -176,7 +199,10 @@ def get_radial_pdf(img, CoM, mask_user=None):
     radial_avg = radial_sum / np.maximum(radial_count, 1)
     
     # now nowmalize such that the sum of the pdf is 1
-    radial_pdf = radial_avg / np.sum(radial_avg)                    
+    if np.sum(radial_avg) == 0:
+        radial_pdf = np.zeros_like(radial_avg, dtype=float)
+    else:
+        radial_pdf = radial_avg / np.sum(radial_avg)
         
     return radial_count, radial_sum, radial_avg, radial_pdf, r_max        
 
@@ -197,7 +223,11 @@ def get_autocorrelation(img, mask_user=None):
     acf = correlate(img_masked.astype(float), img_masked.astype(float), method='fft', mode='full')
     
     # normalize
-    acf_norm = acf / np.max(acf)
+    acf_max = np.max(acf)
+    if acf_max == 0:
+        acf_norm = np.zeros_like(acf, dtype=float)
+    else:
+        acf_norm = acf / acf_max
     
     # also calculate the center coordinate of this acf
     acf_center = np.round(np.array(acf.shape)/2).astype(int)
@@ -421,7 +451,8 @@ def get_data_file_paths(condition_path_map):
     return data_file_paths
 
 
-def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec):
+def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec,
+                          leaf_threshold_method = 'bg10'):
     """
     Run all analyses (as for synthetic data) for all files in data_file_paths.
     Stores results in dicts for easy plotting and further analysis.
@@ -444,6 +475,9 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
     radial_pdfs = {}
     total_interisland_distances = {}
     island_counts = {}
+    leaf_found = {}
+    damage_found = {}
+    analysis_status = {}
 
     for condition, file_list in data_file_paths.items():
         # condition, file_list = list(data_file_paths.items())[0]
@@ -460,6 +494,9 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
         radial_pdfs[condition] = []
         total_interisland_distances[condition] = []
         island_counts[condition] = []
+        leaf_found[condition] = []
+        damage_found[condition] = []
+        analysis_status[condition] = []
 
         for file_path in file_list:
             # file_path = file_list[0]
@@ -474,16 +511,43 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
             img_leaf = img[:, :, leaf_idx]
             img_damage = img[:, :, damage_idx]
 
-            mask_leaf = get_largest_mask(img_leaf, method='bg10')
-            mask_damage = get_mask(img_damage, mask_leaf, method='bg2')
-            centroid = regionprops(mask_leaf.astype(int))[0].centroid
+            mask_leaf, this_leaf_found = get_largest_mask(img_leaf, method=leaf_threshold_method, return_status=True)
 
-            acf, acf_norm, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
-            _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center)
-            _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
-            interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
-            total_interisland = np.sum(interisland_distances)
-            island_count = get_island_counts(mask_leaf, mask_damage)
+            # If leaf detection fails, mark downstream metrics as missing/NA.
+            if not this_leaf_found:
+                mask_damage = np.zeros_like(mask_leaf, dtype=bool)
+                centroid = None
+                acf = None
+                acf_norm = None
+                acf_center = None
+                acf_norm_avgr = None
+                radial_pdf = None
+                total_interisland = np.nan
+                island_count = np.nan
+                this_damage_found = False
+                this_status = 'no_leaf_mask'
+            else:
+                mask_damage, this_damage_found = get_mask(img_damage, mask_leaf, method='bg2', return_status=True)
+                centroid = regionprops(mask_leaf.astype(int))[0].centroid
+
+                # If no damage is detected inside leaf, keep valid zeros for damage metrics.
+                if not this_damage_found:
+                    acf = None
+                    acf_norm = None
+                    acf_center = None
+                    acf_norm_avgr = None
+                    radial_pdf = None
+                    total_interisland = 0.0
+                    island_count = 0
+                    this_status = 'no_damage_mask'
+                else:
+                    acf, acf_norm, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
+                    _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center)
+                    _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
+                    interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
+                    total_interisland = np.sum(interisland_distances)
+                    island_count = get_island_counts(mask_leaf, mask_damage)
+                    this_status = 'ok'
 
             img_rgbs[condition].append(img)
             img_leafs[condition].append(img_leaf)
@@ -498,6 +562,9 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
             radial_pdfs[condition].append(radial_pdf)
             total_interisland_distances[condition].append(total_interisland)
             island_counts[condition].append(island_count)
+            leaf_found[condition].append(this_leaf_found)
+            damage_found[condition].append(this_damage_found)
+            analysis_status[condition].append(this_status)
 
     # Return all results as a dictionary of dictionaries/lists
     return {
@@ -513,7 +580,10 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
         'acf_norms_avgrs': acf_norms_avgrs,
         'radial_pdfs': radial_pdfs,
         'total_interisland_distances': total_interisland_distances,
-        'island_counts': island_counts
+        'island_counts': island_counts,
+        'leaf_found': leaf_found,
+        'damage_found': damage_found,
+        'analysis_status': analysis_status
     }
 
 # %% ########################################################################
@@ -536,15 +606,21 @@ def plot_acf_norms_avgrs(data_all, outputdir):
         
         # loop over the different acf_norms_avgrs for each condition
         for acf_norms_avgr in data_all['acf_norms_avgrs'][condition]:
+            if acf_norms_avgr is None:
+                continue
             
             axs[0].plot(acf_norms_avgr, color=mycolors[idx], linewidth=.5)
     
     mylinestyles = ['-',':']
     for idx, condition in enumerate(data_all['acf_norms_avgrs'].keys()):
 
+        valid_acf_norms = [x for x in data_all['acf_norms_avgrs'][condition] if x is not None]
+        if len(valid_acf_norms) == 0:
+            continue
+
         # determine the average line per condition, using
         # df like done below
-        acf_norms_avgr_avg = pd.DataFrame(data_all['acf_norms_avgrs'][condition]).mean()        
+        acf_norms_avgr_avg = pd.DataFrame(valid_acf_norms).mean()
         # plot the average line
         axs[1].plot(acf_norms_avgr_avg, linewidth=2, 
                 label=f'Avg {condition}', color=mycolors[idx])#)linestyle=mylinestyles[idx])
@@ -585,7 +661,10 @@ def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
                     pd.DataFrame({'cond':cond,
                                 'total_dist':data_all['total_interisland_distances'][cond],
                                 'island_count':data_all['island_counts'][cond]})])
-
+    
+    # Reset index
+    df_dist = df_dist.reset_index(drop=True)
+    
     # Now remove datapoints with zero islands
     if remove_zerocnt:
         df_dist = df_dist[df_dist['island_count'] > 0]
@@ -640,13 +719,18 @@ def plot_radial_pdfs(data_all, outputdir):
     for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
         # loop over the different radial_pdfs for each condition
         for radial_pdf in data_all['radial_pdfs'][condition]:
+            if radial_pdf is None:
+                continue
             axs[0].plot(radial_pdf, color=mycolors[idx], alpha=1, linewidth=.2)
         
     # now in black, add average line per condition
     mylinestyles=['-',':']
     for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
+        valid_radial_pdfs = [x for x in data_all['radial_pdfs'][condition] if x is not None]
+        if len(valid_radial_pdfs) == 0:
+            continue
         # calculate mean, using df since that handles different lengths well
-        radial_pdf_avg = pd.DataFrame(data_all['radial_pdfs'][condition]).mean()
+        radial_pdf_avg = pd.DataFrame(valid_radial_pdfs).mean()
         axs[1].plot(radial_pdf_avg, color=mycolors[idx], linewidth=2, label=f'Avg {condition}',
                 linestyle=mylinestyles[idx])
     
@@ -746,6 +830,12 @@ def run_plot_and_save(
     
     for condition, img_leafs in data_all['img_leafs'].items():
         for idx, img_leaf in enumerate(img_leafs):
+            if 'leaf_found' in data_all and not data_all['leaf_found'][condition][idx]:
+                # Tell user if leaf not found
+                print("SKIPPING PLOT (no leaf found) FOR: ", data_file_paths[condition][idx])
+                # Skip plotting for samples without a detected leaf mask.                
+                continue
+
             img_rgb = data_all['img_rgbs'][condition][idx]
             img_dmg = data_all['img_damages'][condition][idx]
             mask_leaf = data_all['mask_leafs'][condition][idx]
@@ -781,6 +871,20 @@ def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['to
     # Set up dataframe with condition and filename first
     cond_fp = [[cond, fp] for cond, fp_list in data_file_paths.items() for fp in fp_list]
     df_singledata = pd.DataFrame(cond_fp, columns=['condition','file_path'])
+
+    # Add mask-detection status columns when available.
+    if 'leaf_found' in data_all:
+        df_singledata['leaf_found'] = [
+            val for cond, val_list in data_all['leaf_found'].items() for val in val_list
+        ]
+    if 'damage_found' in data_all:
+        df_singledata['damage_found'] = [
+            val for cond, val_list in data_all['damage_found'].items() for val in val_list
+        ]
+    if 'analysis_status' in data_all:
+        df_singledata['analysis_status'] = [
+            val for cond, val_list in data_all['analysis_status'].items() for val in val_list
+        ]
     
     # Now add metrics that were calculated before
     # (This assumes these are in the same order!!)

@@ -25,7 +25,8 @@ reference_channel_spec = None
 data_file_paths = lsa.get_data_file_paths(condition_path_map)
 
 # 2) Run the complete analysis pipeline
-data_all = lsa.run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec)
+data_all = lsa.run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec,
+                                     leaf_threshold_method='triangle')
 
 # 3) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
 lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
