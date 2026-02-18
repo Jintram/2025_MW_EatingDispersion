@@ -764,6 +764,71 @@ def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
     nozero_string = '_nozero' if remove_zerocnt else ''
     fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.pdf', dpi=150)
     plt.show(); plt.close()
+    
+def plot_damaged_area(data_all, outputdir):
+    """
+    Plot the total damaged area for each condition.
+    Uses cm² when converted areas are available; otherwise uses pixels.
+    """
+
+    os.makedirs(outputdir + '/plots/', exist_ok=True)
+
+    # Determine whether converted cm² values are available (at least one finite value)
+    cm2_available = False
+    if 'total_damage_area_cm2' in data_all:
+        all_cm2_values = [
+            val
+            for cond, val_list in data_all['total_damage_area_cm2'].items()
+            for val in val_list
+        ]
+        cm2_available = np.any(pd.notna(all_cm2_values))
+
+    if cm2_available:
+        metric_key = 'total_damage_area_cm2'
+        y_label = 'Damaged area (cm²)'
+        file_suffix = 'cm2'
+    else:
+        metric_key = 'total_damage_area_px'
+        y_label = 'Damaged area (pixels)'
+        file_suffix = 'px'
+
+    # Build dataframe for plotting
+    df_area = pd.DataFrame({'cond': [], 'damaged_area': []})
+    for cond in data_all[metric_key].keys():
+        df_area = pd.concat([
+            df_area,
+            pd.DataFrame({
+                'cond': cond,
+                'damaged_area': data_all[metric_key][cond]
+            })
+        ])
+
+    # Keep only valid numeric values for plotting
+    df_area = df_area.reset_index(drop=True)
+    df_area = df_area[pd.notna(df_area['damaged_area'])]
+
+    if df_area.empty:
+        print('WARNING: No valid damaged-area values available for plotting.')
+        return
+
+    fig, ax = plt.subplots(1, 1, figsize=(8 * cm_to_inch, 8 * cm_to_inch))
+
+    sns.barplot(x='cond', y='damaged_area', data=df_area, ax=ax, palette=['blue', 'red'])
+    sns.violinplot(x='cond', y='damaged_area', data=df_area, ax=ax, color='black', alpha=0.2)
+    sns.stripplot(x='cond', y='damaged_area', data=df_area, ax=ax, color='black')
+
+    ax.set_title('Total Damaged Area')
+    ax.set_ylabel(y_label)
+    ax.tick_params(axis='x', rotation=45)
+
+    ymax = np.max(df_area['damaged_area'])
+    if ymax > 0:
+        ax.set_ylim([0, ymax * 1.02])
+
+    plt.tight_layout()
+    fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.pdf', dpi=150)
+    plt.show(); plt.close()
+    
 # plot the radial distribution functions similar to the acf above
 # for all samples, in one panel, colored by condition
 def plot_radial_pdfs(data_all, outputdir):

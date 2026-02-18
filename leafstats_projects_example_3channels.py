@@ -38,6 +38,7 @@ lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
 lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
 lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
+lsa.plot_damaged_area(data_all, OUTPUTDIR)
 
 # 4) Export per-image mask overlays to output folders
 lsa.run_plot_and_save(
