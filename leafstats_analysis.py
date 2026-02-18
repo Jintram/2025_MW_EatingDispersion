@@ -4,9 +4,10 @@
 # Set these parameters according to file locations on local computer
 
 # Where to put plots
-OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT/'
+OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT202602/'
 # Where to find synthetic images
-SYNTHETIC_IMAGE_PATH = '/Users/m.wehrens/Documents/git_repos/_UVA/_bioDSC-smallprojects/2025_MW_EatingDispersion/Synthetic_data/'
+SYNTHETIC_IMAGE_PATH = '/Users/m.wehrens/Documents/git_repos/_UVA/_Projects-bioDSC/2025_MW_EatingDispersion/Synthetic_data/'
+
 
 #%% ################################################################################
 
@@ -34,6 +35,11 @@ import glob
 import os
 
 cm_to_inch = 1/2.54
+
+#%% ################################################################################
+# Create output dir if it doesn't exist
+
+# Create in __main__ to avoid side effects during import
 
 #%% ################################################################################
 # Functions
@@ -245,31 +251,39 @@ def get_island_counts(mask_leaf, mask_damage):
 # open tiff stack image
 from skimage import io
 
-img_leafs = {}
-img_damages = {}
+def load_synthetic_data(synthetic_image_path):
+    """
+    Load synthetic TIFF stacks and split them into leaf (green) and damage (blue) channels.
+    """
 
-# Load the leaf w/ eaten disk
-img_disk_path = SYNTHETIC_IMAGE_PATH + 'synthetic_eatendisk.tif'
-img_disk = io.imread(img_disk_path) # io.read required for img stack
-img_leafs['disk'] = img_disk[:,:,1]  # green channel (leaf)
-img_damages['disk'] = img_disk[:,:,2]  # blue channel (damage)
+    img_leafs = {}
+    img_damages = {}
 
-# Load the leaf w/ eaten spots
-img_spots_damage_path = SYNTHETIC_IMAGE_PATH + 'synthetic_eatenspots.tif'
-img_spots_damage = io.imread(img_spots_damage_path) # io.read required for img stack
-img_leafs['spots']   = img_spots_damage[:,:,1]  # green channel (leaf)
-img_damages['spots'] = img_spots_damage[:,:,2]  # blue channel (damage
+    # Load the leaf w/ eaten disk
+    img_disk_path = synthetic_image_path + 'synthetic_eatendisk.tif'
+    img_disk = io.imread(img_disk_path)  # io.read required for img stack
+    img_leafs['disk'] = img_disk[:, :, 1]  # green channel (leaf)
+    img_damages['disk'] = img_disk[:, :, 2]  # blue channel (damage)
 
-# Load the image w/ eaten donut
-img_donut_path = SYNTHETIC_IMAGE_PATH + 'synthetic_eatendonut.tif'
-img_donut = io.imread(img_donut_path) # io.read required for img stack
-img_leafs['donut']   = img_donut[:,:,1]  # green channel (leaf)
-img_damages['donut'] = img_donut[:,:,2]  # blue channel (damage
+    # Load the leaf w/ eaten spots
+    img_spots_damage_path = synthetic_image_path + 'synthetic_eatenspots.tif'
+    img_spots_damage = io.imread(img_spots_damage_path)  # io.read required for img stack
+    img_leafs['spots'] = img_spots_damage[:, :, 1]  # green channel (leaf)
+    img_damages['spots'] = img_spots_damage[:, :, 2]  # blue channel (damage)
 
-img_donut_path = SYNTHETIC_IMAGE_PATH + 'synthetic_dualspot.tif'
-img_donut = io.imread(img_donut_path) # io.read required for img stack
-img_leafs['dualspot']   = img_donut[:,:,1]  # green channel (leaf)
-img_damages['dualspot'] = img_donut[:,:,2]  # blue channel (damage
+    # Load the image w/ eaten donut
+    img_donut_path = synthetic_image_path + 'synthetic_eatendonut.tif'
+    img_donut = io.imread(img_donut_path)  # io.read required for img stack
+    img_leafs['donut'] = img_donut[:, :, 1]  # green channel (leaf)
+    img_damages['donut'] = img_donut[:, :, 2]  # blue channel (damage)
+
+    # Load dual-spot sample
+    img_dualspot_path = synthetic_image_path + 'synthetic_dualspot.tif'
+    img_dualspot = io.imread(img_dualspot_path)  # io.read required for img stack
+    img_leafs['dualspot'] = img_dualspot[:, :, 1]  # green channel (leaf)
+    img_damages['dualspot'] = img_dualspot[:, :, 2]  # blue channel (damage)
+
+    return img_leafs, img_damages, img_disk
 
 
 #%% ################################################################################
@@ -292,71 +306,78 @@ def plot_img_n_acf(img_damage, acf_norm, acf_center, acf_norms_avgr, name):
     plt.show(); plt.close()
 
 # now get masks for leaf and damage, plus centroid for all 
-mask_leafs = {}; mask_damages = {}; centroids ={}
-for key in img_leafs.keys():
-    mask_leafs[key] = get_largest_mask(img_leafs[key], method='otsu')
-    mask_damages[key] = get_mask(img_damages[key], mask_leafs[key], method='bg2') # bg2, otsu, triangle, pct10
-    centroids[key] = regionprops(mask_leafs[key].astype(int))[0].centroid
+def run_synthetic_analysis(img_leafs, img_damages, img_disk):
+    """
+    Run synthetic-data diagnostics and plots to verify analysis behavior.
+    """
 
-for key in img_leafs.keys():
-    plot_images(img_leafs[key], img_damages[key], mask_leafs[key], mask_damages[key], centroids[key], img0=img_disk)
+    # Build masks and centroids
+    mask_leafs = {}
+    mask_damages = {}
+    centroids = {}
+    for key in img_leafs.keys():
+        mask_leafs[key] = get_largest_mask(img_leafs[key], method='otsu')
+        mask_damages[key] = get_mask(img_damages[key], mask_leafs[key], method='bg2')  # bg2, otsu, triangle, pct10
+        centroids[key] = regionprops(mask_leafs[key].astype(int))[0].centroid
 
-# now get the acf for all
-acfs = {}; acf_norms = {}; acf_centers={}; acf_norms_avgrs={}
-for key in img_leafs.keys():
-    acfs[key], acf_norms[key], acf_centers[key] = get_autocorrelation(img_damages[key], mask_user=mask_leafs[key])
-    _, _, acf_norms_avgrs[key], _, _ = get_radial_pdf(acf_norms[key], acf_centers[key])
+    # Visual QC for channels/masks
+    for key in img_leafs.keys():
+        plot_images(img_leafs[key], img_damages[key], mask_leafs[key], mask_damages[key], centroids[key], img0=img_disk)
 
-# now plot 
-for key in img_leafs.keys():    
-    # key = list(img_leafs.keys())[0]
-    plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
-    
+    # Autocorrelation analysis for each synthetic sample
+    acfs = {}
+    acf_norms = {}
+    acf_centers = {}
+    acf_norms_avgrs = {}
+    for key in img_leafs.keys():
+        acfs[key], acf_norms[key], acf_centers[key] = get_autocorrelation(img_damages[key], mask_user=mask_leafs[key])
+        _, _, acf_norms_avgrs[key], _, _ = get_radial_pdf(acf_norms[key], acf_centers[key])
 
-# Loop over and get the radial distribution functions
-radial_pdf = {}
-for key in img_leafs.keys():
-    # key = list(img_leafs.keys())[0]
-    # radial_count_msk, radial_sum_msk, radial_avg_msk, radial_pdf_msk, r_max_msk = \
-    _, _, _, radial_pdf[key], _ = \
-        get_radial_pdf(mask_damages[key], centroids[key], mask_leafs[key])
+    # Plot ACF curves
+    for key in img_leafs.keys():
+        plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
 
-for key in img_leafs.keys():
-    
-    fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))    
-    
-    axs[0].imshow(mask_damages[key])
-    
-    axs[1].plot(radial_pdf[key])
-    
-    plt.show(); plt.close()
+    # Radial PDFs for synthetic masks
+    radial_pdf = {}
+    for key in img_leafs.keys():
+        _, _, _, radial_pdf[key], _ = get_radial_pdf(mask_damages[key], centroids[key], mask_leafs[key])
 
-# now also calculate the sum of the inter-island distances for each
-total_interisland_distances = {}
-for key in img_leafs.keys():
-    
-    interisland_distances = get_inter_island_distances(mask_leafs[key], mask_damages[key])    
-    total_interisland_distances[key] = np.sum(interisland_distances)
-    
-# now plot
-plt.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
+    for key in img_leafs.keys():
+        fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))
+        axs[0].imshow(mask_damages[key])
+        axs[1].plot(radial_pdf[key])
+        plt.show(); plt.close()
 
-# now also calculate and count the amount of islands
-island_counts = {}
-for key in img_leafs.keys():
-    island_counts[key] = get_island_counts(mask_leafs[key], mask_damages[key])
-    
-plt.bar(list(island_counts.keys()), list(island_counts.values()))
+    # Summarize island spacing
+    total_interisland_distances = {}
+    for key in img_leafs.keys():
+        interisland_distances = get_inter_island_distances(mask_leafs[key], mask_damages[key])
+        total_interisland_distances[key] = np.sum(interisland_distances)
+
+    plt.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
+
+    # Summarize island counts
+    island_counts = {}
+    for key in img_leafs.keys():
+        island_counts[key] = get_island_counts(mask_leafs[key], mask_damages[key])
+
+    plt.bar(list(island_counts.keys()), list(island_counts.values()))
 
 #%% ######################################################################
 # Now let's get real data working
 
-# get all files from the "infected" condition
-data_file_paths = {}
-data_file_paths['infected'] = \
-    glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected/*.tif')
-data_file_paths['noninfected'] = \
-    glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/*.tif')
+def get_data_file_paths():
+    """
+    Collect all TIFF file paths for each condition.
+    """
+
+    data_file_paths = {}
+    data_file_paths['infected'] = \
+        glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected/*.tif')
+    data_file_paths['noninfected'] = \
+        glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/*.tif')
+
+    return data_file_paths
 
 
 def run_complete_analysis(data_file_paths):
@@ -444,8 +465,6 @@ def run_complete_analysis(data_file_paths):
         'island_counts': island_counts
     }
 
-data_all = run_complete_analysis(data_file_paths)
-
 # %% ########################################################################
 
 # Generate a plot of the acf_norms_avgrs, all in the same panel, and 
@@ -495,8 +514,6 @@ def plot_acf_norms_avgrs(data_all, outputdir):
         
     plt.show(); plt.close()
     
-plot_acf_norms_avgrs(data_all, OUTPUTDIR)    
-
 # Now the same for the inter-island distance metric
 def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
     """
@@ -553,11 +570,6 @@ def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
     nozero_string = '_nozero' if remove_zerocnt else ''
     fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.pdf', dpi=150)
     plt.show(); plt.close()
-
-
-plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
-plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
-
 # plot the radial distribution functions similar to the acf above
 # for all samples, in one panel, colored by condition
 def plot_radial_pdfs(data_all, outputdir):
@@ -598,8 +610,6 @@ def plot_radial_pdfs(data_all, outputdir):
     plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
     
     plt.show(); plt.close()
-    
-plot_radial_pdfs(data_all, OUTPUTDIR)
 
 # %%
 
@@ -651,7 +661,7 @@ def plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_lea
     plt.close(fig)
 
 # now write a loop as described above
-def run_plot_and_save(data_all, outputdir):
+def run_plot_and_save(data_all, data_file_paths, img_disk, outputdir):
     """
     Run the plot_and_save_images function for each image in data_all.
     Saves the plots in outputdir/plots/ preserving subdirectory structure.
@@ -668,8 +678,6 @@ def run_plot_and_save(data_all, outputdir):
             plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, 
                                  centroid_leaf, img0=img_disk,
                                  file_path=file_path, outputdir=outputdir)
-
-run_plot_and_save(data_all, OUTPUTDIR)
 
 # %% ################################################################################
 # Export some data
@@ -703,14 +711,6 @@ def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['to
         
         
         
-# now generate and export to dataframe metrics with single data points
-df_singledata = export_singledatapoints(data_all, data_file_paths,
-                                        data_singledatapoint=['total_interisland_distances', 'island_counts'])
-df_singledata.to_csv(OUTPUTDIR+'/leaf_damage_singlemetrics.csv', index=False)
-df_singledata.to_excel(OUTPUTDIR+'/leaf_damage_singlemetrics.xlsx', index=False)
-
-        
-        
 # Also create two example plots using the dataframe       
 def simplebarplotseaborn(df_singledata):
     '''
@@ -735,12 +735,40 @@ def simplebarplotseaborn(df_singledata):
     
     
         
-        
-    
-    
-
-    
-
 
 
 # %%
+
+if __name__ == "__main__":
+
+    # 1) Ensure base output directory exists
+    os.makedirs(OUTPUTDIR, exist_ok=True)
+
+    # 2) Load synthetic example images and run synthetic sanity-check analysis/plots
+    img_leafs_syn, img_damages_syn, img_disk = load_synthetic_data(SYNTHETIC_IMAGE_PATH)
+    run_synthetic_analysis(img_leafs_syn, img_damages_syn, img_disk)
+
+    # 3) Collect real-data file paths and run the complete analysis pipeline
+    data_file_paths = get_data_file_paths()
+    data_all = run_complete_analysis(data_file_paths)
+
+    # 4) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
+    plot_acf_norms_avgrs(data_all, OUTPUTDIR)
+    plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
+    plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
+    plot_radial_pdfs(data_all, OUTPUTDIR)
+
+    # 5) Export per-image mask overlays to output folders
+    run_plot_and_save(data_all, data_file_paths, img_disk, OUTPUTDIR)
+
+    # 6) Export single-value metrics to CSV and Excel
+    df_singledata = export_singledatapoints(
+        data_all,
+        data_file_paths,
+        data_singledatapoint=['total_interisland_distances', 'island_counts']
+    )
+    df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
+    df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
+
+    # 7) Optional: inspect dataframe plots interactively
+    # simplebarplotseaborn(df_singledata)
