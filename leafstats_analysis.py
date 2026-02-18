@@ -476,7 +476,8 @@ def get_data_file_paths(condition_path_map):
 
 def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec,
                           leaf_threshold_method = 'bg10', leaf_roundness_threshold=0,
-                          apply_smooth_leafmask=False):
+                          apply_smooth_leafmask=False,
+                          pixel_to_cm2_factor=None):
     """
     Run all analyses (as for synthetic data) for all files in data_file_paths.
     Stores results in dicts for easy plotting and further analysis.
@@ -499,6 +500,8 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
     radial_pdfs = {}
     total_interisland_distances = {}
     island_counts = {}
+    total_damage_area_px = {}
+    total_damage_area_cm2 = {}
     leaf_roundnesses = {}
     leaf_found = {}
     damage_found = {}
@@ -519,6 +522,8 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
         radial_pdfs[condition] = []
         total_interisland_distances[condition] = []
         island_counts[condition] = []
+        total_damage_area_px[condition] = []
+        total_damage_area_cm2[condition] = []
         leaf_roundnesses[condition] = []
         leaf_found[condition] = []
         damage_found[condition] = []
@@ -563,6 +568,8 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                 radial_pdf = None
                 total_interisland = np.nan
                 island_count = np.nan
+                damage_area_px = np.nan
+                damage_area_cm2 = np.nan
                 this_damage_found = False
                 this_status = 'no_leaf_mask'
             else:
@@ -578,6 +585,11 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                     radial_pdf = None
                     total_interisland = 0.0
                     island_count = 0
+                    damage_area_px = 0.0
+                    if pixel_to_cm2_factor is None:
+                        damage_area_cm2 = np.nan
+                    else:
+                        damage_area_cm2 = damage_area_px * pixel_to_cm2_factor
                     this_status = 'no_damage_mask'
                 else:
                     acf, acf_norm, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
@@ -586,6 +598,11 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                     interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
                     total_interisland = np.sum(interisland_distances)
                     island_count = get_island_counts(mask_leaf, mask_damage)
+                    damage_area_px = float(np.sum(mask_damage))
+                    if pixel_to_cm2_factor is None:
+                        damage_area_cm2 = np.nan
+                    else:
+                        damage_area_cm2 = damage_area_px * pixel_to_cm2_factor
                     this_status = 'ok'
 
             img_rgbs[condition].append(img)
@@ -601,6 +618,8 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
             radial_pdfs[condition].append(radial_pdf)
             total_interisland_distances[condition].append(total_interisland)
             island_counts[condition].append(island_count)
+            total_damage_area_px[condition].append(damage_area_px)
+            total_damage_area_cm2[condition].append(damage_area_cm2)
             leaf_roundnesses[condition].append(leaf_roundness)
             leaf_found[condition].append(this_leaf_found)
             damage_found[condition].append(this_damage_found)
@@ -621,6 +640,8 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
         'radial_pdfs': radial_pdfs,
         'total_interisland_distances': total_interisland_distances,
         'island_counts': island_counts,
+        'total_damage_area_px': total_damage_area_px,
+        'total_damage_area_cm2': total_damage_area_cm2,
         'leaf_roundness': leaf_roundnesses,
         'leaf_found': leaf_found,
         'damage_found': damage_found,
@@ -805,6 +826,8 @@ def plot_and_save_images(
     leaf_channel_spec,
     damage_channel_spec,
     leaf_roundness=None,
+    total_damage_area_px=None,
+    total_damage_area_cm2=None,
     centroid_leaf=None,
     img0=None,
     reference_channel_spec=None,
@@ -818,7 +841,9 @@ def plot_and_save_images(
     outputdir: base output directory where plots/ will be created
     """
     zm = get_zoombox(mask_leaf, margin=10)
-    fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 5*cm_to_inch))
+    fig, axs = plt.subplots(1, 3, figsize=(17.2*cm_to_inch, 5*cm_to_inch))
+    # set global font size to 8 pts
+    plt.rcParams.update({'font.size': 6})
     
     if img0 is not None and reference_channel_spec is not None:
         ref_idx = reference_channel_spec['channel']
@@ -843,8 +868,15 @@ def plot_and_save_images(
             
     damage_idx = damage_channel_spec['channel']
     damage_name = damage_channel_spec['name']
+    if total_damage_area_px is None or (isinstance(total_damage_area_px, float) and np.isnan(total_damage_area_px)):
+        damage_area_text = 'area=NA'
+    elif total_damage_area_cm2 is None or (isinstance(total_damage_area_cm2, float) and np.isnan(total_damage_area_cm2)):
+        damage_area_text = f'area={total_damage_area_px:.0f} px'
+    else:
+        damage_area_text = f'area={total_damage_area_px:.0f} px ({total_damage_area_cm2:.4f} cm²)'
+
     axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[2].set_title(f'{damage_name}\nch={damage_idx}')
+    axs[2].set_title(f'{damage_name}\nch={damage_idx}\n{damage_area_text}')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     
     plt.tight_layout()
@@ -859,7 +891,7 @@ def plot_and_save_images(
         # Compose output path
         save_path = os.path.join(outputdir, 'plots', rel_path_noext)
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
         
     plt.close(fig)
 
@@ -890,6 +922,8 @@ def run_plot_and_save(
             mask_leaf = data_all['mask_leafs'][condition][idx]
             mask_damage = data_all['mask_damages'][condition][idx]
             leaf_roundness = data_all['leaf_roundness'][condition][idx] if 'leaf_roundness' in data_all else None
+            damage_area_px = data_all['total_damage_area_px'][condition][idx] if 'total_damage_area_px' in data_all else None
+            damage_area_cm2 = data_all['total_damage_area_cm2'][condition][idx] if 'total_damage_area_cm2' in data_all else None
             centroid_leaf = data_all['centroids'][condition][idx]
             file_path = data_file_paths[condition][idx]  # original file path
             
@@ -901,6 +935,8 @@ def run_plot_and_save(
                 leaf_channel_spec,
                 damage_channel_spec,
                 leaf_roundness,
+                damage_area_px,
+                damage_area_cm2,
                 centroid_leaf,
                 img0=img_rgb,
                 reference_channel_spec=reference_channel_spec,
@@ -912,13 +948,13 @@ def run_plot_and_save(
 # %% ################################################################################
 # Export some data
 
-def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness']):
+def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2']):
     '''
     For metrics quantified as a single parameter, store those
     in a single dataframe. 
     Also include file paths as column.
     '''
-    # data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness']
+    # data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2']
     
     # Set up dataframe with condition and filename first
     cond_fp = [[cond, fp] for cond, fp_list in data_file_paths.items() for fp in fp_list]
@@ -1022,11 +1058,18 @@ if __name__ == "__main__":
     leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
     damage_channel_spec = {'channel': 2, 'name': 'Damage'}
     reference_channel_spec = {'channel': 0, 'name': '(Not used)'} # can be set to None
+    # Optional conversion from pixel area to cm^2 (set to e.g. 0.0004 if known)
+    pixel_to_cm2_factor = None
     # obtain 
     data_file_paths = get_data_file_paths(condition_path_map)
 
     # 2) Run the complete analysis pipeline
-    data_all = run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec)
+    data_all = run_complete_analysis(
+        data_file_paths,
+        leaf_channel_spec,
+        damage_channel_spec,
+        pixel_to_cm2_factor=pixel_to_cm2_factor
+    )
 
     # 3) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
     plot_acf_norms_avgrs(data_all, OUTPUTDIR)
@@ -1048,7 +1091,7 @@ if __name__ == "__main__":
     df_singledata = export_singledatapoints(
         data_all,
         data_file_paths,
-        data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness']
+        data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2']
     )
     df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
     df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
