@@ -258,7 +258,7 @@ def load_synthetic_data(synthetic_image_path):
 
     img_leafs = {}
     img_damages = {}
-
+    
     # Load the leaf w/ eaten disk
     img_disk_path = synthetic_image_path + 'synthetic_eatendisk.tif'
     img_disk = io.imread(img_disk_path)  # io.read required for img stack
@@ -366,16 +366,20 @@ def run_synthetic_analysis(img_leafs, img_damages, img_disk):
 #%% ######################################################################
 # Now let's get real data working
 
-def get_data_file_paths():
+def get_data_file_paths(condition_path_map):
     """
     Collect all TIFF file paths for each condition.
+
+    Parameters
+    ----------
+    condition_path_map : dict
+        User-defined mapping where keys are condition names (e.g. 'infected')
+        and values are folder paths that contain TIFF files for that condition.
     """
 
     data_file_paths = {}
-    data_file_paths['infected'] = \
-        glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected/*.tif')
-    data_file_paths['noninfected'] = \
-        glob.glob('/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected/*.tif')
+    for condition, base_path in condition_path_map.items():
+        data_file_paths[condition] = glob.glob(os.path.join(base_path, '*.tif'))
 
     return data_file_paths
 
@@ -387,6 +391,7 @@ def run_complete_analysis(data_file_paths):
     """
 
     # Prepare output structures
+    img_rgbs = {}
     img_leafs = {}
     img_damages = {}
     mask_leafs = {}
@@ -402,6 +407,7 @@ def run_complete_analysis(data_file_paths):
 
     for condition, file_list in data_file_paths.items():
         # condition, file_list = list(data_file_paths.items())[0]
+        img_rgbs[condition] = []
         img_leafs[condition] = []
         img_damages[condition] = []
         mask_leafs[condition] = []
@@ -436,6 +442,7 @@ def run_complete_analysis(data_file_paths):
             total_interisland = np.sum(interisland_distances)
             island_count = get_island_counts(mask_leaf, mask_damage)
 
+            img_rgbs[condition].append(img)
             img_leafs[condition].append(img_leaf)
             img_damages[condition].append(img_damage)
             mask_leafs[condition].append(mask_leaf)
@@ -451,6 +458,7 @@ def run_complete_analysis(data_file_paths):
 
     # Return all results as a dictionary of dictionaries/lists
     return {
+        'img_rgbs': img_rgbs,
         'img_leafs': img_leafs,
         'img_damages': img_damages,
         'mask_leafs': mask_leafs,
@@ -473,6 +481,8 @@ def plot_acf_norms_avgrs(data_all, outputdir):
     """
     Plot the average radial autocorrelation for each condition.
     """
+    
+    os.makedirs(outputdir+'/plots/', exist_ok=True)
     
     fig, axs = plt.subplots(2, 1, figsize=(10*cm_to_inch, 10*cm_to_inch))
     
@@ -661,7 +671,7 @@ def plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_lea
     plt.close(fig)
 
 # now write a loop as described above
-def run_plot_and_save(data_all, data_file_paths, img_disk, outputdir):
+def run_plot_and_save(data_all, data_file_paths, outputdir):
     """
     Run the plot_and_save_images function for each image in data_all.
     Saves the plots in outputdir/plots/ preserving subdirectory structure.
@@ -669,6 +679,7 @@ def run_plot_and_save(data_all, data_file_paths, img_disk, outputdir):
     
     for condition, img_leafs in data_all['img_leafs'].items():
         for idx, img_leaf in enumerate(img_leafs):
+            img_rgb = data_all['img_rgbs'][condition][idx]
             img_dmg = data_all['img_damages'][condition][idx]
             mask_leaf = data_all['mask_leafs'][condition][idx]
             mask_damage = data_all['mask_damages'][condition][idx]
@@ -676,7 +687,7 @@ def run_plot_and_save(data_all, data_file_paths, img_disk, outputdir):
             file_path = data_file_paths[condition][idx]  # original file path
             
             plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, 
-                                 centroid_leaf, img0=img_disk,
+                                 centroid_leaf, img0=img_rgb,
                                  file_path=file_path, outputdir=outputdir)
 
 # %% ################################################################################
@@ -741,6 +752,8 @@ def simplebarplotseaborn(df_singledata):
 
 if __name__ == "__main__":
 
+    # PART A, synthetic data
+    
     # 1) Ensure base output directory exists
     os.makedirs(OUTPUTDIR, exist_ok=True)
 
@@ -748,20 +761,28 @@ if __name__ == "__main__":
     img_leafs_syn, img_damages_syn, img_disk = load_synthetic_data(SYNTHETIC_IMAGE_PATH)
     run_synthetic_analysis(img_leafs_syn, img_damages_syn, img_disk)
 
-    # 3) Collect real-data file paths and run the complete analysis pipeline
-    data_file_paths = get_data_file_paths()
+    # PART B, real data
+
+    # 1) Define condition -> folder mapping and collect matching TIFF file paths
+    condition_path_map = {
+        'infected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected',
+        'noninfected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected'
+    }
+    data_file_paths = get_data_file_paths(condition_path_map)
+
+    # 2) Run the complete analysis pipeline
     data_all = run_complete_analysis(data_file_paths)
 
-    # 4) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
+    # 3) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
     plot_acf_norms_avgrs(data_all, OUTPUTDIR)
     plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
     plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
     plot_radial_pdfs(data_all, OUTPUTDIR)
 
-    # 5) Export per-image mask overlays to output folders
-    run_plot_and_save(data_all, data_file_paths, img_disk, OUTPUTDIR)
+    # 4) Export per-image mask overlays to output folders
+    run_plot_and_save(data_all, data_file_paths, OUTPUTDIR)
 
-    # 6) Export single-value metrics to CSV and Excel
+    # 5) Export single-value metrics to CSV and Excel
     df_singledata = export_singledatapoints(
         data_all,
         data_file_paths,
@@ -770,5 +791,5 @@ if __name__ == "__main__":
     df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
     df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
 
-    # 7) Optional: inspect dataframe plots interactively
+    # 8) Optional: inspect dataframe plots interactively
     # simplebarplotseaborn(df_singledata)
