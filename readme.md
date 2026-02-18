@@ -11,8 +11,7 @@ This project analyzes multi-channel leaf images to quantify thrip feeding damage
 ## To install
 
 To find out how to get started with Python and related required software to 
-conveniently run scripts, please check out:
-- https://www.biodsc.nl/posts/installing_conda_python.html
+conveniently run scripts, please check out our [blog post](https://www.biodsc.nl/posts/installing_conda_python.html) about this.
 
 Assuming you already have Conda installed and your preferred environment set up, install the following libraries to be able to run the scripts in this repository:
 
