@@ -19,6 +19,7 @@ import math
 
 from skimage.filters import threshold_otsu, threshold_triangle
 from skimage.measure import label, regionprops
+from skimage.morphology import opening, closing, disk
 
 from scipy.signal import correlate
     # from scipy.signal import correlate2d # VERY SLOW
@@ -44,7 +45,7 @@ cm_to_inch = 1/2.54
 #%% ################################################################################
 # Functions
 
-def get_largest_mask(img, method='bg10', return_status=False):
+def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False):
     """
     Finds Otsu threshold for image, applies threshold, and
     then selects the largest continuous region.
@@ -77,6 +78,16 @@ def get_largest_mask(img, method='bg10', return_status=False):
     lbl_largest = np.argmax([region.area for region in regionprops(img_lbl)]) + 1
     
     img_mask = img_lbl == lbl_largest
+    
+    if apply_smooth:
+        # perform morphological closing with a radius of 5 pixels to smooth the mask
+        img_mask = opening(img_mask, disk(10))
+        # if this erased the mask, act accordingly
+        if not np.any(img_mask):
+            if return_status:
+                return np.zeros(img.shape, dtype=bool), False
+            return np.zeros(img.shape, dtype=bool)
+        
     if return_status:
         return img_mask, True
     return img_mask
@@ -106,6 +117,20 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
         return img_mask, found
     return img_mask
       
+def determine_leaf_roundness(mask_leaf):
+    """ Calculate the roundness of the leaf """
+
+    # calculate properties
+    the_regionprops = regionprops(label(mask_leaf))
+    # check assumption there's only 1 region
+    if len(the_regionprops) > 1: 
+        raise ValueError("Multiple regions found in mask_leaf, cannot determine roundness.")
+    
+    # calculate the roundness
+    roundness = 4*np.pi*the_regionprops[0].area/the_regionprops[0].perimeter**2
+    
+    # return the roundness
+    return roundness
    
 def get_zoombox(mask, margin=0):
     '''
@@ -288,8 +313,7 @@ def get_island_counts(mask_leaf, mask_damage):
         # plt.imshow(lbl_damage); plt.show(); plt.close()
         
     return np.max(lbl_damage)
-     
-
+    
 
 #%% ################################################################################
 # Now let's first look at data I generated myself
@@ -450,9 +474,9 @@ def get_data_file_paths(condition_path_map):
 
     return data_file_paths
 
-
 def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec,
-                          leaf_threshold_method = 'bg10'):
+                          leaf_threshold_method = 'bg10', leaf_roundness_threshold=0,
+                          apply_smooth_leafmask=False):
     """
     Run all analyses (as for synthetic data) for all files in data_file_paths.
     Stores results in dicts for easy plotting and further analysis.
@@ -475,6 +499,7 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
     radial_pdfs = {}
     total_interisland_distances = {}
     island_counts = {}
+    leaf_roundnesses = {}
     leaf_found = {}
     damage_found = {}
     analysis_status = {}
@@ -494,6 +519,7 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
         radial_pdfs[condition] = []
         total_interisland_distances[condition] = []
         island_counts[condition] = []
+        leaf_roundnesses[condition] = []
         leaf_found[condition] = []
         damage_found[condition] = []
         analysis_status[condition] = []
@@ -511,8 +537,21 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
             img_leaf = img[:, :, leaf_idx]
             img_damage = img[:, :, damage_idx]
 
-            mask_leaf, this_leaf_found = get_largest_mask(img_leaf, method=leaf_threshold_method, return_status=True)
+            mask_leaf, this_leaf_found = \
+                get_largest_mask(img_leaf, 
+                                 method=leaf_threshold_method, 
+                                 apply_smooth=apply_smooth_leafmask,
+                                 return_status=True)
 
+            # Additional check for leaf validity, check roundness
+            if this_leaf_found:
+                leaf_roundness = determine_leaf_roundness(mask_leaf)
+                if not leaf_roundness > leaf_roundness_threshold:
+                    this_leaf_found = False
+                    print("WARNING: Leaf roundness below threshold, marking as no leaf found.")
+            else:
+                leaf_roundness = np.nan
+                
             # If leaf detection fails, mark downstream metrics as missing/NA.
             if not this_leaf_found:
                 mask_damage = np.zeros_like(mask_leaf, dtype=bool)
@@ -562,6 +601,7 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
             radial_pdfs[condition].append(radial_pdf)
             total_interisland_distances[condition].append(total_interisland)
             island_counts[condition].append(island_count)
+            leaf_roundnesses[condition].append(leaf_roundness)
             leaf_found[condition].append(this_leaf_found)
             damage_found[condition].append(this_damage_found)
             analysis_status[condition].append(this_status)
@@ -581,6 +621,7 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
         'radial_pdfs': radial_pdfs,
         'total_interisland_distances': total_interisland_distances,
         'island_counts': island_counts,
+        'leaf_roundness': leaf_roundnesses,
         'leaf_found': leaf_found,
         'damage_found': damage_found,
         'analysis_status': analysis_status
@@ -763,9 +804,11 @@ def plot_and_save_images(
     mask_damage,
     leaf_channel_spec,
     damage_channel_spec,
+    leaf_roundness=None,
     centroid_leaf=None,
     img0=None,
     reference_channel_spec=None,
+    filename_suffix='',
     file_path=None,
     outputdir=None
 ):
@@ -781,14 +824,19 @@ def plot_and_save_images(
         ref_idx = reference_channel_spec['channel']
         ref_name = reference_channel_spec['name']
         axs[0].imshow(img0[:, :, ref_idx][zm[0]:zm[1],zm[2]:zm[3]])
-        axs[0].set_title(f'{ref_name} channel (idx={ref_idx})')
+        axs[0].set_title(f'{ref_name}\nch={ref_idx}')
     else:
         axs[0].axis('off')
     
     leaf_idx = leaf_channel_spec['channel']
     leaf_name = leaf_channel_spec['name']
+    if leaf_roundness is None or (isinstance(leaf_roundness, float) and np.isnan(leaf_roundness)):
+        leaf_roundness_text = 'roundness=NA'
+    else:
+        leaf_roundness_text = f'roundness={leaf_roundness:.3f}'
+
     axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[1].set_title(f'{leaf_name} channel (idx={leaf_idx}, leaf)')
+    axs[1].set_title(f'{leaf_name}\nch={leaf_idx}\n{leaf_roundness_text}')
     axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     if centroid_leaf is not None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
@@ -796,7 +844,7 @@ def plot_and_save_images(
     damage_idx = damage_channel_spec['channel']
     damage_name = damage_channel_spec['name']
     axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[2].set_title(f'{damage_name} channel (idx={damage_idx}, damage)')
+    axs[2].set_title(f'{damage_name}\nch={damage_idx}')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     
     plt.tight_layout()
@@ -805,8 +853,9 @@ def plot_and_save_images(
     if file_path is not None and outputdir is not None:
         # Get relative path after the data root (e.g., after 'Infected/' or 'Non infected/')
         rel_path = os.path.relpath(file_path, start=os.path.commonpath([file_path, outputdir]))
-        # Remove file extension and replace with .png
-        rel_path_noext = os.path.splitext(rel_path)[0] + '.png'
+        # Remove file extension, add optional suffix, and replace with .png
+        rel_base = os.path.splitext(rel_path)[0]
+        rel_path_noext = rel_base + filename_suffix + '.png'
         # Compose output path
         save_path = os.path.join(outputdir, 'plots', rel_path_noext)
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -830,16 +879,17 @@ def run_plot_and_save(
     
     for condition, img_leafs in data_all['img_leafs'].items():
         for idx, img_leaf in enumerate(img_leafs):
+            # Add suffix if no leaf was found, but still plot whatever data is available.
+            filename_suffix = ''
             if 'leaf_found' in data_all and not data_all['leaf_found'][condition][idx]:
-                # Tell user if leaf not found
-                print("SKIPPING PLOT (no leaf found) FOR: ", data_file_paths[condition][idx])
-                # Skip plotting for samples without a detected leaf mask.                
-                continue
+                filename_suffix = '_NOLEAF'
+                print("PLOTTING WITH NO LEAF MASK FOR: ", data_file_paths[condition][idx])
 
             img_rgb = data_all['img_rgbs'][condition][idx]
             img_dmg = data_all['img_damages'][condition][idx]
             mask_leaf = data_all['mask_leafs'][condition][idx]
             mask_damage = data_all['mask_damages'][condition][idx]
+            leaf_roundness = data_all['leaf_roundness'][condition][idx] if 'leaf_roundness' in data_all else None
             centroid_leaf = data_all['centroids'][condition][idx]
             file_path = data_file_paths[condition][idx]  # original file path
             
@@ -850,9 +900,11 @@ def run_plot_and_save(
                 mask_damage,
                 leaf_channel_spec,
                 damage_channel_spec,
+                leaf_roundness,
                 centroid_leaf,
                 img0=img_rgb,
                 reference_channel_spec=reference_channel_spec,
+                filename_suffix=filename_suffix,
                 file_path=file_path,
                 outputdir=outputdir
             )
@@ -860,13 +912,13 @@ def run_plot_and_save(
 # %% ################################################################################
 # Export some data
 
-def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['total_interisland_distances', 'island_counts']):
+def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness']):
     '''
     For metrics quantified as a single parameter, store those
     in a single dataframe. 
     Also include file paths as column.
     '''
-    # data_singledatapoint=['total_interisland_distances', 'island_counts']
+    # data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness']
     
     # Set up dataframe with condition and filename first
     cond_fp = [[cond, fp] for cond, fp_list in data_file_paths.items() for fp in fp_list]
@@ -996,7 +1048,7 @@ if __name__ == "__main__":
     df_singledata = export_singledatapoints(
         data_all,
         data_file_paths,
-        data_singledatapoint=['total_interisland_distances', 'island_counts']
+        data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness']
     )
     df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
     df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
