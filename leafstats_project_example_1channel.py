@@ -49,8 +49,7 @@ lsa.run_plot_and_save(
 # 5) Export single-value metrics to CSV and Excel
 df_singledata = lsa.export_singledatapoints(
     data_all,
-    data_file_paths,
-    data_singledatapoint=['total_interisland_distances', 'island_counts']
+    data_file_paths
 )
 df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
 df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
