@@ -108,23 +108,39 @@ def get_zoombox(mask, margin=0):
     return [z1, z2, z3, z4]
     
     
-def plot_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_leaf=None, img0=None):
+def plot_images(
+    img_leaf,
+    img_dmg,
+    mask_leaf,
+    mask_damage,
+    leaf_channel_spec,
+    damage_channel_spec,
+    centroid_leaf=None,
+    img0=None,
+    reference_channel_spec=None
+):
     
     zm = get_zoombox(mask_leaf, margin=10)
     
     fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 5*cm_to_inch))
     
-    if not img0 is None:
-        axs[0].imshow(img0[:,:,0][zm[0]:zm[1],zm[2]:zm[3]]); axs[0].set_title('Red channel')
+    if not img0 is None and reference_channel_spec is not None:
+        ref_idx = reference_channel_spec['channel']
+        ref_name = reference_channel_spec['name']
+        axs[0].imshow(img0[:, :, ref_idx][zm[0]:zm[1],zm[2]:zm[3]]); axs[0].set_title(f'{ref_name} channel (idx={ref_idx})')
     else:
         axs[0].axis('off')
     
-    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title('Green channel (leaf)')
+    leaf_idx = leaf_channel_spec['channel']
+    leaf_name = leaf_channel_spec['name']
+    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title(f'{leaf_name} channel (idx={leaf_idx}, leaf)')
     axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)    
     if not centroid_leaf is None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
             
-    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title('Blue channel (damage)')
+    damage_idx = damage_channel_spec['channel']
+    damage_name = damage_channel_spec['name']
+    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title(f'{damage_name} channel (idx={damage_idx}, damage)')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     
     plt.show(); plt.close()
@@ -251,10 +267,13 @@ def get_island_counts(mask_leaf, mask_damage):
 # open tiff stack image
 from skimage import io
 
-def load_synthetic_data(synthetic_image_path):
+def load_synthetic_data(synthetic_image_path, leaf_channel_spec, damage_channel_spec):
     """
-    Load synthetic TIFF stacks and split them into leaf (green) and damage (blue) channels.
+    Load synthetic TIFF stacks and split them into leaf and damage channels.
     """
+
+    leaf_idx = leaf_channel_spec['channel']
+    damage_idx = damage_channel_spec['channel']
 
     img_leafs = {}
     img_damages = {}
@@ -262,26 +281,26 @@ def load_synthetic_data(synthetic_image_path):
     # Load the leaf w/ eaten disk
     img_disk_path = synthetic_image_path + 'synthetic_eatendisk.tif'
     img_disk = io.imread(img_disk_path)  # io.read required for img stack
-    img_leafs['disk'] = img_disk[:, :, 1]  # green channel (leaf)
-    img_damages['disk'] = img_disk[:, :, 2]  # blue channel (damage)
+    img_leafs['disk'] = img_disk[:, :, leaf_idx]  # configured leaf channel
+    img_damages['disk'] = img_disk[:, :, damage_idx]  # configured damage channel
 
     # Load the leaf w/ eaten spots
     img_spots_damage_path = synthetic_image_path + 'synthetic_eatenspots.tif'
     img_spots_damage = io.imread(img_spots_damage_path)  # io.read required for img stack
-    img_leafs['spots'] = img_spots_damage[:, :, 1]  # green channel (leaf)
-    img_damages['spots'] = img_spots_damage[:, :, 2]  # blue channel (damage)
+    img_leafs['spots'] = img_spots_damage[:, :, leaf_idx]  # configured leaf channel
+    img_damages['spots'] = img_spots_damage[:, :, damage_idx]  # configured damage channel
 
     # Load the image w/ eaten donut
     img_donut_path = synthetic_image_path + 'synthetic_eatendonut.tif'
     img_donut = io.imread(img_donut_path)  # io.read required for img stack
-    img_leafs['donut'] = img_donut[:, :, 1]  # green channel (leaf)
-    img_damages['donut'] = img_donut[:, :, 2]  # blue channel (damage)
+    img_leafs['donut'] = img_donut[:, :, leaf_idx]  # configured leaf channel
+    img_damages['donut'] = img_donut[:, :, damage_idx]  # configured damage channel
 
     # Load dual-spot sample
     img_dualspot_path = synthetic_image_path + 'synthetic_dualspot.tif'
     img_dualspot = io.imread(img_dualspot_path)  # io.read required for img stack
-    img_leafs['dualspot'] = img_dualspot[:, :, 1]  # green channel (leaf)
-    img_damages['dualspot'] = img_dualspot[:, :, 2]  # blue channel (damage)
+    img_leafs['dualspot'] = img_dualspot[:, :, leaf_idx]  # configured leaf channel
+    img_damages['dualspot'] = img_dualspot[:, :, damage_idx]  # configured damage channel
 
     return img_leafs, img_damages, img_disk
 
@@ -306,7 +325,14 @@ def plot_img_n_acf(img_damage, acf_norm, acf_center, acf_norms_avgr, name):
     plt.show(); plt.close()
 
 # now get masks for leaf and damage, plus centroid for all 
-def run_synthetic_analysis(img_leafs, img_damages, img_disk):
+def run_synthetic_analysis(
+    img_leafs,
+    img_damages,
+    img_disk,
+    leaf_channel_spec,
+    damage_channel_spec,
+    reference_channel_spec
+):
     """
     Run synthetic-data diagnostics and plots to verify analysis behavior.
     """
@@ -322,7 +348,17 @@ def run_synthetic_analysis(img_leafs, img_damages, img_disk):
 
     # Visual QC for channels/masks
     for key in img_leafs.keys():
-        plot_images(img_leafs[key], img_damages[key], mask_leafs[key], mask_damages[key], centroids[key], img0=img_disk)
+        plot_images(
+            img_leafs[key],
+            img_damages[key],
+            mask_leafs[key],
+            mask_damages[key],
+            leaf_channel_spec,
+            damage_channel_spec,
+            centroids[key],
+            img0=img_disk,
+            reference_channel_spec=reference_channel_spec
+        )
 
     # Autocorrelation analysis for each synthetic sample
     acfs = {}
@@ -384,13 +420,16 @@ def get_data_file_paths(condition_path_map):
     return data_file_paths
 
 
-def run_complete_analysis(data_file_paths):
+def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec):
     """
     Run all analyses (as for synthetic data) for all files in data_file_paths.
     Stores results in dicts for easy plotting and further analysis.
     """
 
     # Prepare output structures
+    leaf_idx = leaf_channel_spec['channel']
+    damage_idx = damage_channel_spec['channel']
+
     img_rgbs = {}
     img_leafs = {}
     img_damages = {}
@@ -428,8 +467,8 @@ def run_complete_analysis(data_file_paths):
             print(f'Processing {file_path} for condition: {condition}')
             
             img = np.array(Image.open(file_path))
-            img_leaf = img[:, :, 1]
-            img_damage = img[:, :, 2]
+            img_leaf = img[:, :, leaf_idx]
+            img_damage = img[:, :, damage_idx]
 
             mask_leaf = get_largest_mask(img_leaf, method='bg10')
             mask_damage = get_mask(img_damage, mask_leaf, method='bg2')
@@ -629,8 +668,19 @@ def plot_radial_pdfs(data_all, outputdir):
 # the plot in outputdir + 'plots/', saved in subdirectories
 # according to the original directory structure 
 
-def plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_leaf=None, img0=None, 
-                         file_path=None, outputdir=None):
+def plot_and_save_images(
+    img_leaf,
+    img_dmg,
+    mask_leaf,
+    mask_damage,
+    leaf_channel_spec,
+    damage_channel_spec,
+    centroid_leaf=None,
+    img0=None,
+    reference_channel_spec=None,
+    file_path=None,
+    outputdir=None
+):
     """
     Plots the images and masks, and saves the figure to outputdir/plots/ preserving subdirectory structure.
     file_path: original file path of the image (used to reconstruct subdirectory structure)
@@ -639,20 +689,26 @@ def plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_lea
     zm = get_zoombox(mask_leaf, margin=10)
     fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 5*cm_to_inch))
     
-    if img0 is not None:
-        axs[0].imshow(img0[:,:,0][zm[0]:zm[1],zm[2]:zm[3]])
-        axs[0].set_title('Red channel')
+    if img0 is not None and reference_channel_spec is not None:
+        ref_idx = reference_channel_spec['channel']
+        ref_name = reference_channel_spec['name']
+        axs[0].imshow(img0[:, :, ref_idx][zm[0]:zm[1],zm[2]:zm[3]])
+        axs[0].set_title(f'{ref_name} channel (idx={ref_idx})')
     else:
         axs[0].axis('off')
     
+    leaf_idx = leaf_channel_spec['channel']
+    leaf_name = leaf_channel_spec['name']
     axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[1].set_title('Green channel (leaf)')
+    axs[1].set_title(f'{leaf_name} channel (idx={leaf_idx}, leaf)')
     axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     if centroid_leaf is not None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
             
+    damage_idx = damage_channel_spec['channel']
+    damage_name = damage_channel_spec['name']
     axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[2].set_title('Blue channel (damage)')
+    axs[2].set_title(f'{damage_name} channel (idx={damage_idx}, damage)')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     
     plt.tight_layout()
@@ -671,7 +727,14 @@ def plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, centroid_lea
     plt.close(fig)
 
 # now write a loop as described above
-def run_plot_and_save(data_all, data_file_paths, outputdir):
+def run_plot_and_save(
+    data_all,
+    data_file_paths,
+    outputdir,
+    leaf_channel_spec,
+    damage_channel_spec,
+    reference_channel_spec
+):
     """
     Run the plot_and_save_images function for each image in data_all.
     Saves the plots in outputdir/plots/ preserving subdirectory structure.
@@ -686,9 +749,19 @@ def run_plot_and_save(data_all, data_file_paths, outputdir):
             centroid_leaf = data_all['centroids'][condition][idx]
             file_path = data_file_paths[condition][idx]  # original file path
             
-            plot_and_save_images(img_leaf, img_dmg, mask_leaf, mask_damage, 
-                                 centroid_leaf, img0=img_rgb,
-                                 file_path=file_path, outputdir=outputdir)
+            plot_and_save_images(
+                img_leaf,
+                img_dmg,
+                mask_leaf,
+                mask_damage,
+                leaf_channel_spec,
+                damage_channel_spec,
+                centroid_leaf,
+                img0=img_rgb,
+                reference_channel_spec=reference_channel_spec,
+                file_path=file_path,
+                outputdir=outputdir
+            )
 
 # %% ################################################################################
 # Export some data
@@ -757,9 +830,25 @@ if __name__ == "__main__":
     # 1) Ensure base output directory exists
     os.makedirs(OUTPUTDIR, exist_ok=True)
 
-    # 2) Load synthetic example images and run synthetic sanity-check analysis/plots
-    img_leafs_syn, img_damages_syn, img_disk = load_synthetic_data(SYNTHETIC_IMAGE_PATH)
-    run_synthetic_analysis(img_leafs_syn, img_damages_syn, img_disk)
+    # 2) Define channel configuration (index + display name)
+    leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
+    damage_channel_spec = {'channel': 2, 'name': 'Damage'}
+    reference_channel_spec = {'channel': 0, 'name': 'Reference'}
+
+    # 3) Load synthetic example images and run synthetic sanity-check analysis/plots
+    img_leafs_syn, img_damages_syn, img_disk = load_synthetic_data(
+        SYNTHETIC_IMAGE_PATH,
+        leaf_channel_spec,
+        damage_channel_spec
+    )
+    run_synthetic_analysis(
+        img_leafs_syn,
+        img_damages_syn,
+        img_disk,
+        leaf_channel_spec,
+        damage_channel_spec,
+        reference_channel_spec
+    )
 
     # PART B, real data
 
@@ -771,7 +860,7 @@ if __name__ == "__main__":
     data_file_paths = get_data_file_paths(condition_path_map)
 
     # 2) Run the complete analysis pipeline
-    data_all = run_complete_analysis(data_file_paths)
+    data_all = run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec)
 
     # 3) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
     plot_acf_norms_avgrs(data_all, OUTPUTDIR)
@@ -780,7 +869,14 @@ if __name__ == "__main__":
     plot_radial_pdfs(data_all, OUTPUTDIR)
 
     # 4) Export per-image mask overlays to output folders
-    run_plot_and_save(data_all, data_file_paths, OUTPUTDIR)
+    run_plot_and_save(
+        data_all,
+        data_file_paths,
+        OUTPUTDIR,
+        leaf_channel_spec,
+        damage_channel_spec,
+        reference_channel_spec
+    )
 
     # 5) Export single-value metrics to CSV and Excel
     df_singledata = export_singledatapoints(
