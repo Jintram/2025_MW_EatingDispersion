@@ -52,6 +52,7 @@ def get_largest_mask(img, method='bg10'):
     
     mask_user can be used to ignore parts of the input image (img)
     """
+    # img = img_leaf; method='bg10'
     
     if method == 'otsu':
         threshold_val = threshold_otsu(img)
@@ -462,11 +463,14 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
 
         for file_path in file_list:
             # file_path = file_list[0]
+            # file_path = file_list[7]
             
             # Update user on what's happening
             print(f'Processing {file_path} for condition: {condition}')
             
             img = np.array(Image.open(file_path))
+            # in case the image doesn't have 3 dimensions, expand to three
+            img = np.atleast_3d(img)
             img_leaf = img[:, :, leaf_idx]
             img_damage = img[:, :, damage_idx]
 
@@ -833,7 +837,7 @@ if __name__ == "__main__":
     # 2) Define channel configuration (index + display name)
     leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
     damage_channel_spec = {'channel': 2, 'name': 'Damage'}
-    reference_channel_spec = {'channel': 0, 'name': 'Reference'}
+    reference_channel_spec = {'channel': 0, 'name': 'Reference'} # can be set to None
 
     # 3) Load synthetic example images and run synthetic sanity-check analysis/plots
     img_leafs_syn, img_damages_syn, img_disk = load_synthetic_data(
@@ -852,11 +856,17 @@ if __name__ == "__main__":
 
     # PART B, real data
 
-    # 1) Define condition -> folder mapping and collect matching TIFF file paths
+    # 1) Tell script where data is and which channels should be used
+    # Conditions and paths to images for that condition
     condition_path_map = {
         'infected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected',
         'noninfected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected'
     }
+    # Channel configuration
+    leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
+    damage_channel_spec = {'channel': 2, 'name': 'Damage'}
+    reference_channel_spec = {'channel': 0, 'name': '(Not used)'} # can be set to None
+    # obtain 
     data_file_paths = get_data_file_paths(condition_path_map)
 
     # 2) Run the complete analysis pipeline
