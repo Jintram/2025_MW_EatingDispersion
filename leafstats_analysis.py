@@ -88,18 +88,6 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
         return img_mask, True
     return img_mask
 
-def dtype_max(the_nparray):
-    """Determine max value of a numpy array, relevant for saturation issues."""
-    
-    dtype = the_nparray.dtype
-    
-    if np.issubdtype(dtype, np.integer):
-        return np.iinfo(dtype).max
-    elif np.issubdtype(dtype, np.floating):
-        return np.finfo(dtype).max
-    else:
-        raise ValueError(f"Unsupported dtype: {dtype}")
-
 def get_mask(img, mask_user=None, method='otsu', return_status=False):
     
     if mask_user is None:
@@ -117,11 +105,13 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
     elif method == 'bg2':  
         # determine mode 
         the_mode = np.bincount(img[mask_user].ravel()).argmax()
-        # deal with issue: oversaturation and mode = 255
-        if the_mode == dtype_max(img):
-            the_mode = np.bincount(img[mask_user][img[mask_user]<dtype_max(img)].ravel()).argmax()
+        # deal with issue: oversaturation and mode = max val
+        # NOTE: I'm using max val since there are images were max was not equal 
+        # to the max of the range (254 instead of 255 -- potential acquisition artifact)
+        if the_mode == np.max(img):
+            the_mode = np.bincount(img[mask_user][img[mask_user]<np.max(img)].ravel()).argmax()
             # raise warning
-            warnings.warn("Mode value is at maximum of dtype, likely due to saturation. Using second mode instead.")
+            warnings.warn("Mode value equals image maximum value, likely due to saturation. Using second mode instead.")
         # set the threshold
         threshold_val = 2 * the_mode        
     elif method == 'pct10':
@@ -597,7 +587,6 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                 mask_damage, this_damage_found = get_mask(img=img_damage, 
                                                           mask_user=mask_leaf, method='bg2', return_status=True)
                 centroid = regionprops(mask_leaf.astype(int))[0].centroid
-                    # XXXX
                     # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
                     # plt.hist(img_damage[mask_leaf].ravel(), bins=256); plt.show(); plt.close()
 
