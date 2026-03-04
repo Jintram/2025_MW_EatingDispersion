@@ -3,11 +3,6 @@
 #%% ################################################################################
 # Set these parameters according to file locations on local computer
 
-# Where to put plots
-OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT202602/'
-# Where to find synthetic images
-SYNTHETIC_IMAGE_PATH = '/Users/m.wehrens/Documents/git_repos/_UVA/_Projects-bioDSC/2025_MW_EatingDispersion/Synthetic_data/'
-
 
 #%% ################################################################################
 
@@ -34,6 +29,7 @@ import time # for debugging/optimization
 
 import glob
 import os
+import warnings
 
 cm_to_inch = 1/2.54
 
@@ -92,6 +88,18 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
         return img_mask, True
     return img_mask
 
+def dtype_max(the_nparray):
+    """Determine max value of a numpy array, relevant for saturation issues."""
+    
+    dtype = the_nparray.dtype
+    
+    if np.issubdtype(dtype, np.integer):
+        return np.iinfo(dtype).max
+    elif np.issubdtype(dtype, np.floating):
+        return np.finfo(dtype).max
+    else:
+        raise ValueError(f"Unsupported dtype: {dtype}")
+
 def get_mask(img, mask_user=None, method='otsu', return_status=False):
     
     if mask_user is None:
@@ -106,8 +114,16 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
         threshold_val = threshold_otsu(img[mask_user])
     elif method == 'triangle':        
         threshold_val = threshold_triangle(img[mask_user])
-    elif method == 'bg2':        
-        threshold_val = 2 * np.bincount(img[mask_user].ravel()).argmax()
+    elif method == 'bg2':  
+        # determine mode 
+        the_mode = np.bincount(img[mask_user].ravel()).argmax()
+        # deal with issue: oversaturation and mode = 255
+        if the_mode == dtype_max(img):
+            the_mode = np.bincount(img[mask_user][img[mask_user]<dtype_max(img)].ravel()).argmax()
+            # raise warning
+            warnings.warn("Mode value is at maximum of dtype, likely due to saturation. Using second mode instead.")
+        # set the threshold
+        threshold_val = 2 * the_mode        
     elif method == 'pct10':
         threshold_val = 10 * np.percentile(img[mask_user], 10)
         
@@ -547,6 +563,7 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                                  method=leaf_threshold_method, 
                                  apply_smooth=apply_smooth_leafmask,
                                  return_status=True)
+                # plt.imshow(img_leaf); plt.contour(mask_leaf, colors='white'); plt.show(); plt.close()
 
             # Additional check for leaf validity, check roundness
             if this_leaf_found:
@@ -559,6 +576,8 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                 
             # If leaf detection fails, mark downstream metrics as missing/NA.
             if not this_leaf_found:
+                
+                # Case no leaf found
                 mask_damage = np.zeros_like(mask_leaf, dtype=bool)
                 centroid = None
                 acf = None
@@ -573,8 +592,14 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                 this_damage_found = False
                 this_status = 'no_leaf_mask'
             else:
-                mask_damage, this_damage_found = get_mask(img_damage, mask_leaf, method='bg2', return_status=True)
+                
+                # CASE LEAF FOUND; PERFORM ANALYSIS
+                mask_damage, this_damage_found = get_mask(img=img_damage, 
+                                                          mask_user=mask_leaf, method='bg2', return_status=True)
                 centroid = regionprops(mask_leaf.astype(int))[0].centroid
+                    # XXXX
+                    # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
+                    # plt.hist(img_damage[mask_leaf].ravel(), bins=256); plt.show(); plt.close()
 
                 # If no damage is detected inside leaf, keep valid zeros for damage metrics.
                 if not this_damage_found:
@@ -1089,7 +1114,13 @@ def simplebarplotseaborn(df_singledata):
 
 if __name__ == "__main__":
 
+    # Where to put plots
+    OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT202602/'
+
     # PART A, synthetic data
+
+    # Where to find synthetic images
+    SYNTHETIC_IMAGE_PATH = '/Users/m.wehrens/Documents/git_repos/_UVA/_Projects-bioDSC/2025_MW_EatingDispersion/Synthetic_data/'
     
     # 1) Ensure base output directory exists
     os.makedirs(OUTPUTDIR, exist_ok=True)
