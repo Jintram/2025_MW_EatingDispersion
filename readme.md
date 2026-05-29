@@ -127,20 +127,20 @@ patterns":
 ### Functions to quantify the damage pattern
 
 
-<img src="Synthetic_data/OUTPUT/synthdata_acf_disk.pdf">
-<img src="Synthetic_data/OUTPUT/synthdata_acf_donut.pdf">
-<img src="Synthetic_data/OUTPUT/synthdata_acf_dualspot.pdf">
-<img src="Synthetic_data/OUTPUT/synthdata_acf_spots.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_acf_disk.png">
+<img src="Synthetic_data/OUTPUT/synthdata_acf_donut.png">
+<img src="Synthetic_data/OUTPUT/synthdata_acf_dualspot.png">
+<img src="Synthetic_data/OUTPUT/synthdata_acf_spots.png">
 
 
-<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_disk.pdf">
-<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_donut.pdf">
-<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_dualspot.pdf">
-<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_spots.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_disk.png">
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_donut.png">
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_dualspot.png">
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_spots.png">
 
 
-<img src="synthdata_summary_islandcount.png">
-<img src="synthdata_summary_interisland.png">
+<img src="Synthetic_data/OUTPUT/synthdata_summary_islandcount.png">
+<img src="Synthetic_data/OUTPUT/synthdata_summary_interisland.png">
 
 
 
