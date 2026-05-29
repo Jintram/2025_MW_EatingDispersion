@@ -191,21 +191,25 @@ To generate each of the plots, the following functions can be used:
 lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
 ```
 
-```{python}
-lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
-```
+<img src="Example_data/OUTPUT/plots/Radial_acf_lims.png" width=50%>
 
 ```{python}
+lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
 lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 ```
+
+<img src="Example_data/OUTPUT/plots/interisland_distances_.png" width=50%>
 
 ```{python}
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
 ```
+<img src="Example_data/OUTPUT/plots/radial_png" width=50%>
 
 ```{python}
 lsa.plot_damaged_area(data_all, OUTPUTDIR)
 ```
+<img src="Example_data/OUTPUT/plots/damaged_area_px.png" width=50%>
+
 
 Set `OUTPUTDIR` to a directory where you want the plots to be exported.
 
@@ -225,11 +229,10 @@ lsa.run_plot_and_save(
 
 Example plots that result are shown below:
 
-![](Example_data/OUTPUT/plots/damaged_area_px.png)
-<img src="Example_data/OUTPUT/plots/damaged_area_px.png" width=300px>
-![](Example_data/OUTPUT/plots/Radial_acf_lims.png){width="50%"}
-![](Example_data/OUTPUT/plots/radial_png){width="50%"}
-![](Example_data/OUTPUT/plots/interisland_distances_.png){width="50%"}
+
+
+
+
 
 
 
