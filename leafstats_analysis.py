@@ -81,7 +81,7 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
     img_mask = img_lbl == lbl_largest
     
     if apply_smooth:
-        # perform morphological closing with a radius of 5 pixels to smooth the mask
+        # perform morphological closing with a radius of 10 pixels to smooth the mask
         img_mask = opening(img_mask, disk(10))
         # if this erased the mask, act accordingly
         if not np.any(img_mask):
