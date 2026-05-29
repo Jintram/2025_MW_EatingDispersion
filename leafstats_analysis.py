@@ -441,6 +441,7 @@ def run_synthetic_analysis(
     fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
     axs.bar(list(damage_areas_percentage.keys()), list(damage_areas_percentage.values()))
     axs.set_ylabel("Damage area (% of leaf)")
+    plt.tight_layout()
     fig.savefig(os.path.join(outputdir, f'synthdata_summary_damage.pdf'), dpi=150)
     fig.savefig(os.path.join(outputdir, f'synthdata_summary_damage.png'), dpi=150)
     
