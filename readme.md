@@ -126,6 +126,9 @@ patterns":
 
 ### Functions to quantify the damage pattern
 
+<img src="Synthetic_data/OUTPUT/synthdata_summary_damage.png">
+
+(set ±equal)
 
 <img src="Synthetic_data/OUTPUT/synthdata_acf_disk.png">
 <img src="Synthetic_data/OUTPUT/synthdata_acf_donut.png">

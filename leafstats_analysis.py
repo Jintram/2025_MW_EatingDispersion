@@ -436,6 +436,14 @@ def run_synthetic_analysis(
         fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.png'), dpi=150)
         plt.close(fig)
 
+    # Plot the damage quantification in a bar plot
+    damage_areas_percentage = {key: np.sum(mask_damages[key]) / np.sum(mask_leafs[key]) * 100 for key in img_leafs.keys()}
+    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
+    axs.bar(list(damage_areas_percentage.keys()), list(damage_areas_percentage.values()))
+    axs.set_ylabel("Damage area (% of leaf)")
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_damage.pdf'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_damage.png'), dpi=150)
+    
     # Autocorrelation analysis for each synthetic sample
     acfs = {}
     acf_norms = {}
@@ -444,7 +452,6 @@ def run_synthetic_analysis(
     for key in img_leafs.keys():
         acfs[key], acf_norms[key], acf_centers[key] = get_autocorrelation(img_damages[key], mask_user=mask_leafs[key])
         _, _, acf_norms_avgrs[key], _, _ = get_radial_pdf(acf_norms[key], acf_centers[key])
-
     # Plot ACF curves
     for key in img_leafs.keys():
         fig, axs = plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
@@ -456,7 +463,7 @@ def run_synthetic_analysis(
     radial_pdf = {}
     for key in img_leafs.keys():
         _, _, _, radial_pdf[key], _ = get_radial_pdf(mask_damages[key], centroids[key], mask_leafs[key])
-
+    # plot radial PDFs
     for key in img_leafs.keys():
         fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))        
         axs[0].imshow(mask_damages[key])
@@ -472,8 +479,7 @@ def run_synthetic_analysis(
     for key in img_leafs.keys():
         interisland_distances = get_inter_island_distances(mask_leafs[key], mask_damages[key])
         total_interisland_distances[key] = np.sum(interisland_distances)
-    
-    # plot
+    # plot island spacing
     fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
     axs.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
     axs.set_xticklabels(list(img_leafs.keys()), rotation=45, ha="right")
@@ -486,7 +492,7 @@ def run_synthetic_analysis(
     island_counts = {}
     for key in img_leafs.keys():
         island_counts[key] = get_island_counts(mask_leafs[key], mask_damages[key])
-
+    # plot island counts
     fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
     axs.bar(list(island_counts.keys()), list(island_counts.values()))
     axs.set_xticklabels(list(island_counts.keys()), rotation=45, ha="right")
