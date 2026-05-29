@@ -433,6 +433,7 @@ def run_synthetic_analysis(
             reference_channel_spec=reference_channel_spec
         )
         fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.pdf'), dpi=150)
+        fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.png'), dpi=150)
         plt.close(fig)
 
     # Autocorrelation analysis for each synthetic sample
@@ -448,6 +449,7 @@ def run_synthetic_analysis(
     for key in img_leafs.keys():
         fig, axs = plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
         fig.savefig(os.path.join(outputdir, f'synthdata_acf_{key}.pdf'), dpi=150)
+        fig.savefig(os.path.join(outputdir, f'synthdata_acf_{key}.png'), dpi=150)
         plt.close(fig)
 
     # Radial PDFs for synthetic masks
@@ -462,6 +464,7 @@ def run_synthetic_analysis(
         axs[1].set_ylabel('Radial distribution function')
         plt.tight_layout();
         fig.savefig(os.path.join(outputdir, f'synthdata_radialpdf_{key}.pdf'), dpi=150)
+        fig.savefig(os.path.join(outputdir, f'synthdata_radialpdf_{key}.png'), dpi=150)
         plt.close(fig)
 
     # Summarize island spacing
@@ -477,6 +480,7 @@ def run_synthetic_analysis(
     axs.set_ylabel("Sum inter-island distances")
     plt.tight_layout()
     fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland.pdf'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland.png'), dpi=150)
 
     # Summarize island counts
     island_counts = {}
@@ -489,6 +493,7 @@ def run_synthetic_analysis(
     axs.set_ylabel("Island count")
     plt.tight_layout()
     fig.savefig(os.path.join(outputdir, f'synthdata_summary_islandcount.pdf'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_islandcount.png'), dpi=150)
     
 
 #%% ######################################################################
@@ -741,12 +746,14 @@ def plot_acf_norms_avgrs(data_all, outputdir):
     
     plt.tight_layout()
     plt.savefig(outputdir+'/plots/Radial_acf.pdf', dpi=150)
+    plt.savefig(outputdir+'/plots/Radial_acf.png', dpi=150)
     
     axs[0].set_xlim([0,200]); axs[1].set_xlim([0,200])
     axs[1].legend()
     
     plt.tight_layout()
     plt.savefig(outputdir+'/plots/Radial_acf_lims.pdf', dpi=150)
+    plt.savefig(outputdir+'/plots/Radial_acf_lims.png', dpi=150)
         
     plt.show(); plt.close()
     
@@ -808,6 +815,7 @@ def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
     # save
     nozero_string = '_nozero' if remove_zerocnt else ''
     fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.pdf', dpi=150)
+    fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.png', dpi=150)
     plt.show(); plt.close()
     
 def plot_damaged_area(data_all, outputdir):
@@ -875,6 +883,7 @@ def plot_damaged_area(data_all, outputdir):
 
     plt.tight_layout()
     fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.pdf', dpi=150)
+    fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.png', dpi=150)
     plt.show(); plt.close()
     
 # plot the radial distribution functions similar to the acf above
@@ -920,6 +929,7 @@ def plot_radial_pdfs(data_all, outputdir):
     
     # save as pdf to outputdir
     plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
+    plt.savefig(outputdir+'/plots/radial_pdfs.png', dpi=150)
     
     plt.show(); plt.close()
 

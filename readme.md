@@ -189,9 +189,21 @@ To generate each of the plots, the following functions can be used:
 
 ```{python}
 lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
+```
+
+```{python}
 lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
+```
+
+```{python}
 lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
+```
+
+```{python}
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
+```
+
+```{python}
 lsa.plot_damaged_area(data_all, OUTPUTDIR)
 ```
 
@@ -213,10 +225,10 @@ lsa.run_plot_and_save(
 
 Example plots that result are shown below:
 
-![](Example_data/OUTPUT/plots/damaged_area_px.pdf)
-![](Example_data/OUTPUT/plots/Radial_acf_lims.pdf)
-![](Example_data/OUTPUT/plots/radial_pdfs)
-![](Example_data/OUTPUT/plots/interisland_distances_.pdf)
+![](Example_data/OUTPUT/plots/damaged_area_px.png)
+![](Example_data/OUTPUT/plots/Radial_acf_lims.png)
+![](Example_data/OUTPUT/plots/radial_png)
+![](Example_data/OUTPUT/plots/interisland_distances_.png)
 
 
 

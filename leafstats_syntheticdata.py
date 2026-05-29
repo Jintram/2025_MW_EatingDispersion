@@ -43,3 +43,4 @@ lsa.run_synthetic_analysis(
 # img_leafs = img_leafs_syn; img_damages = img_damages_syn; img_disk = img_disk
 # leaf_channel_spec = leaf_channel_spec; damage_channel_spec = damage_channel_spec; reference_channel_spec = reference_channel_spec
 # outputdir = OUTPUTDIR
+# %%
