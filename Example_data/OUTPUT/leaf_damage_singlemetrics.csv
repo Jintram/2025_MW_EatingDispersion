@@ -1,0 +1,5 @@
+condition,file_path,leaf_found,damage_found,analysis_status,total_interisland_distances,island_counts,leaf_roundness,total_damage_area_px,total_damage_area_cm2
+Ctrl,/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Control/Example_A_2.tif,True,True,ok,199.23401,26.0,0.8745587485476687,4731.0,
+Ctrl,/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Control/Example_A_1.tif,True,True,ok,163.22203,15.0,0.8415435914992488,3728.0,
+Edited,/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Photoshopped/Example_B_2.tif,True,True,ok,139.52217,19.0,0.842467503185681,7819.0,
+Edited,/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Photoshopped/Example_B_1.tif,True,True,ok,126.4315,16.0,0.823535946078368,7904.0,

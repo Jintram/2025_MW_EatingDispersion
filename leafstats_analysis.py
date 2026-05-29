@@ -63,7 +63,7 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
     elif method == 'bg10':
         # using percentile
         # threshold_val = 10*np.percentile(img.ravel(), 3)
-        # determine mode
+        # determine mode (= background value) and set threshold to 10x
         threshold_val = 10 * np.bincount(img.ravel()).argmax()
     else:
         raise ValueError(f"Invalid method: {method}. Choose from 'otsu', 'triangle', or 'bg10'.")

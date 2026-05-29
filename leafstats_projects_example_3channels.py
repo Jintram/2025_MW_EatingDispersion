@@ -27,9 +27,13 @@ data_file_paths = lsa.get_data_file_paths(condition_path_map)
 
 # 2) Run the complete analysis pipeline
 data_all = lsa.run_complete_analysis(
-    data_file_paths,
-    leaf_channel_spec,
-    damage_channel_spec,
+    data_file_paths = data_file_paths, 
+    leaf_channel_spec = leaf_channel_spec, 
+    damage_channel_spec = damage_channel_spec,   
+    # optional parameters 
+    leaf_threshold_method = 'bg10',
+    leaf_roundness_threshold=0,
+    apply_smooth_leafmask=False,
     pixel_to_cm2_factor=pixel_to_cm2_factor
 )
 
