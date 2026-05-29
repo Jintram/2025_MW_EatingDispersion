@@ -104,7 +104,11 @@ area present.**
 The image below shows the result of both segmentation of the leaf
 and determining the damaged area:
 
-<img "Example_data/DATA/condition_Control/Example_A_1.tif">
+<!-- img "Example_data/DATA/condition_Control/Example_A_1.tif" -->
+
+![test](Example_data/DATA/condition_Control/Example_A_1.tif)
+
+
 
 ## 
 
