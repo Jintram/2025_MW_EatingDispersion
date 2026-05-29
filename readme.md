@@ -227,8 +227,29 @@ lsa.run_plot_and_save(
 )
 ```
 
-Example plots that result are shown below:
+<img src="Example_data/OUTPUT/plots/DATA/condition_Control/Example_A_1.png">
 
+#### Exporting data to excel/csv
+
+Finally, the following lines export data to csv and excel files.
+
+```{python}
+df_singledata = lsa.export_singledatapoints(
+    data_all,
+    data_file_paths
+)
+df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
+df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
+```
+
+The function `lsa.export_singledatapoints` collects all data in a 
+pandas dataframe (`df_singledata` in the example above). 
+
+## Technical notes
+
+The code can still be improved from a software engineering perspective, 
+and could also be further improved regarding readability (e.g. function
+names and comments). 
 
 
 
