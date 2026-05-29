@@ -116,7 +116,31 @@ To assess the nature of the damage patterns, multiple metrics are calculated.
 
 To understand what these metrics can do, a synthetic dataset was used:
 
-(....)
+This dataset contained the following "leafs" with corresponding "damage
+patterns":
+
+<img src="Synthetic_data/OUTPUT/synthdata_img_disk.png">
+<img src="Synthetic_data/OUTPUT/synthdata_img_donut.png">
+<img src="Synthetic_data/OUTPUT/synthdata_img_dualspot.png">
+<img src="Synthetic_data/OUTPUT/synthdata_img_spots.png">
+
+### Functions to quantify the damage pattern
+
+
+<img src="Synthetic_data/OUTPUT/synthdata_acf_disk.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_acf_donut.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_acf_dualspot.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_acf_spots.pdf">
+
+
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_disk.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_donut.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_dualspot.pdf">
+<img src="Synthetic_data/OUTPUT/synthdata_radialpdf_spots.pdf">
+
+
+<img src="synthdata_summary_islandcount.png">
+<img src="synthdata_summary_interisland.png">
 
 
 
