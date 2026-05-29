@@ -225,7 +225,8 @@ lsa.run_plot_and_save(
 
 Example plots that result are shown below:
 
-![](Example_data/OUTPUT/plots/damaged_area_px.png | width=50)
+![](Example_data/OUTPUT/plots/damaged_area_px.png)
+<img src="Example_data/OUTPUT/plots/damaged_area_px.png" width=300px>
 ![](Example_data/OUTPUT/plots/Radial_acf_lims.png){width="50%"}
 ![](Example_data/OUTPUT/plots/radial_png){width="50%"}
 ![](Example_data/OUTPUT/plots/interisland_distances_.png){width="50%"}
