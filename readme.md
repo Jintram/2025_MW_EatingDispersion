@@ -203,7 +203,7 @@ lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 ```{python}
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT/plots/radial_png" width=50%>
+<img src="Example_data/OUTPUT/plots/radial_pdfs.png" width=50%>
 
 ```{python}
 lsa.plot_damaged_area(data_all, OUTPUTDIR)
