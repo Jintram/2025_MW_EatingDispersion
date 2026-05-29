@@ -25,6 +25,7 @@ pixel_to_cm2_factor = None
 # obtain 
 data_file_paths = lsa.get_data_file_paths(condition_path_map)
 
+
 # 2) Run the complete analysis pipeline
 data_all = lsa.run_complete_analysis(
     data_file_paths = data_file_paths, 

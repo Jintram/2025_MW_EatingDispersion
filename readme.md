@@ -108,9 +108,121 @@ and determining the damaged area:
 
 ![test](Example_data/OUTPUT/plots/DATA/condition_Control/Example_A_1.png)
 
+White lines indicate the outline of the segmented areas.
+
+## Quantifying damage patterns
+
+To assess the nature of the damage patterns, multiple metrics are calculated.
+
+To understand what these metrics can do, a synthetic dataset was used:
+
+(....)
 
 
-## 
+
+## Notes on running the script
+
+#### Set up file structure and configuration
+
+Before running the actual analysis, information is constructed about which files to use
+and what configuration these files are.
+
+This is based on choosing different directories with images 
+that each correspond to a specific condition. This can be set as follows:
+```{python}
+# 1) Tell script where data is and which channels should be used
+# Conditions and paths to images for that condition
+condition_path_map = {
+    'Ctrl': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Control',
+    'Edited': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Photoshopped'
+}
+```
+Note that a so-called `dict` is used to link each condition (e.g. `'Ctrl'`)
+to a specific folder.
+
+Additionally, the script needs to know in which channel to look for the
+leaf data and where to look for the damage. A third channel can be displayed
+and is called the reference channel.
+```{python}
+# Channel configuration
+leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
+damage_channel_spec = {'channel': 2, 'name': 'Damage'}
+reference_channel_spec = {'channel': 0, 'name': '(Not used)'} # can be set to None
+```
+Again a `dict` is used. For each channel, the `'channel'` entry 
+conveys which channel to use (e.g. `0`, the first channel), and the
+`name` entry conveys the name of that channel.
+
+A list of files is then collected by calling the following function:
+```{python}
+# obtain 
+data_file_paths = lsa.get_data_file_paths(condition_path_map)
+```
+
+#### Running the analysis
+
+The code 
+
+```{python}
+data_all = lsa.run_complete_analysis(
+    data_file_paths = data_file_paths, 
+    leaf_channel_spec = leaf_channel_spec, 
+    damage_channel_spec = damage_channel_spec,   
+    # optional parameters 
+    leaf_threshold_method = 'bg10',
+    leaf_roundness_threshold=0,
+    apply_smooth_leafmask=False,
+    pixel_to_cm2_factor=pixel_to_cm2_factor
+)
+```
+
+will run all analyses, and collect data in the `data_all` parameter.
+
+See above for how to set the optional parameters.
+
+When `pixel_to_cm2_factor` is set, areas in pixels will be multiplied
+with this factor to determine the area in square centimeters.
+
+#### Generating plots
+
+To generate each of the plots, the following functions can be used:
+
+```{python}
+lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
+lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
+lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
+lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
+lsa.plot_damaged_area(data_all, OUTPUTDIR)
+```
+
+Set `OUTPUTDIR` to a directory where you want the plots to be exported.
+
+To inspect single segmentation and damage area segmentation, run the following function:
+
+```{python}
+# 4) Export per-image mask overlays to output folders
+lsa.run_plot_and_save(
+    data_all,
+    data_file_paths,
+    OUTPUTDIR,
+    leaf_channel_spec,
+    damage_channel_spec,
+    reference_channel_spec
+)
+```
+
+Example plots that result are shown below:
+
+![](Example_data/OUTPUT/plots/damaged_area_px.pdf)
+![](Example_data/OUTPUT/plots/Radial_acf_lims.pdf)
+![](Example_data/OUTPUT/plots/radial_pdfs)
+![](Example_data/OUTPUT/plots/interisland_distances_.pdf)
+
+
+
+
+
+
 
 
 
