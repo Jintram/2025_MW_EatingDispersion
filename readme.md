@@ -1,9 +1,6 @@
 
 
 
-*This documentation will be expanded.*
-
-
 ## Quantification of thrip damage patterns to leafs
 
 This project analyzes multi-channel leaf images to quantify thrip feeding damage patterns. The pipeline detects leaf and damage masks, computes spatial metrics (including island counts/distances, radial distributions, autocorrelation, roundness, and total damage area in pixels and optional cm²), and exports both summary tables and diagnostic plots for synthetic and real datasets.
@@ -26,3 +23,14 @@ conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn 
 To run this script, check out the files:
 - `leafstats_project_example_1channel.py`, which shows how to analyze a dataset where 1 channel was recorded to identify the leaf and the damage done by thrips.
 - `leafstats_projects_example_3channels.py`, which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, and 1 for quantifying the damage.
+
+## Considerations of the analysis
+
+This script both:
+
+- quantifies leave damage in a straightforward way
+- tries to quantify potential feeding patterns
+
+### Identification of leaves
+
+

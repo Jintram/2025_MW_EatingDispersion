@@ -32,6 +32,11 @@ import os
 import warnings
 
 cm_to_inch = 1/2.54
+# set plotting params
+plt.rcParams.update({
+    'font.family': 'Arial',
+    'font.size': 8
+})
 
 #%% ################################################################################
 # Create output dir if it doesn't exist
@@ -197,8 +202,12 @@ def plot_images(
     damage_name = damage_channel_spec['name']
     axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title(f'{damage_name} channel (idx={damage_idx}, damage)')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+
+    plt.tight_layout()
+        
+    return fig, axs
     
-    plt.show(); plt.close()
+        
 
 def get_radial_pdf(img, CoM, mask_user=None):
     '''
@@ -383,7 +392,9 @@ def plot_img_n_acf(img_damage, acf_norm, acf_center, acf_norms_avgr, name):
     axs[1].set_title(f'Autocorrelation for {name}')
     # axs[1].legend()
     
-    plt.show(); plt.close()
+    plt.tight_layout()
+    
+    return fig, axs
 
 # now get masks for leaf and damage, plus centroid for all 
 def run_synthetic_analysis(
@@ -392,7 +403,8 @@ def run_synthetic_analysis(
     img_disk,
     leaf_channel_spec,
     damage_channel_spec,
-    reference_channel_spec
+    reference_channel_spec,
+    outputdir=None
 ):
     """
     Run synthetic-data diagnostics and plots to verify analysis behavior.
@@ -409,7 +421,7 @@ def run_synthetic_analysis(
 
     # Visual QC for channels/masks
     for key in img_leafs.keys():
-        plot_images(
+        fig, axs = plot_images(
             img_leafs[key],
             img_damages[key],
             mask_leafs[key],
@@ -420,6 +432,8 @@ def run_synthetic_analysis(
             img0=img_disk,
             reference_channel_spec=reference_channel_spec
         )
+        fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.pdf'), dpi=150)
+        plt.close(fig)
 
     # Autocorrelation analysis for each synthetic sample
     acfs = {}
@@ -432,7 +446,9 @@ def run_synthetic_analysis(
 
     # Plot ACF curves
     for key in img_leafs.keys():
-        plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
+        fig, axs = plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
+        fig.savefig(os.path.join(outputdir, f'synthdata_acf_{key}.pdf'), dpi=150)
+        plt.close(fig)
 
     # Radial PDFs for synthetic masks
     radial_pdf = {}
@@ -440,25 +456,40 @@ def run_synthetic_analysis(
         _, _, _, radial_pdf[key], _ = get_radial_pdf(mask_damages[key], centroids[key], mask_leafs[key])
 
     for key in img_leafs.keys():
-        fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))
+        fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))        
         axs[0].imshow(mask_damages[key])
         axs[1].plot(radial_pdf[key])
-        plt.show(); plt.close()
+        axs[1].set_ylabel('Radial distribution function')
+        plt.tight_layout();
+        fig.savefig(os.path.join(outputdir, f'synthdata_radialpdf_{key}.pdf'), dpi=150)
+        plt.close(fig)
 
     # Summarize island spacing
     total_interisland_distances = {}
     for key in img_leafs.keys():
         interisland_distances = get_inter_island_distances(mask_leafs[key], mask_damages[key])
         total_interisland_distances[key] = np.sum(interisland_distances)
-
-    plt.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
+    
+    # plot
+    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
+    axs.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
+    axs.set_xticklabels(list(img_leafs.keys()), rotation=45, ha="right")
+    axs.set_ylabel("Sum inter-island distances")
+    plt.tight_layout()
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland.pdf'), dpi=150)
 
     # Summarize island counts
     island_counts = {}
     for key in img_leafs.keys():
         island_counts[key] = get_island_counts(mask_leafs[key], mask_damages[key])
 
-    plt.bar(list(island_counts.keys()), list(island_counts.values()))
+    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
+    axs.bar(list(island_counts.keys()), list(island_counts.values()))
+    axs.set_xticklabels(list(island_counts.keys()), rotation=45, ha="right")
+    axs.set_ylabel("Island count")
+    plt.tight_layout()
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_islandcount.pdf'), dpi=150)
+    
 
 #%% ######################################################################
 # Now let's get real data working

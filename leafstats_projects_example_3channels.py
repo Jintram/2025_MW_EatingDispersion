@@ -8,13 +8,13 @@ import leafstats_analysis as lsa
 
 # %%
 
-OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT202602/InfvsNoninf/'
+OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/OUTPUT'
 
 # 1) Tell script where data is and which channels should be used
 # Conditions and paths to images for that condition
 condition_path_map = {
-    'infected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected',
-    'noninfected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected'
+    'Ctrl': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Control',
+    'Edited': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Photoshopped'
 }
 # Channel configuration
 leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
