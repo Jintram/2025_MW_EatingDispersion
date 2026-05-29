@@ -7,7 +7,7 @@ import leafstats_analysis as lsa
 
 # %%
 
-OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT202602/KOvsWT/'
+OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260218_NewData_Nina/OUTPUT202602/KOvsWT/'
 
 # PART B, real data
 
