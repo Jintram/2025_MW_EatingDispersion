@@ -106,7 +106,7 @@ and determining the damaged area:
 
 <!-- img "Example_data/DATA/condition_Control/Example_A_1.tif" -->
 
-![test](Example_data/DATA/condition_Control/Example_A_1.tif)
+![test](Example_data/DATA/condition_Control/Example_A_1.png)
 
 
 
