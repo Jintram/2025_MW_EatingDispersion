@@ -45,6 +45,7 @@ lsa.plot_interisland_distances(df_samples, OUTPUTDIR, remove_zerocnt=False)
 lsa.plot_interisland_distances(df_samples, OUTPUTDIR, remove_zerocnt=True)
 lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 lsa.plot_damaged_area(df_samples, OUTPUTDIR)
+lsa.plot_damaged_percentage(df_samples, OUTPUTDIR)
 
     # import importlib; importlib.reload(lsa)
 

@@ -92,7 +92,8 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
         
     if return_status:
         return img_mask, True
-    return img_mask
+    
+    return img_mask, threshold_val
 
 def get_mask(img, mask_user=None, method='otsu', return_status=False):
     
@@ -125,9 +126,11 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
         
     img_mask = img > threshold_val
     found = np.any(img_mask & mask_user)
+    
     if return_status:
-        return img_mask, found
-    return img_mask
+        return img_mask, threshold_val, found
+    
+    return img_mask, threshold_val
       
 def determine_leaf_roundness(mask_leaf):
     """ Calculate the roundness of the leaf """
@@ -412,8 +415,14 @@ def run_synthetic_analysis(
     mask_damages = {}
     centroids = {}
     for key in img_leafs.keys():
-        mask_leafs[key] = get_largest_mask(img_leafs[key], method='otsu')
-        mask_damages[key] = get_mask(img_damages[key], mask_leafs[key], method='bg2')  # bg2, otsu, triangle, pct10
+        
+        mask_leafs[key], threshold_val_leaf = get_largest_mask(
+            img_leafs[key], method='otsu'
+        )
+        mask_damages[key], threshold_val_dmg = get_mask(
+            img_damages[key], mask_leafs[key], method='bg2'
+        )  # bg2, otsu, triangle, pct10
+        
         centroids[key] = regionprops(mask_leafs[key].astype(int))[0].centroid
 
     # Visual QC for channels/masks
@@ -548,7 +557,7 @@ def run_complete_analysis(data_file_paths, config_channels,
             img_damage = img[:, :, config_channels['Damage']]
 
             # Get leaf mask
-            mask_leaf, this_leaf_found = \
+            mask_leaf, threshold_val_leaf, this_leaf_found = \
                 get_largest_mask(img_leaf, 
                                  method=leaf_threshold_method, 
                                  apply_smooth=apply_smooth_leafmask,
@@ -578,7 +587,9 @@ def run_complete_analysis(data_file_paths, config_channels,
                 'total_leaf_size_cm2': np.nan,
                 'total_damage_area_px': np.nan,
                 'total_damage_area_cm2': np.nan, 
-                'total_damage_percentage': np.nan
+                'total_damage_percentage': np.nan,
+                'threshold_val_leaf': np.nan,
+                'threshold_val_dmg': np.nan
             }
             # Storage for arrays
             mask_damage = np.zeros_like(mask_leaf, dtype=bool)
@@ -595,9 +606,11 @@ def run_complete_analysis(data_file_paths, config_channels,
                 row['total_leaf_size_px'] = float(np.sum(mask_leaf))
                 if pixel_to_cm2_factor is not None:
                     row['total_leaf_size_cm2'] = row['total_leaf_size_px'] * pixel_to_cm2_factor
-                                    
+                # store the threshold that was used
+                row['threshold_val_leaf'] = threshold_val_leaf
+                
                 # CASE LEAF FOUND; PERFORM ANALYSIS
-                mask_damage, this_damage_found = get_mask(img=img_damage,
+                mask_damage, threshold_val_dmg, this_damage_found = get_mask(img=img_damage,
                                                           mask_user=mask_leaf, method='bg2', return_status=True)
                 centroid = regionprops(mask_leaf.astype(int))[0].centroid
                     # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
@@ -615,11 +628,15 @@ def run_complete_analysis(data_file_paths, config_channels,
                         np.nan if pixel_to_cm2_factor is None else 0.0 * pixel_to_cm2_factor
                     )
                     row['total_damage_percentage'] = 0.0
+                    
                 else:
+                    # run analyses
                     acf, acf_norm, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
                     _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center)
                     _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
                     interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
+                    # save info
+                    row['threshold_val_dmg'] = threshold_val_dmg
                     row['analysis_status'] = 'ok'
                     row['total_interisland_distances'] = np.sum(interisland_distances)
                     row['island_counts'] = get_island_counts(mask_leaf, mask_damage)
@@ -830,6 +847,45 @@ def plot_damaged_area(df_samples, outputdir):
     fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.png', dpi=150)
     plt.show(); plt.close()
     
+    
+def plot_damaged_percentage(df_samples, outputdir):
+    """
+    Plot the total damaged area for each condition as percentage of leaf area.
+    """
+
+    os.makedirs(outputdir + '/plots/', exist_ok=True)
+
+    metric_key = 'total_damage_percentage'
+    y_label = 'Damaged area (% of leaf)'
+
+    df_pct = df_samples[['condition', metric_key]].copy()
+    df_pct = df_pct[pd.notna(df_pct[metric_key])]
+
+    if df_pct.empty:
+        print('WARNING: No valid damaged-percentage values available for plotting.')
+        return
+
+    fig, ax = plt.subplots(1, 1, figsize=(8 * cm_to_inch, 8 * cm_to_inch))
+
+    sns.barplot(x='condition', y=metric_key, data=df_pct, ax=ax, palette=['blue', 'red'])
+    sns.violinplot(x='condition', y=metric_key, data=df_pct, ax=ax, color='black', alpha=0.2)
+    sns.stripplot(x='condition', y=metric_key, data=df_pct, ax=ax, color='black')
+
+    ax.set_title('Total Damaged Area (% of leaf)')
+    ax.set_ylabel(y_label)
+    ax.tick_params(axis='x', rotation=45)
+
+    ymax = np.max(df_pct[metric_key])
+    if ymax > 0:
+        ax.set_ylim([0, ymax * 1.05])
+
+    plt.tight_layout()
+    fig.savefig(outputdir + '/plots/damaged_percentage.pdf', dpi=150)
+    fig.savefig(outputdir + '/plots/damaged_percentage.png', dpi=150)
+    plt.show(); plt.close()
+
+
+
 # plot the radial distribution functions similar to the acf above
 # for all samples, in one panel, colored by condition
 def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
@@ -893,26 +949,31 @@ def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
 # %%
 
 def plot_and_save_images(
-    img_leaf,
-    img_dmg,
-    mask_leaf,
-    mask_damage,
+    this_arrays,
+    row,
     config_channels,
-    leaf_roundness=None,
-    total_damage_area_px=None,
-    total_damage_area_cm2=None,
-    centroid_leaf=None,
-    img0=None,
     filename_suffix='',
-    file_path=None,
     outputdir=None
 ):
     """
     Plots the images and masks, and saves the figure to outputdir/plots/ preserving subdirectory structure.
+    this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage', 'centroid', 'img_rgb'.
+    row: pandas Series (row of df_samples) with keys 'file_path', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2'.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
-    file_path: original file path of the image (used to reconstruct subdirectory structure)
-    outputdir: base output directory where plots/ will be created
+    outputdir: base output directory where plots/ will be created.
     """
+    img_leaf = this_arrays['img_leaf']
+    img_dmg = this_arrays['img_damage']
+    mask_leaf = this_arrays['mask_leaf']
+    mask_damage = this_arrays['mask_damage']
+    centroid_leaf = this_arrays['centroid']
+    img0 = this_arrays['img_rgb']
+
+    file_path = row['file_path']
+    leaf_roundness = row['leaf_roundness']
+    total_damage_area_px = row['total_damage_area_px']
+    total_damage_area_cm2 = row['total_damage_area_cm2']
+
     zm = get_zoombox(mask_leaf, margin=10)
     fig, axs = plt.subplots(1, 3, figsize=(17.2*cm_to_inch, 5*cm_to_inch))
     # set global font size to 8 pts
@@ -924,7 +985,6 @@ def plot_and_save_images(
     else:
         axs[0].axis('off')
     
-    config_channels['Leaf'] = config_channels['Leaf']
     if leaf_roundness is None or (isinstance(leaf_roundness, float) and np.isnan(leaf_roundness)):
         leaf_roundness_text = 'roundness=NA'
     else:
@@ -936,7 +996,6 @@ def plot_and_save_images(
     if centroid_leaf is not None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
             
-    config_channels['Damage'] = config_channels['Damage']
     if total_damage_area_px is None or (isinstance(total_damage_area_px, float) and np.isnan(total_damage_area_px)):
         damage_area_text = 'area=NA'
     elif total_damage_area_cm2 is None or (isinstance(total_damage_area_cm2, float) and np.isnan(total_damage_area_cm2)):
@@ -963,6 +1022,20 @@ def plot_and_save_images(
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         
     plt.close(fig)
+    
+
+def plot_and_save_images(
+    this_arrays,
+    row,
+    config_channels,
+    filename_suffix='',
+    outputdir=None
+):
+    """
+    Plots the images and masks as above, but also adds 
+    a XXXXXX
+    """
+        
 
 def run_plot_and_save(
     df_samples,
@@ -986,18 +1059,10 @@ def run_plot_and_save(
             print("PLOTTING WITH NO LEAF MASK FOR: ", file_path)
 
         plot_and_save_images(
-            this_arrays['img_leaf'],
-            this_arrays['img_damage'],
-            this_arrays['mask_leaf'],
-            this_arrays['mask_damage'],
+            this_arrays,
+            row,
             config_channels,
-            leaf_roundness=row['leaf_roundness'],
-            total_damage_area_px=row['total_damage_area_px'],
-            total_damage_area_cm2=row['total_damage_area_cm2'],
-            centroid_leaf=this_arrays['centroid'],
-            img0=this_arrays['img_rgb'],
             filename_suffix=filename_suffix,
-            file_path=file_path,
             outputdir=outputdir
         )
 
