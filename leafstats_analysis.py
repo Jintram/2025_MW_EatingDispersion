@@ -65,7 +65,7 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
         # using percentile
         # threshold_val = 10*np.percentile(img.ravel(), 3)
         # determine mode (= background value) and set threshold to 10x
-        threshold_val = 10 * np.bincount(img.ravel()).argmax()
+        threshold_val = 10 * np.max([1.0,np.bincount(img.ravel()).argmax()])
     else:
         raise ValueError(f"Invalid method: {method}. Choose from 'otsu', 'triangle', or 'bg10'.")
         
@@ -91,7 +91,7 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
             return np.zeros(img.shape, dtype=bool)
         
     if return_status:
-        return img_mask, True
+        return img_mask, threshold_val, True
     
     return img_mask, threshold_val
 
@@ -120,7 +120,7 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
             # raise warning
             warnings.warn("Mode value equals image maximum value, likely due to saturation. Using second mode instead.")
         # set the threshold
-        threshold_val = 2 * the_mode        
+        threshold_val = 2 * np.max([1.0,the_mode])
     elif method == 'pct10':
         threshold_val = 10 * np.percentile(img[mask_user], 10)
         
@@ -799,7 +799,7 @@ def plot_interisland_distances(df_samples, outputdir, remove_zerocnt=True, mycol
     fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.png', dpi=150)
     plt.show(); plt.close()
     
-def plot_damaged_area(df_samples, outputdir):
+def plot_damaged_area(df_samples, outputdir, mycolors=None):
     """
     Plot the total damaged area for each condition.
     Uses cm^2 when converted areas are available; otherwise uses pixels.
@@ -809,6 +809,9 @@ def plot_damaged_area(df_samples, outputdir):
     """
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
+
+    if mycolors is None:
+        mycolors = sns.color_palette('colorblind')
 
     cm2_available = np.any(pd.notna(df_samples['total_damage_area_cm2']))
 
@@ -830,7 +833,8 @@ def plot_damaged_area(df_samples, outputdir):
 
     fig, ax = plt.subplots(1, 1, figsize=(8 * cm_to_inch, 8 * cm_to_inch))
 
-    sns.barplot(x='condition', y=metric_key, data=df_area, ax=ax, palette=['blue', 'red'])
+    sns.barplot(x='condition', y=metric_key, data=df_area, ax=ax,
+                palette=mycolors, hue='condition', legend=False)
     sns.violinplot(x='condition', y=metric_key, data=df_area, ax=ax, color='black', alpha=0.2)
     sns.stripplot(x='condition', y=metric_key, data=df_area, ax=ax, color='black')
 
@@ -847,13 +851,62 @@ def plot_damaged_area(df_samples, outputdir):
     fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.png', dpi=150)
     plt.show(); plt.close()
     
+def plot_metric_per_condition(df_samples, outputdir, metric_key,
+                              y_label=None, title=None, file_suffix=None,
+                              palette=None):
+    """
+    Plot a numeric metric from `df_samples` per condition as a combined
+    bar / violin / strip plot.
+    """
+
+    os.makedirs(outputdir + '/plots/', exist_ok=True)
+
+    if y_label is None:
+        y_label = metric_key
+    if title is None:
+        title = metric_key
+    if palette is None:
+        palette = sns.color_palette('colorblind')
+
+    df_metric = df_samples[['condition', metric_key]].copy()
+    df_metric = df_metric[pd.notna(df_metric[metric_key])]
+
+    if df_metric.empty:
+        print(f'WARNING: No valid values available for plotting metric "{metric_key}".')
+        return
+
+    fig, ax = plt.subplots(1, 1, figsize=(8 * cm_to_inch, 8 * cm_to_inch))
+
+    sns.barplot(x='condition', y=metric_key, data=df_metric, ax=ax,
+                palette=palette, hue='condition', legend=False)
+    sns.violinplot(x='condition', y=metric_key, data=df_metric, ax=ax,
+                   color='black', alpha=0.2)
+    sns.stripplot(x='condition', y=metric_key, data=df_metric, ax=ax, color='black')
+
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
+    ax.tick_params(axis='x', rotation=45)
+
+    ymax = np.nanmax(df_metric[metric_key])
+    if ymax > 0:
+        ax.set_ylim([0, ymax * 1.05])
+
+    plt.tight_layout()
+    filename = metric_key if file_suffix is None else f'{metric_key}_{file_suffix}'
+    fig.savefig(outputdir + f'/plots/{filename}.pdf', dpi=150)
+    fig.savefig(outputdir + f'/plots/{filename}.png', dpi=150)
+    plt.show(); plt.close()
     
-def plot_damaged_percentage(df_samples, outputdir):
+    
+def plot_damaged_percentage(df_samples, outputdir, mycolors=None):
     """
     Plot the total damaged area for each condition as percentage of leaf area.
     """
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
+
+    if mycolors is None:
+        mycolors = sns.color_palette('colorblind')
 
     metric_key = 'total_damage_percentage'
     y_label = 'Damaged area (% of leaf)'
@@ -867,7 +920,8 @@ def plot_damaged_percentage(df_samples, outputdir):
 
     fig, ax = plt.subplots(1, 1, figsize=(8 * cm_to_inch, 8 * cm_to_inch))
 
-    sns.barplot(x='condition', y=metric_key, data=df_pct, ax=ax, palette=['blue', 'red'])
+    sns.barplot(x='condition', y=metric_key, data=df_pct, ax=ax,
+                palette=mycolors, hue='condition', legend=False)
     sns.violinplot(x='condition', y=metric_key, data=df_pct, ax=ax, color='black', alpha=0.2)
     sns.stripplot(x='condition', y=metric_key, data=df_pct, ax=ax, color='black')
 
@@ -973,28 +1027,46 @@ def plot_and_save_images(
     leaf_roundness = row['leaf_roundness']
     total_damage_area_px = row['total_damage_area_px']
     total_damage_area_cm2 = row['total_damage_area_cm2']
+    threshold_val_leaf = row['threshold_val_leaf']
+    threshold_val_dmg = row['threshold_val_dmg']
 
     zm = get_zoombox(mask_leaf, margin=10)
-    fig, axs = plt.subplots(1, 3, figsize=(17.2*cm_to_inch, 5*cm_to_inch))
+    fig, axs = plt.subplots(2, 3, figsize=(17.2*cm_to_inch, 9*cm_to_inch))
     # set global font size to 8 pts
     plt.rcParams.update({'font.size': 6})
     
+    # Plot the reference channel
     if img0 is not None and config_channels.get('Reference') is not None:
-        axs[0].imshow(img0[:, :, config_channels.get('Reference')][zm[0]:zm[1],zm[2]:zm[3]])
-        axs[0].set_title(f'Reference\nch={config_channels.get("Reference")}')
+        axs[0, 0].imshow(img0[:, :, config_channels.get('Reference')][zm[0]:zm[1],zm[2]:zm[3]])
+        axs[0, 0].set_title(f'Reference\nch={config_channels.get("Reference")}')
+        ref_data = img0[:, :, config_channels.get('Reference')][mask_leaf].ravel()
+        axs[1, 0].hist(ref_data, bins=64, color='gray')
+        axs[1, 0].set_xlabel('Intensity')
+        axs[1, 0].set_ylabel('Count')
     else:
-        axs[0].axis('off')
+        axs[0, 0].axis('off')
+        axs[1, 0].axis('off')
     
     if leaf_roundness is None or (isinstance(leaf_roundness, float) and np.isnan(leaf_roundness)):
         leaf_roundness_text = 'roundness=NA'
     else:
         leaf_roundness_text = f'roundness={leaf_roundness:.3f}'
 
-    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[1].set_title(f'Leaf\nch={config_channels['Leaf']}\n{leaf_roundness_text}')
-    axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+    # Plot the leaf image
+    axs[0, 1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
+    axs[0, 1].set_title(f'Leaf\nch={config_channels['Leaf']}\n{leaf_roundness_text}')
+    axs[0, 1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     if centroid_leaf is not None:
-        axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
+        axs[0, 1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
+
+    axs[1, 1].hist(img_leaf.ravel(), bins=64, color='gray')
+    axs[1, 1].set_yscale('log')
+    if threshold_val_leaf is not None and not (isinstance(threshold_val_leaf, float) and np.isnan(threshold_val_leaf)):
+        axs[1, 1].axvline(threshold_val_leaf, color='red', linestyle='--', linewidth=1,
+                          label=f'thr={threshold_val_leaf:.3g}')
+        axs[1, 1].legend(loc='upper right')
+    axs[1, 1].set_xlabel('Intensity')
+    axs[1, 1].set_ylabel('Count')
             
     if total_damage_area_px is None or (isinstance(total_damage_area_px, float) and np.isnan(total_damage_area_px)):
         damage_area_text = 'area=NA'
@@ -1003,9 +1075,25 @@ def plot_and_save_images(
     else:
         damage_area_text = f'area={total_damage_area_px:.0f} px ({total_damage_area_cm2:.4f} cm²)'
 
-    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[2].set_title(f'Damage\nch={config_channels['Damage']}\n{damage_area_text}')
-    axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+    # Plot the damage image
+    axs[0, 2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
+    axs[0, 2].set_title(f'Damage\nch={config_channels['Damage']}\n{damage_area_text}')
+    axs[0, 2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+
+    # Damage histogram: restrict to pixels inside the leaf so threshold is meaningful.
+    if mask_leaf is not None and np.any(mask_leaf):
+        dmg_data = img_dmg[mask_leaf].ravel()
+        axs[1, 2].set_xlabel('Intensity (within leaf)')
+    else:
+        dmg_data = img_dmg.ravel()
+        axs[1, 2].set_xlabel('Intensity (NO LEAF MASK FOUND)')
+    axs[1, 2].hist(dmg_data, bins=64, color='gray')
+    if threshold_val_dmg is not None and not (isinstance(threshold_val_dmg, float) and np.isnan(threshold_val_dmg)):
+        axs[1, 2].axvline(threshold_val_dmg, color='red', linestyle='--', linewidth=1,
+                          label=f'thr={threshold_val_dmg:.3g}')
+        axs[1, 2].legend(loc='upper right')
+    
+    axs[1, 2].set_ylabel('Count')
     
     plt.tight_layout()
 
@@ -1024,18 +1112,6 @@ def plot_and_save_images(
     plt.close(fig)
     
 
-def plot_and_save_images(
-    this_arrays,
-    row,
-    config_channels,
-    filename_suffix='',
-    outputdir=None
-):
-    """
-    Plots the images and masks as above, but also adds 
-    a XXXXXX
-    """
-        
 
 def run_plot_and_save(
     df_samples,
