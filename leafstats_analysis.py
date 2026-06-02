@@ -194,15 +194,13 @@ def plot_images(
         axs[0].axis('off')
     
     # Leaf channel
-    leaf_idx = config_channels['Leaf']
-    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title(f'Leaf channel (idx={leaf_idx}, leaf)')
+    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title(f'Leaf channel (idx={config_channels['Leaf']}, leaf)')
     axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)    
     if centroid_leaf is not None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
             
-    # Damage channel
-    damage_idx = config_channels['Damage']
-    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title(f'Damage channel (idx={damage_idx}, damage)')
+    # Damage channel    
+    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title(f'Damage channel (idx={config_channels['Damage']}, damage)')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
 
     plt.tight_layout()
@@ -345,35 +343,32 @@ def load_synthetic_data(synthetic_image_path, config_channels):
     config_channels: dict with at least 'Leaf' and 'Damage' keys mapping to channel indices.
     """
 
-    leaf_idx = config_channels['Leaf']
-    damage_idx = config_channels['Damage']
-
     img_leafs = {}
     img_damages = {}
     
     # Load the leaf w/ eaten disk
     img_disk_path = synthetic_image_path + 'synthetic_eatendisk.tif'
     img_disk = io.imread(img_disk_path)  # io.read required for img stack
-    img_leafs['disk'] = img_disk[:, :, leaf_idx]  # configured leaf channel
-    img_damages['disk'] = img_disk[:, :, damage_idx]  # configured damage channel
+    img_leafs['disk'] = img_disk[:, :, config_channels['Leaf']]  # configured leaf channel
+    img_damages['disk'] = img_disk[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load the leaf w/ eaten spots
     img_spots_damage_path = synthetic_image_path + 'synthetic_eatenspots.tif'
     img_spots_damage = io.imread(img_spots_damage_path)  # io.read required for img stack
-    img_leafs['spots'] = img_spots_damage[:, :, leaf_idx]  # configured leaf channel
-    img_damages['spots'] = img_spots_damage[:, :, damage_idx]  # configured damage channel
+    img_leafs['spots'] = img_spots_damage[:, :, config_channels['Leaf']]  # configured leaf channel
+    img_damages['spots'] = img_spots_damage[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load the image w/ eaten donut
     img_donut_path = synthetic_image_path + 'synthetic_eatendonut.tif'
     img_donut = io.imread(img_donut_path)  # io.read required for img stack
-    img_leafs['donut'] = img_donut[:, :, leaf_idx]  # configured leaf channel
-    img_damages['donut'] = img_donut[:, :, damage_idx]  # configured damage channel
+    img_leafs['donut'] = img_donut[:, :, config_channels['Leaf']]  # configured leaf channel
+    img_damages['donut'] = img_donut[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load dual-spot sample
     img_dualspot_path = synthetic_image_path + 'synthetic_dualspot.tif'
     img_dualspot = io.imread(img_dualspot_path)  # io.read required for img stack
-    img_leafs['dualspot'] = img_dualspot[:, :, leaf_idx]  # configured leaf channel
-    img_damages['dualspot'] = img_dualspot[:, :, damage_idx]  # configured damage channel
+    img_leafs['dualspot'] = img_dualspot[:, :, config_channels['Leaf']]  # configured leaf channel
+    img_damages['dualspot'] = img_dualspot[:, :, config_channels['Damage']]  # configured damage channel
 
     return img_leafs, img_damages, img_disk
 
@@ -533,10 +528,6 @@ def run_complete_analysis(data_file_paths, config_channels,
     config_channels: dict with keys 'Leaf' and 'Damage' mapping to channel indices.
     """
 
-    
-    leaf_idx = config_channels['Leaf']
-    damage_idx = config_channels['Damage']
-    
     # Prepare output structures
     rows = []
     array_data = {}
@@ -549,12 +540,14 @@ def run_complete_analysis(data_file_paths, config_channels,
             # Update user on what's happening
             print(f'Processing {file_path} for condition: {condition}')
             
+            # Load images
             img = np.array(Image.open(file_path))
             # in case the image doesn't have 3 dimensions, expand to three
             img = np.atleast_3d(img)
-            img_leaf = img[:, :, leaf_idx]
-            img_damage = img[:, :, damage_idx]
+            img_leaf = img[:, :, config_channels['Leaf']]
+            img_damage = img[:, :, config_channels['Damage']]
 
+            # Get leaf mask
             mask_leaf, this_leaf_found = \
                 get_largest_mask(img_leaf, 
                                  method=leaf_threshold_method, 
@@ -571,79 +564,74 @@ def run_complete_analysis(data_file_paths, config_channels,
             else:
                 leaf_roundness = np.nan
                 
-            # Start storing scalar results directly in the row dict
+            # Set up structures to save the data (pre-filled for case data NA)
             row = {
                 'condition': condition,
                 'file_path': file_path,
                 'leaf_found': this_leaf_found,
                 'damage_found': False,
-                'analysis_status': None,
+                'analysis_status': 'no_leaf_mask',
                 'leaf_roundness': leaf_roundness,
                 'total_interisland_distances': np.nan,
-                'island_counts': np.nan,
+                'island_counts': np.nan,                
+                'total_leaf_size_px': np.nan, 
+                'total_leaf_size_cm2': np.nan,
                 'total_damage_area_px': np.nan,
-                'total_damage_area_cm2': np.nan
+                'total_damage_area_cm2': np.nan, 
+                'total_damage_percentage': np.nan
             }
+            # Storage for arrays
+            mask_damage = np.zeros_like(mask_leaf, dtype=bool)
+            centroid = None
+            acf = None
+            acf_norm = None
+            acf_center = None
+            acf_norm_avgr = None
+            radial_pdf = None
 
-            # If leaf detection fails, mark downstream metrics as missing/NA.
-            if not this_leaf_found:
-                # Case no leaf found
-                mask_damage = np.zeros_like(mask_leaf, dtype=bool)
-                centroid = None
-                acf = None
-                acf_norm = None
-                acf_center = None
-                acf_norm_avgr = None
-                radial_pdf = None
-                total_interisland = np.nan
-                island_count = np.nan
-                damage_area_px = np.nan
-                damage_area_cm2 = np.nan
-                this_damage_found = False
-                this_status = 'no_leaf_mask'
-            else:
+            if this_leaf_found:
+                
+                # store the size
+                row['total_leaf_size_px'] = float(np.sum(mask_leaf))
+                if pixel_to_cm2_factor is not None:
+                    row['total_leaf_size_cm2'] = row['total_leaf_size_px'] * pixel_to_cm2_factor
+                                    
                 # CASE LEAF FOUND; PERFORM ANALYSIS
-                mask_damage, this_damage_found = get_mask(img=img_damage, 
+                mask_damage, this_damage_found = get_mask(img=img_damage,
                                                           mask_user=mask_leaf, method='bg2', return_status=True)
                 centroid = regionprops(mask_leaf.astype(int))[0].centroid
                     # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
                     # plt.hist(img_damage[mask_leaf].ravel(), bins=256); plt.show(); plt.close()
 
+                row['damage_found'] = this_damage_found
+
                 # If no damage is detected inside leaf, keep valid zeros for damage metrics.
                 if not this_damage_found:
-                    acf = None
-                    acf_norm = None
-                    acf_center = None
-                    acf_norm_avgr = None
-                    radial_pdf = None
-                    total_interisland = 0.0
-                    island_count = 0
-                    damage_area_px = 0.0
-                    if pixel_to_cm2_factor is None:
-                        damage_area_cm2 = np.nan
-                    else:
-                        damage_area_cm2 = damage_area_px * pixel_to_cm2_factor
-                    this_status = 'no_damage_mask'
+                    row['analysis_status'] = 'no_damage_mask'
+                    row['total_interisland_distances'] = 0.0
+                    row['island_counts'] = 0
+                    row['total_damage_area_px'] = 0.0
+                    row['total_damage_area_cm2'] = (
+                        np.nan if pixel_to_cm2_factor is None else 0.0 * pixel_to_cm2_factor
+                    )
+                    row['total_damage_percentage'] = 0.0
                 else:
                     acf, acf_norm, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
                     _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center)
                     _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
                     interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
-                    total_interisland = np.sum(interisland_distances)
-                    island_count = get_island_counts(mask_leaf, mask_damage)
-                    damage_area_px = float(np.sum(mask_damage))
-                    if pixel_to_cm2_factor is None:
-                        damage_area_cm2 = np.nan
-                    else:
-                        damage_area_cm2 = damage_area_px * pixel_to_cm2_factor
-                    this_status = 'ok'
+                    row['analysis_status'] = 'ok'
+                    row['total_interisland_distances'] = np.sum(interisland_distances)
+                    row['island_counts'] = get_island_counts(mask_leaf, mask_damage)
+                    row['total_damage_area_px'] = float(np.sum(mask_damage))
+                    row['total_damage_area_cm2'] = (
+                        np.nan if pixel_to_cm2_factor is None
+                        else row['total_damage_area_px'] * pixel_to_cm2_factor
+                    )
+                    row['total_damage_percentage'] = (
+                        row['total_damage_area_px'] / row['total_leaf_size_px'] * 100
+                    )
 
-            row['damage_found'] = this_damage_found
-            row['analysis_status'] = this_status
-            row['total_interisland_distances'] = total_interisland
-            row['island_counts'] = island_count
-            row['total_damage_area_px'] = damage_area_px
-            row['total_damage_area_cm2'] = damage_area_cm2
             rows.append(row)
 
             array_data[file_path] = {
@@ -936,19 +924,19 @@ def plot_and_save_images(
     else:
         axs[0].axis('off')
     
-    leaf_idx = config_channels['Leaf']
+    config_channels['Leaf'] = config_channels['Leaf']
     if leaf_roundness is None or (isinstance(leaf_roundness, float) and np.isnan(leaf_roundness)):
         leaf_roundness_text = 'roundness=NA'
     else:
         leaf_roundness_text = f'roundness={leaf_roundness:.3f}'
 
     axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[1].set_title(f'Leaf\nch={leaf_idx}\n{leaf_roundness_text}')
+    axs[1].set_title(f'Leaf\nch={config_channels['Leaf']}\n{leaf_roundness_text}')
     axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     if centroid_leaf is not None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
             
-    damage_idx = config_channels['Damage']
+    config_channels['Damage'] = config_channels['Damage']
     if total_damage_area_px is None or (isinstance(total_damage_area_px, float) and np.isnan(total_damage_area_px)):
         damage_area_text = 'area=NA'
     elif total_damage_area_cm2 is None or (isinstance(total_damage_area_cm2, float) and np.isnan(total_damage_area_cm2)):
@@ -957,7 +945,7 @@ def plot_and_save_images(
         damage_area_text = f'area={total_damage_area_px:.0f} px ({total_damage_area_cm2:.4f} cm²)'
 
     axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[2].set_title(f'Damage\nch={damage_idx}\n{damage_area_text}')
+    axs[2].set_title(f'Damage\nch={config_channels['Damage']}\n{damage_area_text}')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     
     plt.tight_layout()
