@@ -47,6 +47,7 @@ lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 lsa.plot_damaged_area(df_samples, OUTPUTDIR)
 lsa.plot_damaged_percentage(df_samples, OUTPUTDIR)
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
+                              y_label = "Intensity threshold for damage", 
                               title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.")
 
     # import importlib; importlib.reload(lsa)

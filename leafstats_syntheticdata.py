@@ -10,7 +10,6 @@ import os
 ################################################################################
 # %%
 
-
 # Where to put plots
 OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250529_SynthData/OUTPUT'
 
