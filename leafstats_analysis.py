@@ -12,6 +12,7 @@ import pandas as pd
 
 import math
 
+from skimage import io
 from skimage.filters import threshold_otsu, threshold_triangle
 from skimage.measure import label, regionprops
 from skimage.morphology import opening, closing, disk
@@ -145,9 +146,9 @@ def determine_leaf_roundness(mask_leaf):
    
 def get_zoombox(mask, margin=0):
     '''
-    return coordinates "zoom" to be able
+    based on outer edges of "mask"
+    returns coordinates "zoom" to be able
     to zoom on image like img[z1:z2, z3:z4]
-    based on mask
     '''
     
     # get bbox
@@ -173,34 +174,35 @@ def plot_images(
     img_dmg,
     mask_leaf,
     mask_damage,
-    leaf_channel_spec,
-    damage_channel_spec,
+    config_channels,
     centroid_leaf=None,
-    img0=None,
-    reference_channel_spec=None
+    img0=None
 ):
+    """
+    Plots three channels side by side.
+    config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
+    """
     
     zm = get_zoombox(mask_leaf, margin=10)
     
     fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 5*cm_to_inch))
     
-    if not img0 is None and reference_channel_spec is not None:
-        ref_idx = reference_channel_spec['channel']
-        ref_name = reference_channel_spec['name']
-        axs[0].imshow(img0[:, :, ref_idx][zm[0]:zm[1],zm[2]:zm[3]]); axs[0].set_title(f'{ref_name} channel (idx={ref_idx})')
+    # Reference channel (skipped if not present)
+    if img0 is not None and config_channels.get('Reference') is not None:
+        axs[0].imshow(img0[:, :, config_channels.get('Reference')][zm[0]:zm[1],zm[2]:zm[3]]); axs[0].set_title(f'Reference channel (idx={config_channels.get("Reference")})')
     else:
         axs[0].axis('off')
     
-    leaf_idx = leaf_channel_spec['channel']
-    leaf_name = leaf_channel_spec['name']
-    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title(f'{leaf_name} channel (idx={leaf_idx}, leaf)')
+    # Leaf channel
+    leaf_idx = config_channels['Leaf']
+    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title(f'Leaf channel (idx={leaf_idx}, leaf)')
     axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)    
-    if not centroid_leaf is None:
+    if centroid_leaf is not None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
             
-    damage_idx = damage_channel_spec['channel']
-    damage_name = damage_channel_spec['name']
-    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title(f'{damage_name} channel (idx={damage_idx}, damage)')
+    # Damage channel
+    damage_idx = config_channels['Damage']
+    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title(f'Damage channel (idx={damage_idx}, damage)')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
 
     plt.tight_layout()
@@ -335,15 +337,16 @@ def get_island_counts(mask_leaf, mask_damage):
 # Load the synthetic data
 
 # open tiff stack image
-from skimage import io
 
-def load_synthetic_data(synthetic_image_path, leaf_channel_spec, damage_channel_spec):
+
+def load_synthetic_data(synthetic_image_path, config_channels):
     """
     Load synthetic TIFF stacks and split them into leaf and damage channels.
+    config_channels: dict with at least 'Leaf' and 'Damage' keys mapping to channel indices.
     """
 
-    leaf_idx = leaf_channel_spec['channel']
-    damage_idx = damage_channel_spec['channel']
+    leaf_idx = config_channels['Leaf']
+    damage_idx = config_channels['Damage']
 
     img_leafs = {}
     img_damages = {}
@@ -401,13 +404,12 @@ def run_synthetic_analysis(
     img_leafs,
     img_damages,
     img_disk,
-    leaf_channel_spec,
-    damage_channel_spec,
-    reference_channel_spec,
+    config_channels,
     outputdir=None
 ):
     """
     Run synthetic-data diagnostics and plots to verify analysis behavior.
+    config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference'.
     """
 
     # Build masks and centroids
@@ -426,11 +428,9 @@ def run_synthetic_analysis(
             img_damages[key],
             mask_leafs[key],
             mask_damages[key],
-            leaf_channel_spec,
-            damage_channel_spec,
-            centroids[key],
-            img0=img_disk,
-            reference_channel_spec=reference_channel_spec
+            config_channels,
+            centroid_leaf=centroids[key],
+            img0=img_disk
         )
         fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.pdf'), dpi=150)
         fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.png'), dpi=150)
@@ -523,61 +523,25 @@ def get_data_file_paths(condition_path_map):
 
     return data_file_paths
 
-def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec,
+def run_complete_analysis(data_file_paths, config_channels,
                           leaf_threshold_method = 'bg10', leaf_roundness_threshold=0,
                           apply_smooth_leafmask=False,
                           pixel_to_cm2_factor=None):
     """
     Run all analyses (as for synthetic data) for all files in data_file_paths.
-    Stores results in dicts for easy plotting and further analysis.
+    Stores scalar outputs in a dataframe and array-like outputs in a dict.
+    config_channels: dict with keys 'Leaf' and 'Damage' mapping to channel indices.
     """
 
+    
+    leaf_idx = config_channels['Leaf']
+    damage_idx = config_channels['Damage']
+    
     # Prepare output structures
-    leaf_idx = leaf_channel_spec['channel']
-    damage_idx = damage_channel_spec['channel']
-
-    img_rgbs = {}
-    img_leafs = {}
-    img_damages = {}
-    mask_leafs = {}
-    mask_damages = {}
-    centroids = {}
-    acfs = {}
-    acf_norms = {}
-    acf_centers = {}
-    acf_norms_avgrs = {}
-    radial_pdfs = {}
-    total_interisland_distances = {}
-    island_counts = {}
-    total_damage_area_px = {}
-    total_damage_area_cm2 = {}
-    leaf_roundnesses = {}
-    leaf_found = {}
-    damage_found = {}
-    analysis_status = {}
+    rows = []
+    array_data = {}
 
     for condition, file_list in data_file_paths.items():
-        # condition, file_list = list(data_file_paths.items())[0]
-        img_rgbs[condition] = []
-        img_leafs[condition] = []
-        img_damages[condition] = []
-        mask_leafs[condition] = []
-        mask_damages[condition] = []
-        centroids[condition] = []
-        acfs[condition] = []
-        acf_norms[condition] = []
-        acf_centers[condition] = []
-        acf_norms_avgrs[condition] = []
-        radial_pdfs[condition] = []
-        total_interisland_distances[condition] = []
-        island_counts[condition] = []
-        total_damage_area_px[condition] = []
-        total_damage_area_cm2[condition] = []
-        leaf_roundnesses[condition] = []
-        leaf_found[condition] = []
-        damage_found[condition] = []
-        analysis_status[condition] = []
-
         for file_path in file_list:
             # file_path = file_list[0]
             # file_path = file_list[7]
@@ -607,9 +571,22 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
             else:
                 leaf_roundness = np.nan
                 
+            # Start storing scalar results directly in the row dict
+            row = {
+                'condition': condition,
+                'file_path': file_path,
+                'leaf_found': this_leaf_found,
+                'damage_found': False,
+                'analysis_status': None,
+                'leaf_roundness': leaf_roundness,
+                'total_interisland_distances': np.nan,
+                'island_counts': np.nan,
+                'total_damage_area_px': np.nan,
+                'total_damage_area_cm2': np.nan
+            }
+
             # If leaf detection fails, mark downstream metrics as missing/NA.
             if not this_leaf_found:
-                
                 # Case no leaf found
                 mask_damage = np.zeros_like(mask_leaf, dtype=bool)
                 centroid = None
@@ -625,7 +602,6 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                 this_damage_found = False
                 this_status = 'no_leaf_mask'
             else:
-                
                 # CASE LEAF FOUND; PERFORM ANALYSIS
                 mask_damage, this_damage_found = get_mask(img=img_damage, 
                                                           mask_user=mask_leaf, method='bg2', return_status=True)
@@ -662,94 +638,88 @@ def run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spe
                         damage_area_cm2 = damage_area_px * pixel_to_cm2_factor
                     this_status = 'ok'
 
-            img_rgbs[condition].append(img)
-            img_leafs[condition].append(img_leaf)
-            img_damages[condition].append(img_damage)
-            mask_leafs[condition].append(mask_leaf)
-            mask_damages[condition].append(mask_damage)
-            centroids[condition].append(centroid)
-            acfs[condition].append(acf)
-            acf_norms[condition].append(acf_norm)
-            acf_centers[condition].append(acf_center)
-            acf_norms_avgrs[condition].append(acf_norm_avgr)
-            radial_pdfs[condition].append(radial_pdf)
-            total_interisland_distances[condition].append(total_interisland)
-            island_counts[condition].append(island_count)
-            total_damage_area_px[condition].append(damage_area_px)
-            total_damage_area_cm2[condition].append(damage_area_cm2)
-            leaf_roundnesses[condition].append(leaf_roundness)
-            leaf_found[condition].append(this_leaf_found)
-            damage_found[condition].append(this_damage_found)
-            analysis_status[condition].append(this_status)
+            row['damage_found'] = this_damage_found
+            row['analysis_status'] = this_status
+            row['total_interisland_distances'] = total_interisland
+            row['island_counts'] = island_count
+            row['total_damage_area_px'] = damage_area_px
+            row['total_damage_area_cm2'] = damage_area_cm2
+            rows.append(row)
 
-    # Return all results as a dictionary of dictionaries/lists
-    return {
-        'img_rgbs': img_rgbs,
-        'img_leafs': img_leafs,
-        'img_damages': img_damages,
-        'mask_leafs': mask_leafs,
-        'mask_damages': mask_damages,
-        'centroids': centroids,
-        'acfs': acfs,
-        'acf_norms': acf_norms,
-        'acf_centers': acf_centers,
-        'acf_norms_avgrs': acf_norms_avgrs,
-        'radial_pdfs': radial_pdfs,
-        'total_interisland_distances': total_interisland_distances,
-        'island_counts': island_counts,
-        'total_damage_area_px': total_damage_area_px,
-        'total_damage_area_cm2': total_damage_area_cm2,
-        'leaf_roundness': leaf_roundnesses,
-        'leaf_found': leaf_found,
-        'damage_found': damage_found,
-        'analysis_status': analysis_status
-    }
+            array_data[file_path] = {
+                'condition': condition,
+                'img_rgb': img,
+                'img_leaf': img_leaf,
+                'img_damage': img_damage,
+                'mask_leaf': mask_leaf,
+                'mask_damage': mask_damage,
+                'centroid': centroid,
+                'acf': acf,
+                'acf_norm': acf_norm,
+                'acf_center': acf_center,
+                'acf_norm_avgr': acf_norm_avgr,
+                'radial_pdf': radial_pdf
+            }
+
+    df_samples = pd.DataFrame(rows)
+    return df_samples, array_data
 
 # %% ########################################################################
 
 # Generate a plot of the acf_norms_avgrs, all in the same panel, and 
 # annotated per condition
-def plot_acf_norms_avgrs(data_all, outputdir):
+def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None):
     """
     Plot the average radial autocorrelation for each condition.
     """
     
-    os.makedirs(outputdir+'/plots/', exist_ok=True)
+    os.makedirs(outputdir+'/plots/', exist_ok=True)   
     
+    if mycolors is None:
+        sns.color_palette('colorblind')    
+    
+    # convert acf_norm_avgr data in array_data to one big dataframe (long format)
+    acf_df_rows = []
+    # loop over all samples
+    for _, row in df_samples.iterrows():
+        # retrieve the acf
+        acf_norm_avgr = array_data[row['file_path']]['acf_norm_avgr']
+        # add data to df (radius can be 1:N, as pixel-based)
+        if acf_norm_avgr is not None:
+            for radius, value in enumerate(acf_norm_avgr):
+                acf_df_rows.append({
+                    'condition': row['condition'],
+                    'radius': radius,
+                    'acf_norm_avgr': value,
+                    'file_path': row['file_path']
+                })
+    df_acf = pd.DataFrame(acf_df_rows)
+    
+    # plotting          
     fig, axs = plt.subplots(2, 1, figsize=(10*cm_to_inch, 10*cm_to_inch))
+                    
+    # now plot each sample, colored by condition
+    sns.lineplot(
+        x='radius', y='acf_norm_avgr', hue='condition',         
+        units = 'file_path', estimator=None, # plot each sample separately
+        data=df_acf, 
+        ax=axs[0], palette=mycolors, linewidth=0.5, legend=False)
     
-    mycolors = ['blue', 'red']
+    # now plot averages per condition
+    sns.lineplot(
+        x='radius', y='acf_norm_avgr', hue='condition',
+        errorbar=None, 
+        data=df_acf,
+        ax=axs[1], palette=mycolors, linewidth=2)
     
-    # loop over keys to get conditions
-    for idx, condition in enumerate(data_all['acf_norms_avgrs'].keys()):
-        
-        # loop over the different acf_norms_avgrs for each condition
-        for acf_norms_avgr in data_all['acf_norms_avgrs'][condition]:
-            if acf_norms_avgr is None:
-                continue
-            
-            axs[0].plot(acf_norms_avgr, color=mycolors[idx], linewidth=.5)
-    
-    mylinestyles = ['-',':']
-    for idx, condition in enumerate(data_all['acf_norms_avgrs'].keys()):
-
-        valid_acf_norms = [x for x in data_all['acf_norms_avgrs'][condition] if x is not None]
-        if len(valid_acf_norms) == 0:
-            continue
-
-        # determine the average line per condition, using
-        # df like done below
-        acf_norms_avgr_avg = pd.DataFrame(valid_acf_norms).mean()
-        # plot the average line
-        axs[1].plot(acf_norms_avgr_avg, linewidth=2, 
-                label=f'Avg {condition}', color=mycolors[idx])#)linestyle=mylinestyles[idx])
-        # ax.plot(acf_norms_avgr_avg, color=mycolors[idx], linewidth=.5, label=f'Avg {condition}')
-        
     fig.suptitle('Radial Autocorrelation')    
     axs[0].set_xlabel('Radius (pixels)')
+    axs[0].set_ylabel('Normalized Autocorrelation')
+    axs[0].set_title('Per sample')
     
     axs[1].set_xlabel('Radius (pixels)')
     axs[1].set_ylabel('Normalized Autocorrelation')
+    axs[0].set_title('Condition averages')
     
     plt.tight_layout()
     plt.savefig(outputdir+'/plots/Radial_acf.pdf', dpi=150)
@@ -765,55 +735,54 @@ def plot_acf_norms_avgrs(data_all, outputdir):
     plt.show(); plt.close()
     
 # Now the same for the inter-island distance metric
-def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
+def plot_interisland_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None):
     """
     Plot the total inter-island distances for each condition.
     """    
     
+    if mycolors is None:
+        sns.color_palette('colorblind')
+    
     os.makedirs(outputdir+'/plots/', exist_ok=True)
-    
-    # create df with separate points 
-    df_dist = pd.DataFrame({'cond':[],'total_dist':[],'island_count':[]})
-    
-    for cond in data_all['total_interisland_distances'].keys():
-        # create df with points for this condition, append to total df
-        df_dist = \
-            pd.concat([df_dist, 
-                    pd.DataFrame({'cond':cond,
-                                'total_dist':data_all['total_interisland_distances'][cond],
-                                'island_count':data_all['island_counts'][cond]})])
-    
-    # Reset index
-    df_dist = df_dist.reset_index(drop=True)
-    
-    # Now remove datapoints with zero islands
+
+    # Drop rows with missing metrics; optionally drop zero-island samples.
+    df_plot = df_samples[['condition', 'total_interisland_distances', 'island_counts']].dropna(
+        subset=['total_interisland_distances', 'island_counts']
+    )
     if remove_zerocnt:
-        df_dist = df_dist[df_dist['island_count'] > 0]
-        
+        df_plot = df_plot[df_plot['island_counts'] > 0]
+
+    if df_plot.empty:
+        print('WARNING: No valid inter-island values available for plotting.')
+        return
+
+    # Plot 
     fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 10*cm_to_inch))
     
-    # plot strippplot using seaborn
-    sns.barplot(x='cond', y='total_dist', 
-                data=df_dist, ax=axs[0], palette=['blue', 'red'])
-    sns.violinplot(x='cond', y='total_dist', 
-                   data=df_dist, ax=axs[0], color='black', alpha=0.2)
-    sns.stripplot(x='cond', y='total_dist', 
-                  data=df_dist, ax=axs[0], color='black')
+    # plot total inter-island distances using strippplot / seaborn
+    sns.barplot(x='condition', y='total_interisland_distances', 
+                data=df_plot, ax=axs[0], palette=mycolors, hue='condition')
+    sns.violinplot(x='condition', y='total_interisland_distances', 
+                   data=df_plot, ax=axs[0], color='black', alpha=0.2)
+    sns.stripplot(x='condition', y='total_interisland_distances', 
+                  data=df_plot, ax=axs[0], color='black')
     
     axs[0].set_title(f'Total Closest-Island\nDistances')
     axs[0].set_ylabel('Distance (pixels)')
-    axs[0].set_ylim([0, np.max(df_dist['total_dist']) * 1.02])
+    ymax0 = np.nanmax(df_plot['total_interisland_distances'])
+    axs[0].set_ylim([0, (ymax0 if ymax0 > 0 else 1) * 1.02])
     # rotate axis 90 deg
     axs[0].tick_params(axis='x', rotation=45)
     
-    # now also plot the island counts
-    sns.barplot(x='cond', y='island_count', 
-                data=df_dist, ax=axs[1], palette=['blue', 'red'])
-    sns.violinplot(x='cond', y='island_count',
-                     data=df_dist, ax=axs[1], color='black', alpha=0.2)
-    sns.stripplot(x='cond', y='island_count',
-                  data=df_dist, ax=axs[1], color='black')
-    axs[1].set_ylim([0, np.max(df_dist['island_count']) * 1.02])
+    # now also plot the island counts themselves
+    sns.barplot(x='condition', y='island_counts', 
+                data=df_plot, ax=axs[1], palette=mycolors, hue='condition')
+    sns.violinplot(x='condition', y='island_counts',
+                     data=df_plot, ax=axs[1], color='black', alpha=0.2)
+    sns.stripplot(x='condition', y='island_counts',
+                  data=df_plot, ax=axs[1], color='black')
+    ymax1 = np.nanmax(df_plot['island_counts'])
+    axs[1].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
     axs[1].tick_params(axis='x', rotation=45)
     axs[1].set_title(f'Total Islands')
     
@@ -825,10 +794,10 @@ def plot_interisland_distances(data_all, outputdir, remove_zerocnt=True):
     fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.png', dpi=150)
     plt.show(); plt.close()
     
-def plot_damaged_area(data_all, outputdir):
+def plot_damaged_area(df_samples, outputdir):
     """
     Plot the total damaged area for each condition.
-    Uses cm² when converted areas are available; otherwise uses pixels.
+    Uses cm^2 when converted areas are available; otherwise uses pixels.
     
     (This function was generated by ChatGPT Codex 5.3, and it seems a bit
     overly complex; TODO: take a look at this later.)    
@@ -836,39 +805,19 @@ def plot_damaged_area(data_all, outputdir):
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
 
-    # Determine whether converted cm² values are available (at least one finite value)
-    cm2_available = False
-    if 'total_damage_area_cm2' in data_all:
-        all_cm2_values = [
-            val
-            for cond, val_list in data_all['total_damage_area_cm2'].items()
-            for val in val_list
-        ]
-        cm2_available = np.any(pd.notna(all_cm2_values))
+    cm2_available = np.any(pd.notna(df_samples['total_damage_area_cm2']))
 
     if cm2_available:
         metric_key = 'total_damage_area_cm2'
-        y_label = 'Damaged area (cm²)'
+        y_label = 'Damaged area (cm^2)'
         file_suffix = 'cm2'
     else:
         metric_key = 'total_damage_area_px'
         y_label = 'Damaged area (pixels)'
         file_suffix = 'px'
 
-    # Build dataframe for plotting
-    df_area = pd.DataFrame({'cond': [], 'damaged_area': []})
-    for cond in data_all[metric_key].keys():
-        df_area = pd.concat([
-            df_area,
-            pd.DataFrame({
-                'cond': cond,
-                'damaged_area': data_all[metric_key][cond]
-            })
-        ])
-
-    # Keep only valid numeric values for plotting
-    df_area = df_area.reset_index(drop=True)
-    df_area = df_area[pd.notna(df_area['damaged_area'])]
+    df_area = df_samples[['condition', metric_key]].copy()
+    df_area = df_area[pd.notna(df_area[metric_key])]
 
     if df_area.empty:
         print('WARNING: No valid damaged-area values available for plotting.')
@@ -876,17 +825,17 @@ def plot_damaged_area(data_all, outputdir):
 
     fig, ax = plt.subplots(1, 1, figsize=(8 * cm_to_inch, 8 * cm_to_inch))
 
-    sns.barplot(x='cond', y='damaged_area', data=df_area, ax=ax, palette=['blue', 'red'])
-    sns.violinplot(x='cond', y='damaged_area', data=df_area, ax=ax, color='black', alpha=0.2)
-    sns.stripplot(x='cond', y='damaged_area', data=df_area, ax=ax, color='black')
+    sns.barplot(x='condition', y=metric_key, data=df_area, ax=ax, palette=['blue', 'red'])
+    sns.violinplot(x='condition', y=metric_key, data=df_area, ax=ax, color='black', alpha=0.2)
+    sns.stripplot(x='condition', y=metric_key, data=df_area, ax=ax, color='black')
 
     ax.set_title('Total Damaged Area')
     ax.set_ylabel(y_label)
     ax.tick_params(axis='x', rotation=45)
 
-    ymax = np.max(df_area['damaged_area'])
+    ymax = np.max(df_area[metric_key])
     if ymax > 0:
-        ax.set_ylim([0, ymax * 1.02])
+        ax.set_ylim([0, ymax * 1.05])
 
     plt.tight_layout()
     fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.pdf', dpi=150)
@@ -895,78 +844,84 @@ def plot_damaged_area(data_all, outputdir):
     
 # plot the radial distribution functions similar to the acf above
 # for all samples, in one panel, colored by condition
-def plot_radial_pdfs(data_all, outputdir):
+def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
     """
     Plot the radial PDFs for each condition.
     """
-    
+
     os.makedirs(outputdir+'/plots/', exist_ok=True)
-    
-    fig, axs = plt.subplots(2,1,figsize=(10*cm_to_inch, 10*cm_to_inch))
-    
-    mycolors = ['blue', 'red']
-    
-    # loop over keys to get conditions
-    for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
-        # loop over the different radial_pdfs for each condition
-        for radial_pdf in data_all['radial_pdfs'][condition]:
-            if radial_pdf is None:
-                continue
-            axs[0].plot(radial_pdf, color=mycolors[idx], alpha=1, linewidth=.2)
-        
-    # now in black, add average line per condition
-    mylinestyles=['-',':']
-    for idx, condition in enumerate(data_all['radial_pdfs'].keys()):
-        valid_radial_pdfs = [x for x in data_all['radial_pdfs'][condition] if x is not None]
-        if len(valid_radial_pdfs) == 0:
+
+    if mycolors is None:
+        mycolors = sns.color_palette('colorblind')
+
+    # convert radial_pdf data in array_data to one big dataframe (long format)
+    pdf_df_rows = []
+    for _, row in df_samples.iterrows():
+        radial_pdf = array_data[row['file_path']]['radial_pdf']
+        if radial_pdf is None:
             continue
-        # calculate mean, using df since that handles different lengths well
-        radial_pdf_avg = pd.DataFrame(valid_radial_pdfs).mean()
-        axs[1].plot(radial_pdf_avg, color=mycolors[idx], linewidth=2, label=f'Avg {condition}',
-                linestyle=mylinestyles[idx])
-    
+        for radius, value in enumerate(radial_pdf):
+            pdf_df_rows.append({
+                'condition': row['condition'],
+                'radius': radius,
+                'radial_pdf': value,
+                'file_path': row['file_path']
+            })
+    df_pdf = pd.DataFrame(pdf_df_rows)
+
+    fig, axs = plt.subplots(2, 1, figsize=(10*cm_to_inch, 10*cm_to_inch))
+
+    # plot each sample, colored by condition
+    sns.lineplot(
+        x='radius', y='radial_pdf', hue='condition',
+        units='file_path', estimator=None, # plot each sample separately
+        data=df_pdf,
+        ax=axs[0], palette=mycolors, linewidth=0.2, legend=False)
+
+    # plot averages per condition
+    sns.lineplot(
+        x='radius', y='radial_pdf', hue='condition',
+        errorbar=None,
+        data=df_pdf,
+        ax=axs[1], palette=mycolors, linewidth=2)
+
     axs[0].set_xlabel('Radius (pixels)')
     axs[0].set_ylabel('Radial PDF')
-        
+    axs[0].set_title('Per sample')
+
     axs[1].set_xlabel('Radius (pixels)')
     axs[1].set_ylabel('Radial PDF')
+    axs[1].set_title('Condition averages')
     axs[1].legend()
-    
+
     plt.tight_layout()
-    
+
     # save as pdf to outputdir
     plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
     plt.savefig(outputdir+'/plots/radial_pdfs.png', dpi=150)
-    
+
     plt.show(); plt.close()
 
 # %%
-
-# now create a copy of "plot_images()", which
-# can be used in a loop over each of the datafiles, to create
-# a plot of the images masks etc, and store 
-# the plot in outputdir + 'plots/', saved in subdirectories
-# according to the original directory structure 
 
 def plot_and_save_images(
     img_leaf,
     img_dmg,
     mask_leaf,
     mask_damage,
-    leaf_channel_spec,
-    damage_channel_spec,
+    config_channels,
     leaf_roundness=None,
     total_damage_area_px=None,
     total_damage_area_cm2=None,
     centroid_leaf=None,
     img0=None,
-    reference_channel_spec=None,
     filename_suffix='',
     file_path=None,
     outputdir=None
 ):
     """
     Plots the images and masks, and saves the figure to outputdir/plots/ preserving subdirectory structure.
+    config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
     file_path: original file path of the image (used to reconstruct subdirectory structure)
     outputdir: base output directory where plots/ will be created
     """
@@ -975,29 +930,25 @@ def plot_and_save_images(
     # set global font size to 8 pts
     plt.rcParams.update({'font.size': 6})
     
-    if img0 is not None and reference_channel_spec is not None:
-        ref_idx = reference_channel_spec['channel']
-        ref_name = reference_channel_spec['name']
-        axs[0].imshow(img0[:, :, ref_idx][zm[0]:zm[1],zm[2]:zm[3]])
-        axs[0].set_title(f'{ref_name}\nch={ref_idx}')
+    if img0 is not None and config_channels.get('Reference') is not None:
+        axs[0].imshow(img0[:, :, config_channels.get('Reference')][zm[0]:zm[1],zm[2]:zm[3]])
+        axs[0].set_title(f'Reference\nch={config_channels.get("Reference")}')
     else:
         axs[0].axis('off')
     
-    leaf_idx = leaf_channel_spec['channel']
-    leaf_name = leaf_channel_spec['name']
+    leaf_idx = config_channels['Leaf']
     if leaf_roundness is None or (isinstance(leaf_roundness, float) and np.isnan(leaf_roundness)):
         leaf_roundness_text = 'roundness=NA'
     else:
         leaf_roundness_text = f'roundness={leaf_roundness:.3f}'
 
     axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[1].set_title(f'{leaf_name}\nch={leaf_idx}\n{leaf_roundness_text}')
+    axs[1].set_title(f'Leaf\nch={leaf_idx}\n{leaf_roundness_text}')
     axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     if centroid_leaf is not None:
         axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
             
-    damage_idx = damage_channel_spec['channel']
-    damage_name = damage_channel_spec['name']
+    damage_idx = config_channels['Damage']
     if total_damage_area_px is None or (isinstance(total_damage_area_px, float) and np.isnan(total_damage_area_px)):
         damage_area_text = 'area=NA'
     elif total_damage_area_cm2 is None or (isinstance(total_damage_area_cm2, float) and np.isnan(total_damage_area_cm2)):
@@ -1006,7 +957,7 @@ def plot_and_save_images(
         damage_area_text = f'area={total_damage_area_px:.0f} px ({total_damage_area_cm2:.4f} cm²)'
 
     axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[2].set_title(f'{damage_name}\nch={damage_idx}\n{damage_area_text}')
+    axs[2].set_title(f'Damage\nch={damage_idx}\n{damage_area_text}')
     axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
     
     plt.tight_layout()
@@ -1025,212 +976,47 @@ def plot_and_save_images(
         
     plt.close(fig)
 
-# now write a loop as described above
 def run_plot_and_save(
-    data_all,
-    data_file_paths,
+    df_samples,
+    array_data,
     outputdir,
-    leaf_channel_spec,
-    damage_channel_spec,
-    reference_channel_spec
+    config_channels
 ):
     """
     Run the plot_and_save_images function for each image in data_all.
     Saves the plots in outputdir/plots/ preserving subdirectory structure.
+    config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference'.
     """
-    
-    for condition, img_leafs in data_all['img_leafs'].items():
-        for idx, img_leaf in enumerate(img_leafs):
-            # Add suffix if no leaf was found, but still plot whatever data is available.
-            filename_suffix = ''
-            if 'leaf_found' in data_all and not data_all['leaf_found'][condition][idx]:
-                filename_suffix = '_NOLEAF'
-                print("PLOTTING WITH NO LEAF MASK FOR: ", data_file_paths[condition][idx])
+    for _, row in df_samples.iterrows():
+        file_path = row['file_path']
+        this_arrays = array_data[file_path]
 
-            img_rgb = data_all['img_rgbs'][condition][idx]
-            img_dmg = data_all['img_damages'][condition][idx]
-            mask_leaf = data_all['mask_leafs'][condition][idx]
-            mask_damage = data_all['mask_damages'][condition][idx]
-            leaf_roundness = data_all['leaf_roundness'][condition][idx] if 'leaf_roundness' in data_all else None
-            damage_area_px = data_all['total_damage_area_px'][condition][idx] if 'total_damage_area_px' in data_all else None
-            damage_area_cm2 = data_all['total_damage_area_cm2'][condition][idx] if 'total_damage_area_cm2' in data_all else None
-            centroid_leaf = data_all['centroids'][condition][idx]
-            file_path = data_file_paths[condition][idx]  # original file path
-            
-            plot_and_save_images(
-                img_leaf,
-                img_dmg,
-                mask_leaf,
-                mask_damage,
-                leaf_channel_spec,
-                damage_channel_spec,
-                leaf_roundness,
-                damage_area_px,
-                damage_area_cm2,
-                centroid_leaf,
-                img0=img_rgb,
-                reference_channel_spec=reference_channel_spec,
-                filename_suffix=filename_suffix,
-                file_path=file_path,
-                outputdir=outputdir
-            )
+        # Add suffix if no leaf was found, but still plot whatever data is available.
+        filename_suffix = ''
+        if not row['leaf_found']:
+            filename_suffix = '_NOLEAF'
+            print("PLOTTING WITH NO LEAF MASK FOR: ", file_path)
 
-# %% ################################################################################
-# Export some data
+        plot_and_save_images(
+            this_arrays['img_leaf'],
+            this_arrays['img_damage'],
+            this_arrays['mask_leaf'],
+            this_arrays['mask_damage'],
+            config_channels,
+            leaf_roundness=row['leaf_roundness'],
+            total_damage_area_px=row['total_damage_area_px'],
+            total_damage_area_cm2=row['total_damage_area_cm2'],
+            centroid_leaf=this_arrays['centroid'],
+            img0=this_arrays['img_rgb'],
+            filename_suffix=filename_suffix,
+            file_path=file_path,
+            outputdir=outputdir
+        )
 
-def export_singledatapoints(data_all, data_file_paths, data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2']):
-    '''
-    For metrics quantified as a single parameter, store those
-    in a single dataframe. 
-    Also include file paths as column.
-    '''
-    # data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2']
-    
-    # Set up dataframe with condition and filename first
-    cond_fp = [[cond, fp] for cond, fp_list in data_file_paths.items() for fp in fp_list]
-    df_singledata = pd.DataFrame(cond_fp, columns=['condition','file_path'])
-
-    # Add mask-detection status columns when available.
-    if 'leaf_found' in data_all:
-        df_singledata['leaf_found'] = [
-            val for cond, val_list in data_all['leaf_found'].items() for val in val_list
-        ]
-    if 'damage_found' in data_all:
-        df_singledata['damage_found'] = [
-            val for cond, val_list in data_all['damage_found'].items() for val in val_list
-        ]
-    if 'analysis_status' in data_all:
-        df_singledata['analysis_status'] = [
-            val for cond, val_list in data_all['analysis_status'].items() for val in val_list
-        ]
-    
-    # Now add metrics that were calculated before
-    # (This assumes these are in the same order!!)
-    for metric in data_singledatapoint:
-        # Gather both value and conditions
-        data_cond = np.array([[val, cond] for cond, val_list in data_all[metric].items() for val in val_list])
-        # Double check that conditions match
-        if df_singledata['condition'].tolist() == data_cond[:,1].tolist():
-            # if so, add data
-            df_singledata[metric] = data_cond[:,0].astype(float)
-        else:
-            # else raise error
-            raise ValueError(f'Conditions do not match for metric {metric}!')
-    
-    return df_singledata
-        
-        
-        
-# Also create two example plots using the dataframe       
-def simplebarplotseaborn(df_singledata):
-    '''
-    Example code how to make simple dataplot
-    '''    
-    
-    # plot with condition vs. island_count
-    sns.violinplot(x='condition', y='island_counts', data=df_singledata)
-    sns.stripplot(x='condition', y='island_counts', data=df_singledata, color='black')
-    sns.barplot(x='condition', y='island_counts', data=df_singledata, alpha=0.5, color='grey')
-    plt.ylim([0,None])
-    plt.show()
-    
-    # same for interisland distances
-    sns.violinplot(x='condition', y='total_interisland_distances', data=df_singledata)
-    sns.stripplot(x='condition', y='total_interisland_distances', data=df_singledata, color='black')
-    sns.barplot(x='condition', y='total_interisland_distances', data=df_singledata, alpha=0.5, color='grey')
-    plt.ylim([0,None])
-    plt.show()
-    
-    
-    
-    
-        
 
 
 # %%
 
 if __name__ == "__main__":
 
-    # Where to put plots
-    OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/OUTPUT202602/'
-
-    # PART A, synthetic data
-
-    # Where to find synthetic images
-    SYNTHETIC_IMAGE_PATH = '/Users/m.wehrens/Documents/git_repos/_UVA/_Projects-bioDSC/2025_MW_EatingDispersion/Synthetic_data/'
-    
-    # 1) Ensure base output directory exists
-    os.makedirs(OUTPUTDIR, exist_ok=True)
-
-    # 2) Define channel configuration (index + display name)
-    leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
-    damage_channel_spec = {'channel': 2, 'name': 'Damage'}
-    reference_channel_spec = {'channel': 0, 'name': 'Reference'} # can be set to None
-
-    # 3) Load synthetic example images and run synthetic sanity-check analysis/plots
-    img_leafs_syn, img_damages_syn, img_disk = load_synthetic_data(
-        SYNTHETIC_IMAGE_PATH,
-        leaf_channel_spec,
-        damage_channel_spec
-    )
-    run_synthetic_analysis(
-        img_leafs_syn,
-        img_damages_syn,
-        img_disk,
-        leaf_channel_spec,
-        damage_channel_spec,
-        reference_channel_spec
-    )
-
-    # PART B, real data
-
-    # 1) Tell script where data is and which channels should be used
-    # Conditions and paths to images for that condition
-    condition_path_map = {
-        'infected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Infected',
-        'noninfected': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250709_PartialData_Nina/Non infected'
-    }
-    # Channel configuration
-    leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
-    damage_channel_spec = {'channel': 2, 'name': 'Damage'}
-    reference_channel_spec = {'channel': 0, 'name': '(Not used)'} # can be set to None
-    # Optional conversion from pixel area to cm^2 (set to e.g. 0.0004 if known)
-    pixel_to_cm2_factor = None
-    # obtain 
-    data_file_paths = get_data_file_paths(condition_path_map)
-
-    # 2) Run the complete analysis pipeline
-    data_all = run_complete_analysis(
-        data_file_paths,
-        leaf_channel_spec,
-        damage_channel_spec,
-        pixel_to_cm2_factor=pixel_to_cm2_factor
-    )
-
-    # 3) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
-    plot_acf_norms_avgrs(data_all, OUTPUTDIR)
-    plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
-    plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
-    plot_radial_pdfs(data_all, OUTPUTDIR)
-
-    # 4) Export per-image mask overlays to output folders
-    run_plot_and_save(
-        data_all,
-        data_file_paths,
-        OUTPUTDIR,
-        leaf_channel_spec,
-        damage_channel_spec,
-        reference_channel_spec
-    )
-
-    # 5) Export single-value metrics to CSV and Excel
-    df_singledata = export_singledatapoints(
-        data_all,
-        data_file_paths,
-        data_singledatapoint=['total_interisland_distances', 'island_counts', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2']
-    )
-    df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
-    df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
-
-    # 8) Optional: inspect dataframe plots interactively
-    # simplebarplotseaborn(df_singledata)
+    pass

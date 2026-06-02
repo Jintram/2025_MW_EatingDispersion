@@ -17,15 +17,17 @@ condition_path_map = {
     'WT': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260218_NewData_Nina/KOvsWT/WT/',
     'KO': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260218_NewData_Nina/KOvsWT/KO/'
 }
-# Channel configuration
-leaf_channel_spec = {'channel': 0, 'name': 'Leaf'} # channel 1 often
-damage_channel_spec = {'channel': 0, 'name': 'Damage'} # channel 2 often
-reference_channel_spec = None
+# Channel configuration (channel index per role; Reference can be None)
+config_channels = {
+    'Leaf': 0,      # channel 1 often
+    'Damage': 0,    # channel 2 often
+    'Reference': None
+}
 # obtain 
 data_file_paths = lsa.get_data_file_paths(condition_path_map)
 
 # 2) Run the complete analysis pipeline
-data_all = lsa.run_complete_analysis(data_file_paths, leaf_channel_spec, damage_channel_spec,
+data_all = lsa.run_complete_analysis(data_file_paths, config_channels,
                                      leaf_threshold_method='triangle',
                                      leaf_roundness_threshold=0.8, apply_smooth_leafmask=True,
                                      pixel_to_cm2_factor=1/(131**2))
@@ -42,9 +44,7 @@ lsa.run_plot_and_save(
     data_all,
     data_file_paths,
     OUTPUTDIR,
-    leaf_channel_spec,
-    damage_channel_spec,
-    reference_channel_spec
+    config_channels
 )
 
 # 5) Export single-value metrics to CSV and Excel
