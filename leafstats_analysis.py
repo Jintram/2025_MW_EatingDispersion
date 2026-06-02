@@ -133,7 +133,10 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
     return img_mask, threshold_val
       
 def calculate_background_img_mask(img, mask):
-    """Estimate background level in image, within mask region, based on mode."""
+    """Estimate background level in image, within mask region, based on mode.
+    
+    TO DO: this function has redundancy with code above. Perhaps address this at some point?
+    """
     
     the_mode = np.bincount(img[mask].ravel()).argmax()
     
