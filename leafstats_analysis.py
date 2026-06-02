@@ -132,6 +132,19 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
     
     return img_mask, threshold_val
       
+def calculate_background_img_mask(img, mask):
+    """Estimate background level in image, within mask region, based on mode."""
+    
+    the_mode = np.bincount(img[mask].ravel()).argmax()
+    
+    if the_mode == np.max(img):
+            the_mode = np.bincount(img[mask][img[mask]<np.max(img)].ravel()).argmax()
+            # raise warning
+            warnings.warn("Mode value equals image maximum value, likely due to saturation. Using second mode instead.")
+    
+    return the_mode
+            
+      
 def determine_leaf_roundness(mask_leaf):
     """ Calculate the roundness of the leaf """
 
@@ -589,7 +602,9 @@ def run_complete_analysis(data_file_paths, config_channels,
                 'total_damage_area_cm2': np.nan, 
                 'total_damage_percentage': np.nan,
                 'threshold_val_leaf': np.nan,
-                'threshold_val_dmg': np.nan
+                'threshold_val_dmg': np.nan,
+                'background_leaf' : np.nan,
+                'background_dmg': np.nan
             }
             # Storage for arrays
             mask_damage = np.zeros_like(mask_leaf, dtype=bool)
@@ -608,6 +623,8 @@ def run_complete_analysis(data_file_paths, config_channels,
                     row['total_leaf_size_cm2'] = row['total_leaf_size_px'] * pixel_to_cm2_factor
                 # store the threshold that was used
                 row['threshold_val_leaf'] = threshold_val_leaf
+                # store the background
+                row['background_leaf'] = calculate_background_img_mask(img_leaf, np.ones_like(img_leaf))
                 
                 # CASE LEAF FOUND; PERFORM ANALYSIS
                 mask_damage, threshold_val_dmg, this_damage_found = get_mask(img=img_damage,
@@ -648,6 +665,7 @@ def run_complete_analysis(data_file_paths, config_channels,
                     row['total_damage_percentage'] = (
                         row['total_damage_area_px'] / row['total_leaf_size_px'] * 100
                     )
+                    row['background_dmg'] = calculate_background_img_mask(img_damage, mask_leaf)
 
             rows.append(row)
 
@@ -1029,6 +1047,8 @@ def plot_and_save_images(
     total_damage_area_cm2 = row['total_damage_area_cm2']
     threshold_val_leaf = row['threshold_val_leaf']
     threshold_val_dmg = row['threshold_val_dmg']
+    background_leaf = row.get('background_leaf', np.nan)
+    background_dmg = row.get('background_dmg', np.nan)
 
     zm = get_zoombox(mask_leaf, margin=10)
     fig, axs = plt.subplots(2, 3, figsize=(17.2*cm_to_inch, 9*cm_to_inch))
@@ -1064,6 +1084,10 @@ def plot_and_save_images(
     if threshold_val_leaf is not None and not (isinstance(threshold_val_leaf, float) and np.isnan(threshold_val_leaf)):
         axs[1, 1].axvline(threshold_val_leaf, color='red', linestyle='--', linewidth=1,
                           label=f'thr={threshold_val_leaf:.3g}')
+    if background_leaf is not None and not (isinstance(background_leaf, float) and np.isnan(background_leaf)):
+        axs[1, 1].axvline(background_leaf, color='blue', linestyle=':', linewidth=1,
+                          label=f'bg={background_leaf:.3g}')
+    if axs[1, 1].get_legend_handles_labels()[0]:
         axs[1, 1].legend(loc='upper right')
     axs[1, 1].set_xlabel('Intensity')
     axs[1, 1].set_ylabel('Count')
@@ -1091,6 +1115,10 @@ def plot_and_save_images(
     if threshold_val_dmg is not None and not (isinstance(threshold_val_dmg, float) and np.isnan(threshold_val_dmg)):
         axs[1, 2].axvline(threshold_val_dmg, color='red', linestyle='--', linewidth=1,
                           label=f'thr={threshold_val_dmg:.3g}')
+    if background_dmg is not None and not (isinstance(background_dmg, float) and np.isnan(background_dmg)):
+        axs[1, 2].axvline(background_dmg, color='blue', linestyle=':', linewidth=1,
+                          label=f'bg={background_dmg:.3g}')
+    if axs[1, 2].get_legend_handles_labels()[0]:
         axs[1, 2].legend(loc='upper right')
     
     axs[1, 2].set_ylabel('Count')
