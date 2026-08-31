@@ -39,6 +39,18 @@ input aswell.
 ***Example input image.** The green channel corresponds to the leaf intensity, 
 and the blue channel to the thrip activity (NIR).*
 
+| Red channel | Green channel | Blue Channel |
+| ------- | ------- | ------- |
+<img src=figures/Example_A_1_red.png width=20%> |
+<img src=figures/Example_A_1_green.png width=20%> |
+<img src=figures/Example_A_1_blue.png width=20%>
+
+***Example input image.** Same as above, but the R, G, B channels
+are displayed separately here in gray scale.
+The green channel corresponds to the leaf intensity, 
+and the blue channel to the thrip activity (NIR).*
+
+
 ## Considerations of the analysis
 
 This script:
