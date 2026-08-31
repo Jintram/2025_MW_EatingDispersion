@@ -37,7 +37,8 @@ input aswell.
 
 <img src=figures/Example_A_1.png width=30%><br>
 ***Example input image.** The green channel corresponds to the leaf intensity, 
-and the blue channel to the thrip activity (NIR).*
+and the blue channel to the thrip activity (NIR). The red channel is ignored
+in the analysis.*
 
 | Red channel | Green channel | Blue Channel |
 | ------- | ------- | ------- |
@@ -46,8 +47,8 @@ and the blue channel to the thrip activity (NIR).*
 ***Example input image.** Same as above, but the R, G, B channels
 are displayed separately here in gray scale.
 The green channel corresponds to the leaf intensity, 
-and the blue channel to the thrip activity (NIR).*
-
+and the blue channel to the thrip activity (NIR). 
+The red channel is ignored in the analysis.*
 
 ## Considerations of the analysis
 
@@ -95,7 +96,7 @@ Additional tuning parameters are:
     - Roundness is defined as $R = 4 \pi A / C^2$. With A the area, and C
     the circumference. For a perfect circle, $4 \pi A = C^2$, and $R =1$. The 
     lower the value, the least an object looks like a circle.
-    - This can be used to disregard suggestd leaf segmentation masks
+    - This can be used to disregard suggested leaf segmentation masks
     that are not round (and thus likely not proper masks). A cutoff of e.g. 
     0.8 will select leaves that are approximately round.
 - `apply_smooth_leafmask`, default: False
@@ -104,7 +105,7 @@ Additional tuning parameters are:
     
 ### Determining the damaged area
 
-Which area is considered "damaged" in the end depends on an arbitrary
+Which area is considered "damaged" in the end depends on the selected
 threshold.
 
 The choice of threshold will affect all further statistics that try
@@ -114,8 +115,8 @@ This threshold is determined automatically. For many threshold algorithms,
 the threshold level will depend both on the pattern of low signal (undamaged)
 as well as the pattern of high signal (damaged), and inbetween values.
 
-This needs to be avoided, as we don't want the amount of damage influencing
-how the damage pattern is quantified.
+This needs to be avoided, as we don't want the amount of true damage influencing
+the detection of the damaged region and the detected damage pattern.
 
 The algorithm chosen here attempts to set a threshold value independent
 of the amount of damage present. It focuses on determining the damage intensity 
@@ -123,8 +124,12 @@ background signal, which is done by using the mode of the damage channel.
 Everything with an intensity higher than 2x the mode (or background signal)
 is considered "damaged".
 
-**A critical assumption here is that there should be a substiantal background 
+**Critical assumption 1: there should be a substiantal background 
 area present.**
+
+**Critical assumption 2: the background intensity scales with the damage 
+intensity.** (Or alternatively all images should be taken under equal illumination and 
+acquisition conditions.)
 
 The image below shows the result of both segmentation of the leaf
 and determining the damaged area:
