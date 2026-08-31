@@ -36,8 +36,8 @@ to segment the leaf, in which case a single-channel image can be provided as
 input aswell.
 
 <img src=figures/Example_A_1.png width=30%><br>
-***Example input image.* The green channel corresponds to the leaf intensity, 
-and the blue channel to the thrip activity (NIR).**
+***Example input image.** The green channel corresponds to the leaf intensity, 
+and the blue channel to the thrip activity (NIR).*
 
 ## Considerations of the analysis
 
