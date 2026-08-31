@@ -23,11 +23,27 @@ To run this script, check out the files:
 - [leafstats_example_1channel.py](leafstats_example_1channel.py), which shows how to analyze a dataset where 1 channel was recorded to identify the leaf and the damage done by thrips.
 - [leafstats_example_3channels.py](leafstats_example_3channels.py), which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, and 1 for quantifying the damage.
 
+## Expected input
+
+A `.tif` image files where 
+
+- 1 channel records intensity of the leaf itself (to be able to segment the leaf)
+- 1 channel records the thrip activity pattern (using near infrared, NIR, sometimes colloqually referred to as "damage" in this repo)
+
+Ideally, these channels are separate to avoid artifacts and detect
+leaves properly, but the damage channel can also be used
+to segment the leaf, in which case a single-channel image can be provided as 
+input aswell.
+
+<img src=Example_data/DATA/condition_Control/Example_A_1.tif width=30%><br>
+***Example input image.* The green channel corresponds to the leaf intensity, 
+and the blue channel to the thrip activity (NIR).**
+
 ## Considerations of the analysis
 
 This script:
 - segments the leaves in a straighforward way
-- quantifies leaf damage in a straightforward way
+- segments and quantifies leaf damage in a straightforward way
 - tries to quantify potential feeding patterns
 
 The main analysis script is [leafstats_analysis.py](leafstats_analysis.py). In the examples referenced
@@ -37,7 +53,7 @@ above, this script is imported as follows:
 import leafstats_analysis as lsa
 ```
 
-You can now call functions from `leafstats_analysis.py` for example like
+When you run this line, you can call functions from [leafstats_analysis.py](leafstats_analysis.py) using e.g.
 `lsa.run_complete_analysis()`.
 
 ### Segmentation of leaves
@@ -49,9 +65,9 @@ called automatically by the function `lsa.run_complete_analysis()`.
 
 This function determines a threshold based on either:
 
-- 10x the background level
-- Otsu method
-- Triangle method
+- 10x the background level (`leaf_threshold_method='bg10'`)
+- Otsu method (`leaf_threshold_method='otsu'`)
+- Triangle method (`leaf_threshold_method='triangle'`)
 
 When a seperate channel was used to record the leaf, the default `bg10` method
 works well. 

@@ -535,6 +535,7 @@ def get_data_file_paths(condition_path_map):
     condition_path_map : dict
         User-defined mapping where keys are condition names (e.g. 'infected')
         and values are folder paths that contain TIFF files for that condition.
+        Folders are scanned in a non-recursive way.
     """
 
     data_file_paths = {}
