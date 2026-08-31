@@ -17,22 +17,20 @@ Assuming you already have Conda installed and your preferred environment set up,
 conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn pillow opencv openpyxl -y
 ```
 
-
-
 ## To run
 
 To run this script, check out the files:
-- `leafstats_project_example_1channel.py`, which shows how to analyze a dataset where 1 channel was recorded to identify the leaf and the damage done by thrips.
-- `leafstats_projects_example_3channels.py`, which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, and 1 for quantifying the damage.
+- [leafstats_example_1channel.py](leafstats_example_1channel.py), which shows how to analyze a dataset where 1 channel was recorded to identify the leaf and the damage done by thrips.
+- [leafstats_example_3channels.py](leafstats_example_3channels.py), which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, and 1 for quantifying the damage.
 
 ## Considerations of the analysis
 
 This script:
 - segments the leaves in a straighforward way
-- quantifies leave damage in a straightforward way
+- quantifies leaf damage in a straightforward way
 - tries to quantify potential feeding patterns
 
-The main analysis script is `leafstats_analysis.py`. In the examples referenced
+The main analysis script is [leafstats_analysis.py](leafstats_analysis.py). In the examples referenced
 above, this script is imported as follows:
 
 ```{python}
@@ -44,7 +42,7 @@ You can now call functions from `leafstats_analysis.py` for example like
 
 ### Segmentation of leaves
 
-Segmentation of the leave is based on standard threshold algorithms.
+Segmentation of the leaf is based on standard threshold algorithms.
 
 Segmentation is performed by the function `lsa.get_largest_mask()`, which is 
 called automatically by the function `lsa.run_complete_analysis()`.
