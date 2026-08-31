@@ -27,15 +27,15 @@ To run this script, check out the files:
 
 A `.tif` image files where 
 
-- 1 channel records intensity of the leaf itself (to be able to segment the leaf)
-- 1 channel records the thrip activity pattern (using near infrared, NIR, sometimes colloqually referred to as "damage" in this repo)
+- 1 channel recorded intensity of the leaf itself (to be able to segment the leaf)
+- 1 channel recorded the thrip activity pattern (using near infrared, NIR, sometimes colloqually referred to as "damage" in this repo)
 
 Ideally, these channels are separate to avoid artifacts and detect
 leaves properly, but the damage channel can also be used
 to segment the leaf, in which case a single-channel image can be provided as 
 input aswell.
 
-<img src=Example_data/DATA/condition_Control/Example_A_1.tif width=30%><br>
+<img src=figures/Example_A_1.png width=30%><br>
 ***Example input image.* The green channel corresponds to the leaf intensity, 
 and the blue channel to the thrip activity (NIR).**
 
