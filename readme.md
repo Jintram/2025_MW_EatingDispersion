@@ -41,7 +41,7 @@ and the blue channel to the thrip activity (NIR).*
 
 | Red channel | Green channel | Blue Channel |
 | ------- | ------- | ------- |
-| <img src=figures/Example_A_1_red.png width=20%> | <img src=figures/Example_A_1_green.png width=20%> | <img src=figures/Example_A_1_blue.png width=20%> |
+| <img src=figures/Example_A_1_red.png width=90%> | <img src=figures/Example_A_1_green.png width=90%> | <img src=figures/Example_A_1_blue.png width=90%> |
 
 ***Example input image.** Same as above, but the R, G, B channels
 are displayed separately here in gray scale.
