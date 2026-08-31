@@ -124,10 +124,11 @@ background signal, which is done by using the mode of the damage channel.
 Everything with an intensity higher than 2x the mode (or background signal)
 is considered "damaged".
 
-**Critical assumption 1:** There should be a substiantal background 
-area present.
+There are some critical assumptions here:
 
-**Critical assumption 2:** The background intensity scales with the damage 
+- **Critical assumption 1:** There should be a substiantal background 
+area present.
+- **Critical assumption 2:** The background intensity scales with the damage 
 intensity. (Or alternatively all images should be taken under equal illumination and 
 acquisition conditions.)
 
