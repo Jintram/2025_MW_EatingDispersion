@@ -327,18 +327,19 @@ df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=Fals
 The function `lsa.export_singledatapoints` collects all data in a 
 pandas dataframe (`df_singledata` in the example above). 
 
-## Technical notes
-
-The code can still be improved from a software engineering perspective, 
-and could also be further improved regarding readability (e.g. function
-names and comments). 
 
 ## Changelog
 
 See [changelog.md](changelog.md).
 
 
+# LLM attribution
 
+Parts of this repository were written with the assistance of a large language model
+(Claude Opus, Anthropic), used as a coding assistant for code editing and refactoring.
+
+All essential algorithms were designed, reviewed, and validated by the authors.
+AI-generated code was inspected and tested before being committed.
 
 
 

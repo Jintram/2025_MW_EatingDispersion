@@ -1,5 +1,17 @@
 
 
+# To do (2/9/2026)
+
+- [ ] Working on readme, currently editing "Quantifying damage patterns"
+- [ ] Assessing correct working of pipeline
+- [ ] Adding LLM acknowledgement
+
+#### To do for later
+
+- [ ] The code can still be improved from a software engineering perspective, 
+and could also be further improved regarding readability (e.g. function
+names and comments). 
+
 # Changelog, notes on updates (18/2/2026)
 
 - To allow for 1-channel image to be processed (ie no independent channel for 
