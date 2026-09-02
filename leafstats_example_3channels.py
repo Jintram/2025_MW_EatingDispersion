@@ -8,13 +8,16 @@ import leafstats_analysis as lsa
 
 # %%
 
-OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/OUTPUT-refactor/'
+# Paths below are relative, and are interpreted relative to your working
+# directory, so run this script from the root of the repository.
+# (Use absolute paths instead when your own data lives elsewhere.)
+OUTPUTDIR = 'Example_data/OUTPUT-3channels/'
 
 # 1) Tell script where data is and which channels should be used
 # Conditions and paths to images for that condition
 condition_path_map = {
-    'Ctrl': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Control',
-    'Edited': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Photoshopped'
+    'Ctrl': 'Example_data/DATA/condition_Control',
+    'Edited': 'Example_data/DATA/condition_Photoshopped'
 }
 # Channel configuration (channel index per role; Reference can be None)
 config_channels = {

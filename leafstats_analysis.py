@@ -6,11 +6,11 @@
 
 #%% ################################################################################
 
-from PIL import Image
+import imageio.v3 as iio
 import numpy as np
 import pandas as pd 
 
-import math
+# import math
 
 from skimage import io
 from skimage.filters import threshold_otsu, threshold_triangle
@@ -19,9 +19,9 @@ from skimage.morphology import opening, closing, disk
 
 from scipy.signal import correlate
     # from scipy.signal import correlate2d # VERY SLOW
-from scipy.spatial.distance import pdist
+# from scipy.spatial.distance import pdist
 
-import cv2
+# import cv2 # faster but want to avoid dependency
 import scipy.ndimage as ndi
 
 import matplotlib.pyplot as plt
@@ -323,11 +323,16 @@ def get_inter_island_distances(mask_leaf, mask_damage):
                 # plt.imshow(current_lbl); plt.show(); plt.close()
             
             # generate distance map to closest non-zero pixel 
+            #
+            # Using cv2
             # (Speed-test with 1000x running this, showed cv2 is 5x faster than ndi.distance_transform_edt)
-            img_dist = cv2.distanceTransform(src = (current_lbl==0).astype(np.uint8),
-                                        distanceType=cv2.DIST_L2, 
-                                        maskSize=cv2.DIST_MASK_PRECISE)
+            # img_dist = cv2.distanceTransform(src = (current_lbl==0).astype(np.uint8),
+            #                             distanceType=cv2.DIST_L2, 
+            #                             maskSize=cv2.DIST_MASK_PRECISE)
                 # plt.imshow(img_dist); plt.show(); plt.close()
+            # Using scipy.ndimage
+            # (Gives identical values; returns float64 instead of cv2's float32.)
+            img_dist = ndi.distance_transform_edt(current_lbl==0)
             
             distances[lbl-1] = np.min(img_dist[lbl_damage==lbl])
             
@@ -536,11 +541,20 @@ def get_data_file_paths(condition_path_map):
         User-defined mapping where keys are condition names (e.g. 'infected')
         and values are folder paths that contain TIFF files for that condition.
         Folders are scanned in a non-recursive way.
+        Paths may be absolute, or relative to the current working directory.
+
+    Notes
+    -----
+    Paths are converted to absolute paths here, at the single point where file
+    paths enter the analysis. Downstream code (dict keys, the 'file_path'
+    column of df_samples, exported tables) can therefore assume unambiguous
+    paths, whichever notation the user supplied.
     """
 
     data_file_paths = {}
     for condition, base_path in condition_path_map.items():
-        data_file_paths[condition] = glob.glob(os.path.join(base_path, '*.tif'))
+        data_file_paths[condition] = \
+            [os.path.abspath(f) for f in glob.glob(os.path.join(base_path, '*.tif'))]
 
     return data_file_paths
 
@@ -567,7 +581,7 @@ def run_complete_analysis(data_file_paths, config_channels,
             print(f'Processing {file_path} for condition: {condition}')
             
             # Load images
-            img = np.array(Image.open(file_path))
+            img = iio.imread(file_path) # uses tifffile backend for .tif
             # in case the image doesn't have 3 dimensions, expand to three
             img = np.atleast_3d(img)
             img_leaf = img[:, :, config_channels['Leaf']]
@@ -1032,11 +1046,12 @@ def plot_and_save_images(
     outputdir=None
 ):
     """
-    Plots the images and masks, and saves the figure to outputdir/plots/ preserving subdirectory structure.
+    Plots the images and masks, and saves the figure to
+    outputdir/plots/segmentation_masks/<condition>/<image name>.png.
     this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage', 'centroid', 'img_rgb'.
-    row: pandas Series (row of df_samples) with keys 'file_path', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2'.
+    row: pandas Series (row of df_samples) with keys 'condition', 'file_path', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2'.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
-    outputdir: base output directory where plots/ will be created.
+    outputdir: base output directory where plots/ will be created; absolute, or relative to the working directory.
     """
     img_leaf = this_arrays['img_leaf']
     img_dmg = this_arrays['img_damage']
@@ -1046,6 +1061,7 @@ def plot_and_save_images(
     img0 = this_arrays['img_rgb']
 
     file_path = row['file_path']
+    condition = row['condition']
     leaf_roundness = row['leaf_roundness']
     total_damage_area_px = row['total_damage_area_px']
     total_damage_area_cm2 = row['total_damage_area_cm2']
@@ -1131,13 +1147,12 @@ def plot_and_save_images(
 
     # Save figure if file_path and outputdir are provided
     if file_path is not None and outputdir is not None:
-        # Get relative path after the data root (e.g., after 'Infected/' or 'Non infected/')
-        rel_path = os.path.relpath(file_path, start=os.path.commonpath([file_path, outputdir]))
-        # Remove file extension, add optional suffix, and replace with .png
-        rel_base = os.path.splitext(rel_path)[0]
-        rel_path_noext = rel_base + filename_suffix + '.png'
-        # Compose output path
-        save_path = os.path.join(outputdir, 'plots', rel_path_noext)
+        # Collect these per-image figures in their own directory, separate from
+        # the summary plots, and group them per condition using the image file
+        # name itself. (Each condition maps to exactly one folder, which is
+        # scanned non-recursively, so file names are unique within a condition.)
+        filename = os.path.splitext(os.path.basename(file_path))[0] + filename_suffix + '.png'
+        save_path = os.path.join(outputdir, 'plots', 'segmentation_masks', condition, filename)
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         
@@ -1153,7 +1168,9 @@ def run_plot_and_save(
 ):
     """
     Run the plot_and_save_images function for each image in data_all.
-    Saves the plots in outputdir/plots/ preserving subdirectory structure.
+    Saves the plots in outputdir/plots/segmentation_masks/<condition>/.
+    These per-image figures show the segmentation underlying all other results,
+    and should be checked manually for artifacts.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference'.
     """
     for _, row in df_samples.iterrows():

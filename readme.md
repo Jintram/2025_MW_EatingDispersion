@@ -14,7 +14,7 @@ Assuming you already have Conda installed and your preferred environment set up,
 
 ```bash
 
-conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn pillow opencv openpyxl -y
+conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn imageio openpyxl -y
 ```
 
 ## To run
@@ -22,6 +22,13 @@ conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn 
 To run this script, check out the files:
 - [leafstats_example_1channel.py](leafstats_example_1channel.py), which shows how to analyze a dataset where 1 channel was recorded to identify the leaf and the damage done by thrips.
 - [leafstats_example_3channels.py](leafstats_example_3channels.py), which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, and 1 for quantifying the damage.
+
+Both examples run out of the box on the images in [Example_data/](Example_data/).
+They refer to those images with paths relative to the root of this repository,
+so **run them with the repository root as your working directory**. (In VS Code, 
+opening the repository as your workspace folder achieves this.) 
+Paths may also be given as absolute paths, which is convenient when your own 
+data is located elsewhere.
 
 ## Expected input
 
@@ -137,7 +144,7 @@ and determining the damaged area:
 
 <!-- img "Example_data/DATA/condition_Control/Example_A_1.tif" -->
 
-![test](Example_data/OUTPUT/plots/DATA/condition_Control/Example_A_1.png)
+![test](Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png)
 
 White lines indicate the outline of the segmented areas.
 
@@ -191,12 +198,17 @@ that each correspond to a specific condition. This can be set as follows:
 # 1) Tell script where data is and which channels should be used
 # Conditions and paths to images for that condition
 condition_path_map = {
-    'Ctrl': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Control',
-    'Edited': '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20260529_Exampledata/DATA/condition_Photoshopped'
+    'Ctrl': 'Example_data/DATA/condition_Control',
+    'Edited': 'Example_data/DATA/condition_Photoshopped'
 }
 ```
 Note that a so-called `dict` is used to link each condition (e.g. `'Ctrl'`)
 to a specific folder.
+
+These folder paths can be absolute, or relative to your working directory,
+as in the example above. The same holds for `OUTPUTDIR`.
+The condition names are also used to organize the exported per-image plots,
+which end up in `OUTPUTDIR/plots/segmentation_masks/<condition>/`.
 
 Additionally, the script needs to know in which channel to look for the
 leaf data and where to look for the damage. A third channel can be displayed
@@ -249,24 +261,24 @@ To generate each of the plots, the following functions can be used:
 lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
 ```
 
-<img src="Example_data/OUTPUT/plots/Radial_acf_lims.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_lims.png" width=50%>
 
 ```{python}
 lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
 lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 ```
 
-<img src="Example_data/OUTPUT/plots/interisland_distances_.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/interisland_distances_.png" width=50%>
 
 ```{python}
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT/plots/radial_pdfs.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs.png" width=50%>
 
 ```{python}
 lsa.plot_damaged_area(data_all, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT/plots/damaged_area_px.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/damaged_area_px.png" width=50%>
 
 
 Set `OUTPUTDIR` to a directory where you want the plots to be exported.
@@ -285,7 +297,16 @@ lsa.run_plot_and_save(
 )
 ```
 
-<img src="Example_data/OUTPUT/plots/DATA/condition_Control/Example_A_1.png">
+<img src="Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png">
+
+These figures are exported to `OUTPUTDIR/plots/segmentation_masks/<condition>/`,
+one per input image, whilst the summary plots are placed directly in
+`OUTPUTDIR/plots/`. The segmentation shown here is the first analysis step, on
+which all other results depend: the damaged area, the pattern statistics, and
+every value in the exported tables are all derived from these masks. It is
+therefore recommended to inspect these figures manually for artifacts (e.g. a
+mask that captured background instead of the leaf) before interpreting the
+summary plots.
 
 #### Exporting data to excel/csv
 
