@@ -149,7 +149,7 @@ and determining the damaged area:
 White lines indicate the outline of the segmented areas. Histograms of 
 pixel intensities are shown below the images. For "leaf" and "damage",
 the blue line indicates the extrapolated background intensity, and 
-the red line the threshold that was used.
+the red line the threshold that was used for the mask.
 
 ## Quantifying damage patterns
 
