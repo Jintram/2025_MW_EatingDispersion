@@ -146,7 +146,10 @@ and determining the damaged area:
 
 ![test](Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png)
 
-White lines indicate the outline of the segmented areas.
+White lines indicate the outline of the segmented areas. Histograms of 
+pixel intensities are shown below the images. For "leaf" and "damage",
+the blue line indicates the extrapolated background intensity, and 
+the red line the threshold that was used.
 
 ## Quantifying damage patterns
 
