@@ -190,28 +190,30 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 (This was chosen to be ±equal, except for "dual spot".)
 
-### Autocorrelation function
+### Autocorrelation function (ACF)
 
 Average correlation between the damage signal in two pixels that are a distance X apart.
 
-Concretely, the mean damage signal of the leaf is subtracted, after which the
-image is multiplied with a copy of itself shifted by a displacement **D**, 
-averaged over all pixel pairs that fall inside the leaf, and divided by the 
-variance of the damage signal. This is Pearson's correlation coefficient, and it 
-is 1 at **D**=0 by definition. The black curve shows this averaged over all 
-directions, i.e. as a function of the distance X only.
+Concretely, if the correlation is positive at distance X, 
+it means that the intensity for any two pixels with distance X is likely
+to be more similar.
+If the correlation is negative at distance X, it's likely the signal
+for two pixels at distance X is opposite between the two pixels.
 
-Since the mean is subtracted, the correlation becomes *negative* at distances 
-where damage in one pixel predicts the *absence* of damage in the other. The 
+The 
 distance at which the curve first crosses zero thus reflects the size of the 
 damaged features, whereas a secondary peak reflects a typical spacing between 
-them. Note that the curve is normalized by the variance over the whole leaf, so 
-such a secondary peak can exceed 1 (see "dual spot").
+them. 
+
+For our examples the ACF looks as follows:
 
 <img src="Synthetic_data/OUTPUT/synthdata_acf_disk.png">
 <img src="Synthetic_data/OUTPUT/synthdata_acf_donut.png">
 <img src="Synthetic_data/OUTPUT/synthdata_acf_dualspot.png">
 <img src="Synthetic_data/OUTPUT/synthdata_acf_spots.png">
+
+**Technical note:** Note that the curve is normalized by the variance over the whole leaf, so 
+such a secondary peak can exceed 1 (see "dual spot").
 
 
 ### Radial distribution
