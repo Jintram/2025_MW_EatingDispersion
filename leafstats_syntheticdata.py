@@ -10,11 +10,15 @@ import os
 ################################################################################
 # %%
 
+# Paths below are relative, and are interpreted relative to your working
+# directory, so run this script from the root of the repository.
+# (Use absolute paths instead when your own data lives elsewhere.)
+
 # Where to put plots
-OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2024_small-analyses/2025_Nina_LeafDamage/20250529_SynthData/OUTPUT'
+OUTPUTDIR = 'Synthetic_data/OUTPUT'
 
 # Where to find synthetic images
-SYNTHETIC_IMAGE_PATH = '/Users/m.wehrens/Documents/git_repos/_UVA/_Projects-bioDSC/2025_MW_EatingDispersion/Synthetic_data/'
+SYNTHETIC_IMAGE_PATH = 'Synthetic_data/'
 
 # 1) Ensure base output directory exists
 os.makedirs(OUTPUTDIR, exist_ok=True)

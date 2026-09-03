@@ -428,32 +428,34 @@ def get_island_counts(mask_leaf, mask_damage):
 def load_synthetic_data(synthetic_image_path, config_channels):
     """
     Load synthetic TIFF stacks and split them into leaf and damage channels.
+    synthetic_image_path: folder holding the synthetic images; absolute, or
+        relative to the current working directory. A trailing slash is optional.
     config_channels: dict with at least 'Leaf' and 'Damage' keys mapping to channel indices.
     """
 
     img_leafs = {}
     img_damages = {}
-    
+
     # Load the leaf w/ eaten disk
-    img_disk_path = synthetic_image_path + 'synthetic_eatendisk.tif'
+    img_disk_path = os.path.join(synthetic_image_path, 'synthetic_eatendisk.tif')
     img_disk = io.imread(img_disk_path)  # io.read required for img stack
     img_leafs['disk'] = img_disk[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['disk'] = img_disk[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load the leaf w/ eaten spots
-    img_spots_damage_path = synthetic_image_path + 'synthetic_eatenspots.tif'
+    img_spots_damage_path = os.path.join(synthetic_image_path, 'synthetic_eatenspots.tif')
     img_spots_damage = io.imread(img_spots_damage_path)  # io.read required for img stack
     img_leafs['spots'] = img_spots_damage[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['spots'] = img_spots_damage[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load the image w/ eaten donut
-    img_donut_path = synthetic_image_path + 'synthetic_eatendonut.tif'
+    img_donut_path = os.path.join(synthetic_image_path, 'synthetic_eatendonut.tif')
     img_donut = io.imread(img_donut_path)  # io.read required for img stack
     img_leafs['donut'] = img_donut[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['donut'] = img_donut[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load dual-spot sample
-    img_dualspot_path = synthetic_image_path + 'synthetic_dualspot.tif'
+    img_dualspot_path = os.path.join(synthetic_image_path, 'synthetic_dualspot.tif')
     img_dualspot = io.imread(img_dualspot_path)  # io.read required for img stack
     img_leafs['dualspot'] = img_dualspot[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['dualspot'] = img_dualspot[:, :, config_channels['Damage']]  # configured damage channel
