@@ -205,7 +205,13 @@ distance at which the curve first crosses zero thus reflects the size of the
 damaged features, whereas a secondary peak reflects a typical spacing between 
 them. 
 
-For our examples the ACF looks as follows:
+For our examples the ACF is shown in the plots below.
+Here, the thick black line is the
+radially integrated ACF, ie ACF(X). 
+The grey dotted line can be ignored (it is a technical check, 
+the horizontal center line of the 2d ACF, i.e.
+$ACF(x, L_y/2)$.
+
 
 <img src="Synthetic_data/OUTPUT_frozen/synthdata_acf_disk.png">
 <img src="Synthetic_data/OUTPUT_frozen/synthdata_acf_donut.png">
