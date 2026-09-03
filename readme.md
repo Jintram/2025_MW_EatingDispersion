@@ -125,7 +125,7 @@ as well as the pattern of high signal (damaged), and inbetween values.
 This needs to be avoided, as we don't want the amount of true damage influencing
 the detection of the damaged region and the detected damage pattern.
 
-*Above twice background is damage.* The algorithm chosen here attempts 
+**Above twice background is damage.** The algorithm chosen here attempts 
 to set a threshold value independent
 of the amount of damage present. It focuses on determining the damage intensity 
 background signal, which is done by using the mode of the damage channel
@@ -148,10 +148,10 @@ and determining the damaged area:
 
 ![test](Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png)
 
-***Figure.* White lines indicate the outline of the segmented areas. Histograms of 
+***Figure.** White lines indicate the outline of the segmented areas. Histograms of 
 pixel intensities are shown below the images. For "leaf" and "damage",
 the blue line indicates the extrapolated background intensity, and 
-the red line the threshold that was used for the mask.**
+the red line the threshold that was used for the mask.*
 
 ## Quantifying damage patterns
 
