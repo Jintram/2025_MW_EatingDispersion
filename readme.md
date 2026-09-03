@@ -213,6 +213,7 @@ the horizontal center line of the 2d ACF, i.e.
 $`ACF(x, \frac{L_y}{2})`$).
 
 
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_noise.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_disk.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_donut.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_dualspot.png">
@@ -229,6 +230,7 @@ Average signal from the center of the leaf at distance X.
 The aim of this function is to characterize whether the location on the leaf
 (in terms of distance from the center) affects the likelyhood of damage.
 
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_noise.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_disk.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_donut.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_dualspot.png">
