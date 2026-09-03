@@ -2,7 +2,9 @@
 
 # To do / done (2/9/2026)
 
-- [ ] Working on readme, currently editing "Quantifying damage patterns"
+- [ ] Working on readme, currently editing "Island count"
+    - But also made some changes (see below), maybe quickly go over whole readme.md
+    as well.
 - [ ] Assessing correct working of pipeline
 - [ ] Adding LLM acknowledgement
 
@@ -19,6 +21,14 @@
     on the damage **mask**, now it is based on the damage **intensity**.
     I think the latter is preferred, as maks is the same information but
     more coarse grained.
+    
+- [X] Moved synthetic data to within the repository.
+- [X] Also applied "normal" pipeline to the synthetic data.
+    - Modified synthetic images to have background = 1 for the damage, 
+    leaf mask needs to be identified with otsu threshold (background = 0 
+    led to artifacts with the thresholds for damage, for leaf, 
+    Otsu threshold could be used such that that background could remain
+    0).
 
 #### To do for later
 
