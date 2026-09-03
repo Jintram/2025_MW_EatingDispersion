@@ -153,6 +153,13 @@ pixel intensities are shown below the images. For "leaf" and "damage",
 the blue line indicates the extrapolated background intensity, and 
 the red line the threshold that was used for the mask.*
 
+##### Potential improvements
+
+The distribution of undamaged leaf intensity could be estimated in more
+sophisticated ways (e.g. fitting a gaussian to part of the histogram),
+allowing for a better estimate on what the expected range of 
+undamaged signal is, and thus what can be considered damaged area.
+
 ## Quantifying damage patterns
 
 To assess the nature of the damage patterns, multiple metrics are calculated.
@@ -162,16 +169,32 @@ To understand what these metrics can do, a synthetic dataset was used:
 This dataset contained the following "leafs" with corresponding "damage
 patterns":
 
+- "Disk" damage pattern:
+
 <img src="Synthetic_data/OUTPUT/synthdata_img_disk.png">
+
+- "Donut" damage pattern:
+
 <img src="Synthetic_data/OUTPUT/synthdata_img_donut.png">
+
+- "Dual spot" damage pattern:
 <img src="Synthetic_data/OUTPUT/synthdata_img_dualspot.png">
+
+- "Spots" damage pattern:
+
 <img src="Synthetic_data/OUTPUT/synthdata_img_spots.png">
 
-### Functions to quantify the damage pattern
+### Metrics to quantify the damage pattern
+
+##### Amount of damage
 
 <img src="Synthetic_data/OUTPUT/synthdata_summary_damage.png">
 
-(set ±equal)
+(This was chosen to be ±equal, except for "dual spot".)
+
+##### Autocorrelation function
+
+Average correlation between two pixels at distance X.
 
 <img src="Synthetic_data/OUTPUT/synthdata_acf_disk.png">
 <img src="Synthetic_data/OUTPUT/synthdata_acf_donut.png">
@@ -179,13 +202,23 @@ patterns":
 <img src="Synthetic_data/OUTPUT/synthdata_acf_spots.png">
 
 
+##### Radial distribution
+
+Average signal from the center of the leaf at distance X.
+
 <img src="Synthetic_data/OUTPUT/synthdata_radialpdf_disk.png">
 <img src="Synthetic_data/OUTPUT/synthdata_radialpdf_donut.png">
 <img src="Synthetic_data/OUTPUT/synthdata_radialpdf_dualspot.png">
 <img src="Synthetic_data/OUTPUT/synthdata_radialpdf_spots.png">
 
+##### Island count
+
+The amount of 
 
 <img src="Synthetic_data/OUTPUT/synthdata_summary_islandcount.png">
+
+##### Total inter-island distance
+
 <img src="Synthetic_data/OUTPUT/synthdata_summary_interisland.png">
 
 
