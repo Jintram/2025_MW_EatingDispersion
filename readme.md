@@ -164,7 +164,8 @@ undamaged signal is, and thus what can be considered damaged area.
 
 To assess the nature of the damage patterns, multiple metrics are calculated.
 
-To illustrate and get a feeling for what these metrics can do, a synthetic dataset was used; This dataset contained the following "leafs" with corresponding "damage patterns":
+To get a feeling for what these metrics can do, a synthetic dataset was used; 
+this dataset contained the following "leafs" with corresponding "damage patterns":
 
 - "Disk" damage pattern:
 
@@ -189,7 +190,7 @@ To illustrate and get a feeling for what these metrics can do, a synthetic datas
 
 (This was chosen to be ±equal, except for "dual spot".)
 
-##### Autocorrelation function
+### Autocorrelation function
 
 Average correlation between the damage signal in two pixels that are a distance X apart.
 
@@ -213,7 +214,7 @@ such a secondary peak can exceed 1 (see "dual spot").
 <img src="Synthetic_data/OUTPUT/synthdata_acf_spots.png">
 
 
-##### Radial distribution
+### Radial distribution
 
 Average signal from the center of the leaf at distance X.
 
@@ -222,13 +223,13 @@ Average signal from the center of the leaf at distance X.
 <img src="Synthetic_data/OUTPUT/synthdata_radialpdf_dualspot.png">
 <img src="Synthetic_data/OUTPUT/synthdata_radialpdf_spots.png">
 
-##### Island count
+### Island count
 
 The amount of 
 
 <img src="Synthetic_data/OUTPUT/synthdata_summary_islandcount.png">
 
-##### Total inter-island distance
+### Total inter-island distance
 
 <img src="Synthetic_data/OUTPUT/synthdata_summary_interisland.png">
 
