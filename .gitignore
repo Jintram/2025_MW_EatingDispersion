@@ -2,3 +2,4 @@
 .DS_Store
 Example_data/OUTPUT-1channel/*
 Example_data/OUTPUT-3channels/*
+Synthetic_data/OUTPUT/*
