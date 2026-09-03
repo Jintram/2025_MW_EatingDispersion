@@ -47,6 +47,23 @@ plt.rcParams.update({
 #%% ################################################################################
 # Functions
 
+def arrange_dims(img):
+    """ 
+    Re-arranges dimensions if not in proper order.
+    
+    RGB Tiff files can have the structure (3, H, W) or (H, W, 3),
+    with H height and W width. This function collapses those 
+    two options to (H, W, 3).
+    
+    This is not foolproof, as it e.g. produces unexpected results
+    for H=3. 
+    """
+    
+    if img.ndim == 3 and img.shape[0] == 3:
+        img = np.moveaxis(img, 0, -1)  # (3, H, W) -> (H, W, 3)
+        
+    return img
+
 def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False):
     """
     Finds Otsu threshold for image, applies threshold, and
@@ -72,8 +89,8 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
     img_mask = img > threshold_val
     if not np.any(img_mask):
         if return_status:
-            return np.zeros(img.shape, dtype=bool), False
-        return np.zeros(img.shape, dtype=bool)
+            return np.zeros(img.shape, dtype=bool), threshold_val, False
+        return np.zeros(img.shape, dtype=bool), threshold_val
 
     img_lbl = label(img_mask)
     
@@ -87,8 +104,8 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
         # if this erased the mask, act accordingly
         if not np.any(img_mask):
             if return_status:
-                return np.zeros(img.shape, dtype=bool), False
-            return np.zeros(img.shape, dtype=bool)
+                return np.zeros(img.shape, dtype=bool), threshold_val, False
+            return np.zeros(img.shape, dtype=bool), threshold_val
         
     if return_status:
         return img_mask, threshold_val, True
@@ -436,26 +453,32 @@ def load_synthetic_data(synthetic_image_path, config_channels):
     img_leafs = {}
     img_damages = {}
 
+    # Load the leaf w/ only noise
+    img_noise_path = os.path.join(synthetic_image_path, 'images/noise/synthetic_noise.tif')
+    img_noise = io.imread(img_noise_path)  # io.read required for img stack
+    img_leafs['noise'] = img_noise[:, :, config_channels['Leaf']]  # configured leaf channel
+    img_damages['noise'] = img_noise[:, :, config_channels['Damage']]  # configured damage channel
+
     # Load the leaf w/ eaten disk
-    img_disk_path = os.path.join(synthetic_image_path, 'synthetic_eatendisk.tif')
+    img_disk_path = os.path.join(synthetic_image_path, 'images/disk/synthetic_eatendisk.tif')
     img_disk = io.imread(img_disk_path)  # io.read required for img stack
     img_leafs['disk'] = img_disk[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['disk'] = img_disk[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load the leaf w/ eaten spots
-    img_spots_damage_path = os.path.join(synthetic_image_path, 'synthetic_eatenspots.tif')
+    img_spots_damage_path = os.path.join(synthetic_image_path, 'images/spots/synthetic_eatenspots.tif')
     img_spots_damage = io.imread(img_spots_damage_path)  # io.read required for img stack
     img_leafs['spots'] = img_spots_damage[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['spots'] = img_spots_damage[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load the image w/ eaten donut
-    img_donut_path = os.path.join(synthetic_image_path, 'synthetic_eatendonut.tif')
+    img_donut_path = os.path.join(synthetic_image_path, 'images/donut/synthetic_eatendonut.tif')
     img_donut = io.imread(img_donut_path)  # io.read required for img stack
     img_leafs['donut'] = img_donut[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['donut'] = img_donut[:, :, config_channels['Damage']]  # configured damage channel
 
     # Load dual-spot sample
-    img_dualspot_path = os.path.join(synthetic_image_path, 'synthetic_dualspot.tif')
+    img_dualspot_path = os.path.join(synthetic_image_path, 'images/dualspot/synthetic_dualspot.tif')
     img_dualspot = io.imread(img_dualspot_path)  # io.read required for img stack
     img_leafs['dualspot'] = img_dualspot[:, :, config_channels['Leaf']]  # configured leaf channel
     img_damages['dualspot'] = img_dualspot[:, :, config_channels['Damage']]  # configured damage channel
@@ -562,14 +585,18 @@ def run_synthetic_analysis(
     # Radial PDFs for synthetic masks
     radial_pdf = {}
     for key in img_leafs.keys():
-        _, _, _, radial_pdf[key], _ = get_radial_pdf(mask_damages[key], centroids[key], mask_leafs[key])
+        _, _, _, radial_pdf[key], _ = get_radial_pdf(img_damages[key], centroids[key], mask_leafs[key])
     # plot radial PDFs
     for key in img_leafs.keys():
+        # key = "noise"
+        
         fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))        
-        axs[0].imshow(mask_damages[key])
+        plt.suptitle("Condition " + key)
+        axs[0].imshow(img_damages[key])
         axs[1].plot(radial_pdf[key])
         axs[1].set_ylabel('Radial distribution function')
-        plt.tight_layout();
+        axs[1].set_xlabel('Distance in pixels')
+        plt.tight_layout()
         fig.savefig(os.path.join(outputdir, f'synthdata_radialpdf_{key}.pdf'), dpi=150)
         fig.savefig(os.path.join(outputdir, f'synthdata_radialpdf_{key}.png'), dpi=150)
         plt.close(fig)
@@ -632,6 +659,8 @@ def get_data_file_paths(condition_path_map):
 
     return data_file_paths
 
+# %%
+
 def run_complete_analysis(data_file_paths, config_channels,
                           leaf_threshold_method = 'bg10', leaf_roundness_threshold=0,
                           apply_smooth_leafmask=False,
@@ -647,6 +676,8 @@ def run_complete_analysis(data_file_paths, config_channels,
     array_data = {}
 
     for condition, file_list in data_file_paths.items():
+        # condition, file_list = list(data_file_paths.items())[0]
+        # condition, file_list = list(data_file_paths.items())[2]
         for file_path in file_list:
             # file_path = file_list[0]
             # file_path = file_list[7]
@@ -658,8 +689,13 @@ def run_complete_analysis(data_file_paths, config_channels,
             img = iio.imread(file_path) # uses tifffile backend for .tif
             # in case the image doesn't have 3 dimensions, expand to three
             img = np.atleast_3d(img)
+            # in case dimensions are in order (3, H, W), re-arrange to (H, W, 3)
+            img = arrange_dims(img)
+            # obtain images of interest
             img_leaf = img[:, :, config_channels['Leaf']]
             img_damage = img[:, :, config_channels['Damage']]
+                # plt.imshow(img_leaf)
+                # plt.imshow(img_damage)
 
             # Get leaf mask
             mask_leaf, threshold_val_leaf, this_leaf_found = \
@@ -743,7 +779,7 @@ def run_complete_analysis(data_file_paths, config_channels,
                     # run analyses
                     acf, acf_norm, acf_center, acf_valid = get_autocorrelation(img_damage, mask_user=mask_leaf)
                     _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center, mask_user=acf_valid)
-                    _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
+                    _, _, _, radial_pdf, _ = get_radial_pdf(img_damage, centroid, mask_leaf)
                     interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
                     # save info
                     row['threshold_val_dmg'] = threshold_val_dmg

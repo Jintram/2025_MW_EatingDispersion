@@ -169,24 +169,24 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 - "Disk" damage pattern:
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_img_disk.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_disk.png">
 
 - "Donut" damage pattern:
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_img_donut.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_donut.png">
 
 - "Dual spot" damage pattern:
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_img_dualspot.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_dualspot.png">
 
 - "Spots" damage pattern:
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_img_spots.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_spots.png">
 
 ### Metrics to quantify the damage pattern
 
 ##### Amount of damage
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_summary_damage.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_damage.png">
 
 (This was chosen to be ±equal, except for "dual spot".)
 
@@ -213,10 +213,10 @@ the horizontal center line of the 2d ACF, i.e.
 $`ACF(x, \frac{L_y}{2})`$).
 
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_acf_disk.png">
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_acf_donut.png">
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_acf_dualspot.png">
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_acf_spots.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_disk.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_donut.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_dualspot.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_spots.png">
 
 **Technical note:** Note that the curve is normalized by the variance over the whole leaf, so 
 such a secondary peak can exceed 1 (see "dual spot").
@@ -226,20 +226,23 @@ such a secondary peak can exceed 1 (see "dual spot").
 
 Average signal from the center of the leaf at distance X.
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_radialpdf_disk.png">
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_radialpdf_donut.png">
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_radialpdf_dualspot.png">
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_radialpdf_spots.png">
+The aim of this function is to characterize whether the location on the leaf
+(in terms of distance from the center) affects the likelyhood of damage.
+
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_disk.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_donut.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_dualspot.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_spots.png">
 
 ### Island count
 
 The amount of 
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_summary_islandcount.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_islandcount.png">
 
 ### Total inter-island distance
 
-<img src="Synthetic_data/OUTPUT_frozen/synthdata_summary_interisland.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_interisland.png">
 
 
 
