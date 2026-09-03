@@ -164,10 +164,7 @@ undamaged signal is, and thus what can be considered damaged area.
 
 To assess the nature of the damage patterns, multiple metrics are calculated.
 
-To understand what these metrics can do, a synthetic dataset was used:
-
-This dataset contained the following "leafs" with corresponding "damage
-patterns":
+To illustrate and get a feeling for what these metrics can do, a synthetic dataset was used; This dataset contained the following "leafs" with corresponding "damage patterns":
 
 - "Disk" damage pattern:
 
