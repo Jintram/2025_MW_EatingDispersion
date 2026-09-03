@@ -266,32 +266,98 @@ def get_radial_pdf(img, CoM, mask_user=None):
     return radial_count, radial_sum, radial_avg, radial_pdf, r_max        
 
 # now calculate the autocorrelation
-def get_autocorrelation(img, mask_user=None):
+def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
     '''
-    Calculate the autocorrelation of an image.
-    '''
+
+    FUNCTION IS CLEAR, CHECK:
+    - [ ] DESCRIPTION
+    - [ ] MATH
+        
+    NOTE THAT D BELOW IS A VECTOR, SO ACF IS STILL 2D, AS IT SHOULD BE
     
+    Calculate the (Pearson) autocorrelation function of an image.
+
+    For each displacement vector D, this returns the 
+    correlation between pixel pairs that are D apart:
+
+        acf(D)      = < (I(x)-mu) * (I(x+D)-mu) >     (autocovariance)
+        acf_norm(D) = acf(D) / var(I)                 (Pearson correlation)
+
+    Here, D and x are vectors, ie x = (x1, x2) and D = (dx, dy).
+    mu and var(I) taken over the masked (leaf) region only. Because the
+    mean is subtracted, acf_norm is negative where damage at one point predicts
+    *absence* of damage at that displacement. acf_norm is exactly 1 at zero
+    displacement by construction. Note that it can exceed 1 at larger
+    displacements: the normalization uses the variance over the whole leaf,
+    while the pixel pairs at a given displacement are a subset that can be more
+    strongly correlated than the leaf as a whole (e.g. for two damaged spots,
+    at a displacement equal to their separation, nearly all pairs are
+    spot-on-spot). Such peaks are signal, not artefacts.
+
+    Note that scipy's correlate() is the signal-processing cross-correlation
+    (a plain sliding sum of products), which is not mean-subtracted and not
+    variance-normalized; additional calculations are needed to determine the
+    Pearson correlation.
+
+    Pixels outside mask_user are excluded: the sum of
+    products is divided per displacement by the number of pixel pairs that
+    actually fall inside the mask (obtained from the autocorrelation of the
+    mask itself), pixels outside the maks are set to zero.
+
+    Displacements for which fewer than min_pairs_frac of the mask pixels
+    overlap are not estimated reliably; these are returned as zero and flagged
+    as False in acf_valid, such that they can be excluded downstream.
+
+    Returns acf (autocovariance), acf_norm (Pearson correlation), acf_center
+    (index of zero displacement) and acf_valid (boolean mask of displacements
+    with enough overlapping pixel pairs).
+    '''
+
     if mask_user is None:
         mask_user = np.ones(img.shape, dtype=bool)
-    
-    # apply mask
-    img_masked = img.copy()
-    img_masked[~mask_user] = 0
-    
-    # calculate autocorrelation    
-    acf = correlate(img_masked.astype(float), img_masked.astype(float), method='fft', mode='full')
-    
-    # normalize
-    acf_max = np.max(acf)
-    if acf_max == 0:
-        acf_norm = np.zeros_like(acf, dtype=float)
+
+    mask_user = mask_user.astype(bool)
+    img_float = img.astype(float)
+
+    # pre-calculate acf output shape
+    # the shape of the 'full' correlation output, and the index of zero displacement
+    acf_shape = tuple(2*np.array(img.shape) - 1)
+    acf_center = (np.array(acf_shape) - 1) // 2
+
+    # in case the mask is empty, there's nothing to correlate
+    if not np.any(mask_user):
+        acf = np.zeros(acf_shape, dtype=float)
+        return acf, acf.copy(), acf_center, np.zeros(acf_shape, dtype=bool)
+
+    # subtract the mean of the masked region, and set pixels outside the mask
+    # to zero *afterwards*, such that they don't contribute to the sums below
+    mean_masked = img_float[mask_user].mean()
+    img_zeromean = np.where(mask_user, img_float - mean_masked, 0.0)
+
+    # sum of products per displacement, and the number of pixel pairs that
+    # contributed to each of those sums
+    acf_sum = correlate(img_zeromean, img_zeromean, method='fft', mode='full')
+    acf_pairs = correlate(mask_user.astype(float), mask_user.astype(float), method='fft', mode='full')
+    acf_pairs = np.rint(acf_pairs) # these are counts; remove fft round-off
+
+    # only keep displacements where enough pixel pairs overlap
+    acf_valid = acf_pairs >= np.maximum(min_pairs_frac * np.sum(mask_user), 1)
+
+    # convert the sums to averages, giving the autocovariance
+    acf = np.zeros(acf_shape, dtype=float)
+    acf[acf_valid] = acf_sum[acf_valid] / acf_pairs[acf_valid]
+        # plt.imshow(acf)
+
+    # normalize by the variance, giving Pearson's correlation coefficient
+    var_masked = img_float[mask_user].var()
+    if var_masked == 0:
+        acf_norm = np.zeros(acf_shape, dtype=float)
     else:
-        acf_norm = acf / acf_max
-    
-    # also calculate the center coordinate of this acf
-    acf_center = np.round(np.array(acf.shape)/2).astype(int)
-    
-    return acf, acf_norm, acf_center
+        acf_norm = acf / var_masked
+        # plt.imshow(acf_norm)
+        # acf_norm[acf_center, acf_center]
+
+    return acf, acf_norm, acf_center, acf_valid
 
 
 # now a function that goes over each separate region, ignores the region itself,
@@ -409,14 +475,18 @@ def plot_img_n_acf(img_damage, acf_norm, acf_center, acf_norms_avgr, name):
     
     x_axis = np.arange(acf_norm.shape[1]) - acf_center[1]
     
+    axs[1].axhline(0, color='red', linewidth=0.5) # acf can now be negative
     axs[1].plot(x_axis, acf_norm[acf_center[0],:], color='grey', linestyle=':', label='1d')
     axs[1].plot(acf_norms_avgr, color='black', linestyle='-', label='Radial average')
     axs[1].set_title(f'Autocorrelation for {name}')
+    axs[1].set_xlabel('Distance (pixels)'); axs[1].set_ylabel('Correlation')
     # axs[1].legend()
     
     plt.tight_layout()
     
     return fig, axs
+
+# %%
 
 # now get masks for leaf and damage, plus centroid for all 
 def run_synthetic_analysis(
@@ -436,6 +506,7 @@ def run_synthetic_analysis(
     mask_damages = {}
     centroids = {}
     for key in img_leafs.keys():
+        # key = list(img_leafs)[0]
         
         mask_leafs[key], threshold_val_leaf = get_largest_mask(
             img_leafs[key], method='otsu'
@@ -476,8 +547,11 @@ def run_synthetic_analysis(
     acf_centers = {}
     acf_norms_avgrs = {}
     for key in img_leafs.keys():
-        acfs[key], acf_norms[key], acf_centers[key] = get_autocorrelation(img_damages[key], mask_user=mask_leafs[key])
-        _, _, acf_norms_avgrs[key], _, _ = get_radial_pdf(acf_norms[key], acf_centers[key])
+        # key = list(img_leafs)[0]
+        acfs[key], acf_norms[key], acf_centers[key], acf_valid = \
+            get_autocorrelation(img=img_damages[key], 
+                                mask_user=mask_leafs[key])
+        _, _, acf_norms_avgrs[key], _, _ = get_radial_pdf(acf_norms[key], acf_centers[key], mask_user=acf_valid)
     # Plot ACF curves
     for key in img_leafs.keys():
         fig, axs = plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
@@ -630,6 +704,7 @@ def run_complete_analysis(data_file_paths, config_channels,
             acf = None
             acf_norm = None
             acf_center = None
+            acf_valid = None
             acf_norm_avgr = None
             radial_pdf = None
 
@@ -666,8 +741,8 @@ def run_complete_analysis(data_file_paths, config_channels,
                     
                 else:
                     # run analyses
-                    acf, acf_norm, acf_center = get_autocorrelation(img_damage, mask_user=mask_leaf)
-                    _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center)
+                    acf, acf_norm, acf_center, acf_valid = get_autocorrelation(img_damage, mask_user=mask_leaf)
+                    _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center, mask_user=acf_valid)
                     _, _, _, radial_pdf, _ = get_radial_pdf(mask_damage, centroid, mask_leaf)
                     interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
                     # save info
@@ -698,6 +773,7 @@ def run_complete_analysis(data_file_paths, config_channels,
                 'acf': acf,
                 'acf_norm': acf_norm,
                 'acf_center': acf_center,
+                'acf_valid': acf_valid,
                 'acf_norm_avgr': acf_norm_avgr,
                 'radial_pdf': radial_pdf
             }
