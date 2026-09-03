@@ -15,6 +15,11 @@
         - Might be interesting to re-generate
         these plots for real data and inspect if we can see changes.
 
+- [X] Fixed something else; previously, the radial distribution was based
+    on the damage **mask**, now it is based on the damage **intensity**.
+    I think the latter is preferred, as maks is the same information but
+    more coarse grained.
+
 #### To do for later
 
 - [ ] The code can still be improved from a software engineering perspective, 
