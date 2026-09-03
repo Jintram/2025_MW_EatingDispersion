@@ -5,6 +5,8 @@
 - [ ] Working on readme, currently editing "Island count"
     - But also made some changes (see below), maybe quickly go over whole readme.md
     as well.
+    - Check if new synthetic plots (usual pipeline) can be used to improve
+    illustrations as well.
 - [ ] Assessing correct working of pipeline
 - [ ] Adding LLM acknowledgement
 
