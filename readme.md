@@ -210,7 +210,7 @@ Here, the thick black line is the
 radially integrated ACF, ie ACF(X). 
 The grey dotted line can be ignored (it is a technical check, 
 the horizontal center line of the 2d ACF, i.e.
-$ACF(x, L_y/2)$.
+$ACF(x, \frac{L_y}{2})$).
 
 
 <img src="Synthetic_data/OUTPUT_frozen/synthdata_acf_disk.png">
