@@ -267,16 +267,9 @@ def get_radial_pdf(img, CoM, mask_user=None):
 
 # now calculate the autocorrelation
 def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
-    '''
-
-    FUNCTION IS CLEAR, CHECK:
-    - [ ] DESCRIPTION
-    - [ ] MATH
-        
-    NOTE THAT D BELOW IS A VECTOR, SO ACF IS STILL 2D, AS IT SHOULD BE
-    
+    '''    
     Calculate the (Pearson) autocorrelation function of an image.
-
+    
     For each displacement vector D, this returns the 
     correlation between pixel pairs that are D apart:
 
@@ -297,7 +290,7 @@ def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
     Note that scipy's correlate() is the signal-processing cross-correlation
     (a plain sliding sum of products), which is not mean-subtracted and not
     variance-normalized; additional calculations are needed to determine the
-    Pearson correlation.
+    Pearson correlation. 
 
     Pixels outside mask_user are excluded: the sum of
     products is divided per displacement by the number of pixel pairs that
@@ -311,6 +304,9 @@ def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
     Returns acf (autocovariance), acf_norm (Pearson correlation), acf_center
     (index of zero displacement) and acf_valid (boolean mask of displacements
     with enough overlapping pixel pairs).
+    
+    This function and its documentation was written by Claude, and 
+    slightly edited plus thoroughly vetted by the authors.
     '''
 
     if mask_user is None:
@@ -338,6 +334,7 @@ def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
     # contributed to each of those sums
     acf_sum = correlate(img_zeromean, img_zeromean, method='fft', mode='full')
     acf_pairs = correlate(mask_user.astype(float), mask_user.astype(float), method='fft', mode='full')
+        # correlate isn't normalized --> calculates pairs for mask
     acf_pairs = np.rint(acf_pairs) # these are counts; remove fft round-off
 
     # only keep displacements where enough pixel pairs overlap
@@ -346,6 +343,7 @@ def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
     # convert the sums to averages, giving the autocovariance
     acf = np.zeros(acf_shape, dtype=float)
     acf[acf_valid] = acf_sum[acf_valid] / acf_pairs[acf_valid]
+        # plt.imshow(acf_valid)
         # plt.imshow(acf)
 
     # normalize by the variance, giving Pearson's correlation coefficient
@@ -785,7 +783,7 @@ def run_complete_analysis(data_file_paths, config_channels,
 
 # Generate a plot of the acf_norms_avgrs, all in the same panel, and 
 # annotated per condition
-def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None):
+def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the_xlimit=200):
     """
     Plot the average radial autocorrelation for each condition.
     """
@@ -842,7 +840,7 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None):
     plt.savefig(outputdir+'/plots/Radial_acf.pdf', dpi=150)
     plt.savefig(outputdir+'/plots/Radial_acf.png', dpi=150)
     
-    axs[0].set_xlim([0,200]); axs[1].set_xlim([0,200])
+    axs[0].set_xlim([0,the_xlimit]); axs[1].set_xlim([0,the_xlimit])
     axs[1].legend()
     
     plt.tight_layout()

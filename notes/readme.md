@@ -1,10 +1,19 @@
 
 
-# To do (2/9/2026)
+# To do / done (2/9/2026)
 
 - [ ] Working on readme, currently editing "Quantifying damage patterns"
 - [ ] Assessing correct working of pipeline
 - [ ] Adding LLM acknowledgement
+
+- [X] Bug fix regarding the acf. I made a mistake and didn't realize
+    the scipy correlate function calculates the raw 2nd moment, 
+    instead of the pearson correlation. The function `get_autocorrelation()`
+    now properly calculates the Pearson correlation. This also 
+    changes the sensitivity of the acf plots; we can now actually see
+    differences in the example data. 
+        - Might be interesting to re-generate
+        these plots for real data and inspect if we can see changes.
 
 #### To do for later
 
