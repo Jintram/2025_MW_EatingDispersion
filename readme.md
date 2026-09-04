@@ -153,6 +153,17 @@ pixel intensities are shown below the images. For "leaf" and "damage",
 the blue line indicates the extrapolated background intensity, and 
 the red line the threshold that was used for the mask.*
 
+##### Testing the critical assumptions
+
+If you took all images under similar acquisition settings and conditions, 
+the background damage (NIR) levels should be equal over all conditions.
+To assess this, you can check out the plot with the damage levels;
+
+<img src=Example_data/OUTPUT-3channels_frozen/plots/background_dmg.png width=50%>
+
+There should not be trends in this plot, unless you can explain the trend
+and know this won't violate above assumptions.
+
 ##### Potential improvements
 
 The distribution of undamaged leaf intensity could be estimated in more
@@ -189,6 +200,10 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_damage.png">
 
 (This was chosen to be ±equal, except for "dual spot".)
+
+Also the percentage of damage is calculated;
+
+<img src="Synthetic_data/OUTPUT2_frozen/plots/damaged_percentage.png" width=50%>
 
 ### Autocorrelation function (ACF)
 
