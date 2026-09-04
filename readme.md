@@ -201,10 +201,6 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 (This was chosen to be ±equal, except for "dual spot".)
 
-Also the percentage of damage is calculated;
-
-<img src="Synthetic_data/OUTPUT2_frozen/plots/damaged_percentage.png" width=50%>
-
 ### Autocorrelation function (ACF)
 
 Average correlation between the damage signal in two pixels that are a distance X apart.
@@ -393,6 +389,23 @@ lsa.plot_damaged_area(data_all, OUTPUTDIR)
 ```
 <img src="Example_data/OUTPUT-3channels_frozen/plots/damaged_area_px.png" width=50%>
 
+```python
+lsa.plot_damaged_percentage(df_samples, OUTPUTDIR)
+```
+
+<img src="Example_data/OUTPUT-3channels_frozen/plots/damaged_percentage.png" width=50%>
+
+The following code can be used to plot the threshold that 
+was used for the something to be considered damaged leaf (`"threshold_val_dmg"`),
+this should not show a dependency on the condition (see also above).
+
+```python
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
+                              y_label = "Intensity threshold for damage", 
+                              title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.")
+```
+
+<img src="Example_data/OUTPUT-3channels_frozen/plots/background_dmg.png" width=50%>
 
 Set `OUTPUTDIR` to a directory where you want the plots to be exported.
 
