@@ -603,9 +603,16 @@ def run_synthetic_analysis(
 
     # Summarize island spacing
     total_interisland_distances = {}
+    mean_interisland_distances = {}
     for key in img_leafs.keys():
         interisland_distances = get_inter_island_distances(mask_leafs[key], mask_damages[key])
+        island_count = get_island_counts(mask_leafs[key], mask_damages[key])
         total_interisland_distances[key] = np.sum(interisland_distances)
+        # for a single island there is no distance to another island,
+        # which we count as a distance of 0
+        mean_interisland_distances[key] = (
+            total_interisland_distances[key] / island_count if island_count >= 2 else 0.0
+        )
     # plot island spacing
     fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
     axs.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
@@ -614,6 +621,14 @@ def run_synthetic_analysis(
     plt.tight_layout()
     fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland.pdf'), dpi=150)
     fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland.png'), dpi=150)
+    # plot the average island spacing
+    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
+    axs.bar(list(img_leafs.keys()), list(mean_interisland_distances.values()))
+    axs.set_xticklabels(list(img_leafs.keys()), rotation=45, ha="right")
+    axs.set_ylabel("Mean inter-island distance")
+    plt.tight_layout()
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland_mean.pdf'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland_mean.png'), dpi=150)
 
     # Summarize island counts
     island_counts = {}
@@ -723,7 +738,8 @@ def run_complete_analysis(data_file_paths, config_channels,
                 'analysis_status': 'no_leaf_mask',
                 'leaf_roundness': leaf_roundness,
                 'total_interisland_distances': np.nan,
-                'island_counts': np.nan,                
+                'mean_interisland_distance': np.nan,
+                'island_counts': np.nan,
                 'total_leaf_size_px': np.nan, 
                 'total_leaf_size_cm2': np.nan,
                 'total_damage_area_px': np.nan,
@@ -768,6 +784,7 @@ def run_complete_analysis(data_file_paths, config_channels,
                 if not this_damage_found:
                     row['analysis_status'] = 'no_damage_mask'
                     row['total_interisland_distances'] = 0.0
+                    row['mean_interisland_distance'] = 0.0
                     row['island_counts'] = 0
                     row['total_damage_area_px'] = 0.0
                     row['total_damage_area_cm2'] = (
@@ -786,6 +803,12 @@ def run_complete_analysis(data_file_paths, config_channels,
                     row['analysis_status'] = 'ok'
                     row['total_interisland_distances'] = np.sum(interisland_distances)
                     row['island_counts'] = get_island_counts(mask_leaf, mask_damage)
+                    # for a single island there is no distance to another island,
+                    # which we count as a distance of 0
+                    row['mean_interisland_distance'] = (
+                        row['total_interisland_distances'] / row['island_counts']
+                        if row['island_counts'] >= 2 else 0.0
+                    )
                     row['total_damage_area_px'] = float(np.sum(mask_damage))
                     row['total_damage_area_cm2'] = (
                         np.nan if pixel_to_cm2_factor is None
@@ -899,7 +922,10 @@ def plot_interisland_distances(df_samples, outputdir, remove_zerocnt=True, mycol
     os.makedirs(outputdir+'/plots/', exist_ok=True)
 
     # Drop rows with missing metrics; optionally drop zero-island samples.
-    df_plot = df_samples[['condition', 'total_interisland_distances', 'island_counts']].dropna(
+    # (Note mean_interisland_distance is deliberately not part of the dropna
+    #  subset, such that the other two panels aren't affected by it.)
+    df_plot = df_samples[['condition', 'total_interisland_distances',
+                          'mean_interisland_distance', 'island_counts']].dropna(
         subset=['total_interisland_distances', 'island_counts']
     )
     if remove_zerocnt:
@@ -909,36 +935,50 @@ def plot_interisland_distances(df_samples, outputdir, remove_zerocnt=True, mycol
         print('WARNING: No valid inter-island values available for plotting.')
         return
 
-    # Plot 
-    fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 10*cm_to_inch))
-    
+    # Plot
+    fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 10*cm_to_inch))
+
     # plot total inter-island distances using strippplot / seaborn
-    sns.barplot(x='condition', y='total_interisland_distances', 
+    sns.barplot(x='condition', y='total_interisland_distances',
                 data=df_plot, ax=axs[0], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='total_interisland_distances', 
+    sns.violinplot(x='condition', y='total_interisland_distances',
                    data=df_plot, ax=axs[0], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='total_interisland_distances', 
+    sns.stripplot(x='condition', y='total_interisland_distances',
                   data=df_plot, ax=axs[0], color='black')
-    
+
     axs[0].set_title(f'Total Closest-Island\nDistances')
     axs[0].set_ylabel('Distance (pixels)')
     ymax0 = np.nanmax(df_plot['total_interisland_distances'])
     axs[0].set_ylim([0, (ymax0 if ymax0 > 0 else 1) * 1.02])
     # rotate axis 90 deg
     axs[0].tick_params(axis='x', rotation=45)
-    
-    # now also plot the island counts themselves
-    sns.barplot(x='condition', y='island_counts', 
+
+    # now the same, but averaged over the number of islands
+    sns.barplot(x='condition', y='mean_interisland_distance',
                 data=df_plot, ax=axs[1], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='island_counts',
-                     data=df_plot, ax=axs[1], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='island_counts',
+    sns.violinplot(x='condition', y='mean_interisland_distance',
+                   data=df_plot, ax=axs[1], color='black', alpha=0.2)
+    sns.stripplot(x='condition', y='mean_interisland_distance',
                   data=df_plot, ax=axs[1], color='black')
-    ymax1 = np.nanmax(df_plot['island_counts'])
+
+    axs[1].set_title(f'Mean Closest-Island\nDistance')
+    axs[1].set_ylabel('Distance (pixels)')
+    ymax1 = np.nanmax(df_plot['mean_interisland_distance'])
     axs[1].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
     axs[1].tick_params(axis='x', rotation=45)
-    axs[1].set_title(f'Total Islands')
-    
+
+    # now also plot the island counts themselves
+    sns.barplot(x='condition', y='island_counts',
+                data=df_plot, ax=axs[2], palette=mycolors, hue='condition')
+    sns.violinplot(x='condition', y='island_counts',
+                     data=df_plot, ax=axs[2], color='black', alpha=0.2)
+    sns.stripplot(x='condition', y='island_counts',
+                  data=df_plot, ax=axs[2], color='black')
+    ymax2 = np.nanmax(df_plot['island_counts'])
+    axs[2].set_ylim([0, (ymax2 if ymax2 > 0 else 1) * 1.02])
+    axs[2].tick_params(axis='x', rotation=45)
+    axs[2].set_title(f'Total Islands')
+
     plt.tight_layout()
     
     # save
