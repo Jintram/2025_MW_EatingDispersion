@@ -266,19 +266,23 @@ This assesses the spatial features of the feeding behavior.
 
 ### Total inter-island distance
 
-To further investigate feeding behavior, we look at the total minimum distance
-that would be required to connect all islands.
+To further investigate spatial features of feeding behavior, 
+we look at the sum of nearest-island distances $D$.
 
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_interisland.png">
 
 Mathematically, this is defined as 
 
+
 ```math
-D = \sum_{k=1}^{K} \; \min \left\{ \; \|\vec{x}-\vec{y}\| \; : \; \vec{x} \in S_k, \; \vec{y} \in S_j, \; j \neq k \; \right\}
+D = \sum_{n} \min_{m \neq n} d_{nm}
 ```
 
-with $`S_1 \ldots S_K`$ the islands, such that each term is the (edge-to-edge)
-distance from island $`k`$ to the island nearest to it. $`D=0`$ when $`K<2`$.
+which is the sum over the smallest edge-to-edge distance $d$ between island n and all other
+islands m (with $m \neq n$ excluding self-distance).
+
+Additionally, we look at the average nearest-island distance, $`\bar{D} = D / N`$, 
+with $`N`$ the number of islands. 
 
 ## Notes on running the script
 
