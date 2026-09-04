@@ -366,12 +366,12 @@ lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
 lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/nearest_island_distances.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/nearest_island_distances.png" width=100%>
 
 ```{python}
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs.png" width=100%>
 
 ```{python}
 lsa.plot_damaged_area(data_all, OUTPUTDIR)
