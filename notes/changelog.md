@@ -2,6 +2,8 @@
 
 ## Changelog
 
+*Large parts of this file are written by Claude, and not human-checked.*
+
 - Current version
     - **Bug fix, changes results:** the damage mask is now restricted to the
     leaf mask (`get_mask` applies `mask_user` to its output). Previously,
