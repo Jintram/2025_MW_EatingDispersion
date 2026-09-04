@@ -233,14 +233,13 @@ such a secondary peak can exceed 1 (see "dual spot").
 with $`I`$ the damage channel, $`M`$ the leaf mask holding $`N`$ pixels,
 $`\mu`$ and $`\sigma^2`$ the mean and variance of $`I`$ within $`M`$, and
 $`n(\vec{X})`$ the number of pixel pairs separated by $`\vec{X}`$ that have
-both pixels inside $`M`$. Dividing by $`n(\vec{X})`$ corrects for the leaf
-covering only part of the image, such that the curve reflects the damage
-pattern rather than the shape of the leaf.
+both pixels inside $`M`$. Dividing by $`n(\vec{X})`$ normalizes by the 
+number of pairs considered.
 Displacements with too few contributing pairs ($`n(\vec{X}) < fN`$, with
-$`f=0.05`$) are considered unreliable and discarded.
+$`f=0.05`$ as default value) are considered unreliable and discarded.
 $`\mathrm{ACF}(d)`$ is then the average of $`\mathrm{ACF}(\vec{X})`$ over all
 retained $`\vec{X}`$ of length $`\lfloor|\vec{X}|\rfloor = d`$.
-See [notes/ACF.md](notes/ACF.md) for a more extensive description.
+See also [notes/ACF.md](notes/ACF.md).
 
 
 ### Radial distribution
