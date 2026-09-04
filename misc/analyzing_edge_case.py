@@ -40,10 +40,10 @@ data_all = lsa.run_complete_analysis(
     pixel_to_cm2_factor=pixel_to_cm2_factor
 )
 
-# 3) Generate summary plots for radial ACF, inter-island distances, and radial PDFs
+# 3) Generate summary plots for radial ACF, nearest-island distances, and radial PDFs
 lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
-lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
-lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
+lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
+lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
 lsa.plot_damaged_area(data_all, OUTPUTDIR)
 

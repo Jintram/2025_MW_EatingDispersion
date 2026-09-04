@@ -264,12 +264,12 @@ This assesses the spatial features of the feeding behavior.
 
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_islandcount.png">
 
-### Total inter-island distance
+### Total nearest-island distance
 
 To further investigate spatial features of feeding behavior, 
 we look at the sum of nearest-island distances $D$.
 
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_interisland.png">
+<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_nearestisland.png">
 
 Mathematically, this is defined as 
 
@@ -363,11 +363,11 @@ lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
 <img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_lims.png" width=50%>
 
 ```{python}
-lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
-lsa.plot_interisland_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
+lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
+lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/interisland_distances_.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/nearest_island_distances_.png" width=50%>
 
 ```{python}
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)

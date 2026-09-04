@@ -34,9 +34,25 @@ import warnings
 
 cm_to_inch = 1/2.54
 # set plotting params
+# Note that font.size only sets the base size; titles and labels default to
+# relative sizes ('large' = 1.2x, etc.), so those need to be set explicitly too.
+FONT_SIZE_KEYS = (
+    'font.size', 'axes.titlesize', 'axes.labelsize',
+    'xtick.labelsize', 'ytick.labelsize',
+    'legend.fontsize', 'legend.title_fontsize', 'figure.titlesize'
+)
+
+def font_size_rc(size):
+    """ rcParams dict that puts every text element at `size` pt. """
+    return {key: size for key in FONT_SIZE_KEYS}
+
 plt.rcParams.update({
     'font.family': 'Arial',
-    'font.size': 8
+    # Embed text as TrueType rather than Type 3, so it stays editable in
+    # vector editors like Illustrator.
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+    **font_size_rc(8)
 })
 
 #%% ################################################################################
@@ -377,9 +393,9 @@ def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
 
 # now a function that goes over each separate region, ignores the region itself,
 # but calculates the distances to nearest neighbors pixels from the other regions
-def get_inter_island_distances(mask_leaf, mask_damage):
+def get_nearest_island_distances(mask_leaf, mask_damage):
     '''
-    Calculate inter-island distances.
+    Calculate nearest-island distances.
     '''
     # mask_damage = mask_damages['disk']; mask_leaf=mask_leafs['disk']
     
@@ -602,33 +618,33 @@ def run_synthetic_analysis(
         plt.close(fig)
 
     # Summarize island spacing
-    total_interisland_distances = {}
-    mean_interisland_distances = {}
+    total_nearest_island_distances = {}
+    mean_nearest_island_distances = {}
     for key in img_leafs.keys():
-        interisland_distances = get_inter_island_distances(mask_leafs[key], mask_damages[key])
+        nearest_island_distances = get_nearest_island_distances(mask_leafs[key], mask_damages[key])
         island_count = get_island_counts(mask_leafs[key], mask_damages[key])
-        total_interisland_distances[key] = np.sum(interisland_distances)
+        total_nearest_island_distances[key] = np.sum(nearest_island_distances)
         # for a single island there is no distance to another island,
         # which we count as a distance of 0
-        mean_interisland_distances[key] = (
-            total_interisland_distances[key] / island_count if island_count >= 2 else 0.0
+        mean_nearest_island_distances[key] = (
+            total_nearest_island_distances[key] / island_count if island_count >= 2 else 0.0
         )
     # plot island spacing
     fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
-    axs.bar(list(img_leafs.keys()), list(total_interisland_distances.values()))
+    axs.bar(list(img_leafs.keys()), list(total_nearest_island_distances.values()))
     axs.set_xticklabels(list(img_leafs.keys()), rotation=45, ha="right")
-    axs.set_ylabel("Sum inter-island distances")
+    axs.set_ylabel("Sum nearest-island distances")
     plt.tight_layout()
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland.pdf'), dpi=150)
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland.png'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland.pdf'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland.png'), dpi=150)
     # plot the average island spacing
     fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
-    axs.bar(list(img_leafs.keys()), list(mean_interisland_distances.values()))
+    axs.bar(list(img_leafs.keys()), list(mean_nearest_island_distances.values()))
     axs.set_xticklabels(list(img_leafs.keys()), rotation=45, ha="right")
-    axs.set_ylabel("Mean inter-island distance")
+    axs.set_ylabel("Mean nearest-island distance")
     plt.tight_layout()
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland_mean.pdf'), dpi=150)
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_interisland_mean.png'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland_mean.pdf'), dpi=150)
+    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland_mean.png'), dpi=150)
 
     # Summarize island counts
     island_counts = {}
@@ -737,8 +753,8 @@ def run_complete_analysis(data_file_paths, config_channels,
                 'damage_found': False,
                 'analysis_status': 'no_leaf_mask',
                 'leaf_roundness': leaf_roundness,
-                'total_interisland_distances': np.nan,
-                'mean_interisland_distance': np.nan,
+                'total_nearest_island_distances': np.nan,
+                'mean_nearest_island_distance': np.nan,
                 'island_counts': np.nan,
                 'total_leaf_size_px': np.nan, 
                 'total_leaf_size_cm2': np.nan,
@@ -783,8 +799,8 @@ def run_complete_analysis(data_file_paths, config_channels,
                 # If no damage is detected inside leaf, keep valid zeros for damage metrics.
                 if not this_damage_found:
                     row['analysis_status'] = 'no_damage_mask'
-                    row['total_interisland_distances'] = 0.0
-                    row['mean_interisland_distance'] = 0.0
+                    row['total_nearest_island_distances'] = 0.0
+                    row['mean_nearest_island_distance'] = 0.0
                     row['island_counts'] = 0
                     row['total_damage_area_px'] = 0.0
                     row['total_damage_area_cm2'] = (
@@ -797,16 +813,16 @@ def run_complete_analysis(data_file_paths, config_channels,
                     acf, acf_norm, acf_center, acf_valid = get_autocorrelation(img_damage, mask_user=mask_leaf)
                     _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center, mask_user=acf_valid)
                     _, _, _, radial_pdf, _ = get_radial_pdf(img_damage, centroid, mask_leaf)
-                    interisland_distances = get_inter_island_distances(mask_leaf, mask_damage)
+                    nearest_island_distances = get_nearest_island_distances(mask_leaf, mask_damage)
                     # save info
                     row['threshold_val_dmg'] = threshold_val_dmg
                     row['analysis_status'] = 'ok'
-                    row['total_interisland_distances'] = np.sum(interisland_distances)
+                    row['total_nearest_island_distances'] = np.sum(nearest_island_distances)
                     row['island_counts'] = get_island_counts(mask_leaf, mask_damage)
                     # for a single island there is no distance to another island,
                     # which we count as a distance of 0
-                    row['mean_interisland_distance'] = (
-                        row['total_interisland_distances'] / row['island_counts']
+                    row['mean_nearest_island_distance'] = (
+                        row['total_nearest_island_distances'] / row['island_counts']
                         if row['island_counts'] >= 2 else 0.0
                     )
                     row['total_damage_area_px'] = float(np.sum(mask_damage))
@@ -910,10 +926,10 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
         
     plt.show(); plt.close()
     
-# Now the same for the inter-island distance metric
-def plot_interisland_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None):
+# Now the same for the nearest-island distance metric
+def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None):
     """
-    Plot the total inter-island distances for each condition.
+    Plot the total nearest-island distances for each condition.
     """    
     
     if mycolors is None:
@@ -922,48 +938,48 @@ def plot_interisland_distances(df_samples, outputdir, remove_zerocnt=True, mycol
     os.makedirs(outputdir+'/plots/', exist_ok=True)
 
     # Drop rows with missing metrics; optionally drop zero-island samples.
-    # (Note mean_interisland_distance is deliberately not part of the dropna
+    # (Note mean_nearest_island_distance is deliberately not part of the dropna
     #  subset, such that the other two panels aren't affected by it.)
-    df_plot = df_samples[['condition', 'total_interisland_distances',
-                          'mean_interisland_distance', 'island_counts']].dropna(
-        subset=['total_interisland_distances', 'island_counts']
+    df_plot = df_samples[['condition', 'total_nearest_island_distances',
+                          'mean_nearest_island_distance', 'island_counts']].dropna(
+        subset=['total_nearest_island_distances', 'island_counts']
     )
     if remove_zerocnt:
         df_plot = df_plot[df_plot['island_counts'] > 0]
 
     if df_plot.empty:
-        print('WARNING: No valid inter-island values available for plotting.')
+        print('WARNING: No valid nearest-island values available for plotting.')
         return
 
     # Plot
-    fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 10*cm_to_inch))
+    fig, axs = plt.subplots(1, 3, figsize=(17.2*cm_to_inch, 6*cm_to_inch))
 
-    # plot total inter-island distances using strippplot / seaborn
-    sns.barplot(x='condition', y='total_interisland_distances',
+    # plot total nearest-island distances using strippplot / seaborn
+    sns.barplot(x='condition', y='total_nearest_island_distances',
                 data=df_plot, ax=axs[0], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='total_interisland_distances',
+    sns.violinplot(x='condition', y='total_nearest_island_distances',
                    data=df_plot, ax=axs[0], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='total_interisland_distances',
+    sns.stripplot(x='condition', y='total_nearest_island_distances',
                   data=df_plot, ax=axs[0], color='black')
 
     axs[0].set_title(f'Total Closest-Island\nDistances')
     axs[0].set_ylabel('Distance (pixels)')
-    ymax0 = np.nanmax(df_plot['total_interisland_distances'])
+    ymax0 = np.nanmax(df_plot['total_nearest_island_distances'])
     axs[0].set_ylim([0, (ymax0 if ymax0 > 0 else 1) * 1.02])
     # rotate axis 90 deg
     axs[0].tick_params(axis='x', rotation=45)
 
     # now the same, but averaged over the number of islands
-    sns.barplot(x='condition', y='mean_interisland_distance',
+    sns.barplot(x='condition', y='mean_nearest_island_distance',
                 data=df_plot, ax=axs[1], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='mean_interisland_distance',
+    sns.violinplot(x='condition', y='mean_nearest_island_distance',
                    data=df_plot, ax=axs[1], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='mean_interisland_distance',
+    sns.stripplot(x='condition', y='mean_nearest_island_distance',
                   data=df_plot, ax=axs[1], color='black')
 
     axs[1].set_title(f'Mean Closest-Island\nDistance')
     axs[1].set_ylabel('Distance (pixels)')
-    ymax1 = np.nanmax(df_plot['mean_interisland_distance'])
+    ymax1 = np.nanmax(df_plot['mean_nearest_island_distance'])
     axs[1].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
     axs[1].tick_params(axis='x', rotation=45)
 
@@ -983,8 +999,8 @@ def plot_interisland_distances(df_samples, outputdir, remove_zerocnt=True, mycol
     
     # save
     nozero_string = '_nozero' if remove_zerocnt else ''
-    fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.pdf', dpi=150)
-    fig.savefig(outputdir+f'/plots/interisland_distances_{nozero_string}.png', dpi=150)
+    fig.savefig(outputdir+f'/plots/nearest_island_distances_{nozero_string}.pdf', dpi=150)
+    fig.savefig(outputdir+f'/plots/nearest_island_distances_{nozero_string}.png', dpi=150)
     plt.show(); plt.close()
     
 def plot_damaged_area(df_samples, outputdir, mycolors=None):
@@ -1222,93 +1238,94 @@ def plot_and_save_images(
     background_leaf = row.get('background_leaf', np.nan)
     background_dmg = row.get('background_dmg', np.nan)
 
-    zm = get_zoombox(mask_leaf, margin=10)
-    fig, axs = plt.subplots(2, 3, figsize=(17.2*cm_to_inch, 9*cm_to_inch))
-    # set global font size to 8 pts
-    plt.rcParams.update({'font.size': 6})
+    # These per-image overview panels are dense (2x3 with histograms), so use a
+    # smaller font than the global default. Scoped, to not leak into other plots.
+    with plt.rc_context(font_size_rc(6)):
+        zm = get_zoombox(mask_leaf, margin=10)
+        fig, axs = plt.subplots(2, 3, figsize=(17.2*cm_to_inch, 9*cm_to_inch))
     
-    # Plot the reference channel
-    if img0 is not None and config_channels.get('Reference') is not None:
-        axs[0, 0].imshow(img0[:, :, config_channels.get('Reference')][zm[0]:zm[1],zm[2]:zm[3]])
-        axs[0, 0].set_title(f'Reference\nch={config_channels.get("Reference")}')
-        ref_data = img0[:, :, config_channels.get('Reference')][mask_leaf].ravel()
-        axs[1, 0].hist(ref_data, bins=64, color='gray')
-        axs[1, 0].set_xlabel('Intensity')
-        axs[1, 0].set_ylabel('Count')
-    else:
-        axs[0, 0].axis('off')
-        axs[1, 0].axis('off')
+        # Plot the reference channel
+        if img0 is not None and config_channels.get('Reference') is not None:
+            axs[0, 0].imshow(img0[:, :, config_channels.get('Reference')][zm[0]:zm[1],zm[2]:zm[3]])
+            axs[0, 0].set_title(f'Reference\nch={config_channels.get("Reference")}')
+            ref_data = img0[:, :, config_channels.get('Reference')][mask_leaf].ravel()
+            axs[1, 0].hist(ref_data, bins=64, color='gray')
+            axs[1, 0].set_xlabel('Intensity')
+            axs[1, 0].set_ylabel('Count')
+        else:
+            axs[0, 0].axis('off')
+            axs[1, 0].axis('off')
     
-    if leaf_roundness is None or (isinstance(leaf_roundness, float) and np.isnan(leaf_roundness)):
-        leaf_roundness_text = 'roundness=NA'
-    else:
-        leaf_roundness_text = f'roundness={leaf_roundness:.3f}'
+        if leaf_roundness is None or (isinstance(leaf_roundness, float) and np.isnan(leaf_roundness)):
+            leaf_roundness_text = 'roundness=NA'
+        else:
+            leaf_roundness_text = f'roundness={leaf_roundness:.3f}'
 
-    # Plot the leaf image
-    axs[0, 1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[0, 1].set_title(f'Leaf\nch={config_channels['Leaf']}\n{leaf_roundness_text}')
-    axs[0, 1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
-    if centroid_leaf is not None:
-        axs[0, 1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
+        # Plot the leaf image
+        axs[0, 1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]])
+        axs[0, 1].set_title(f'Leaf\nch={config_channels['Leaf']}\n{leaf_roundness_text}')
+        axs[0, 1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+        if centroid_leaf is not None:
+            axs[0, 1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
 
-    axs[1, 1].hist(img_leaf.ravel(), bins=64, color='gray')
-    axs[1, 1].set_yscale('log')
-    if threshold_val_leaf is not None and not (isinstance(threshold_val_leaf, float) and np.isnan(threshold_val_leaf)):
-        axs[1, 1].axvline(threshold_val_leaf, color='red', linestyle='--', linewidth=1,
-                          label=f'thr={threshold_val_leaf:.3g}')
-    if background_leaf is not None and not (isinstance(background_leaf, float) and np.isnan(background_leaf)):
-        axs[1, 1].axvline(background_leaf, color='blue', linestyle=':', linewidth=1,
-                          label=f'bg={background_leaf:.3g}')
-    if axs[1, 1].get_legend_handles_labels()[0]:
-        axs[1, 1].legend(loc='upper right')
-    axs[1, 1].set_xlabel('Intensity')
-    axs[1, 1].set_ylabel('Count')
+        axs[1, 1].hist(img_leaf.ravel(), bins=64, color='gray')
+        axs[1, 1].set_yscale('log')
+        if threshold_val_leaf is not None and not (isinstance(threshold_val_leaf, float) and np.isnan(threshold_val_leaf)):
+            axs[1, 1].axvline(threshold_val_leaf, color='red', linestyle='--', linewidth=1,
+                              label=f'thr={threshold_val_leaf:.3g}')
+        if background_leaf is not None and not (isinstance(background_leaf, float) and np.isnan(background_leaf)):
+            axs[1, 1].axvline(background_leaf, color='blue', linestyle=':', linewidth=1,
+                              label=f'bg={background_leaf:.3g}')
+        if axs[1, 1].get_legend_handles_labels()[0]:
+            axs[1, 1].legend(loc='upper right')
+        axs[1, 1].set_xlabel('Intensity')
+        axs[1, 1].set_ylabel('Count')
             
-    if total_damage_area_px is None or (isinstance(total_damage_area_px, float) and np.isnan(total_damage_area_px)):
-        damage_area_text = 'area=NA'
-    elif total_damage_area_cm2 is None or (isinstance(total_damage_area_cm2, float) and np.isnan(total_damage_area_cm2)):
-        damage_area_text = f'area={total_damage_area_px:.0f} px'
-    else:
-        damage_area_text = f'area={total_damage_area_px:.0f} px ({total_damage_area_cm2:.4f} cm²)'
+        if total_damage_area_px is None or (isinstance(total_damage_area_px, float) and np.isnan(total_damage_area_px)):
+            damage_area_text = 'area=NA'
+        elif total_damage_area_cm2 is None or (isinstance(total_damage_area_cm2, float) and np.isnan(total_damage_area_cm2)):
+            damage_area_text = f'area={total_damage_area_px:.0f} px'
+        else:
+            damage_area_text = f'area={total_damage_area_px:.0f} px ({total_damage_area_cm2:.4f} cm²)'
 
-    # Plot the damage image
-    axs[0, 2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-    axs[0, 2].set_title(f'Damage\nch={config_channels['Damage']}\n{damage_area_text}')
-    axs[0, 2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
+        # Plot the damage image
+        axs[0, 2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
+        axs[0, 2].set_title(f'Damage\nch={config_channels['Damage']}\n{damage_area_text}')
+        axs[0, 2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
 
-    # Damage histogram: restrict to pixels inside the leaf so threshold is meaningful.
-    if mask_leaf is not None and np.any(mask_leaf):
-        dmg_data = img_dmg[mask_leaf].ravel()
-        axs[1, 2].set_xlabel('Intensity (within leaf)')
-    else:
-        dmg_data = img_dmg.ravel()
-        axs[1, 2].set_xlabel('Intensity (NO LEAF MASK FOUND)')
-    axs[1, 2].hist(dmg_data, bins=64, color='gray')
-    if threshold_val_dmg is not None and not (isinstance(threshold_val_dmg, float) and np.isnan(threshold_val_dmg)):
-        axs[1, 2].axvline(threshold_val_dmg, color='red', linestyle='--', linewidth=1,
-                          label=f'thr={threshold_val_dmg:.3g}')
-    if background_dmg is not None and not (isinstance(background_dmg, float) and np.isnan(background_dmg)):
-        axs[1, 2].axvline(background_dmg, color='blue', linestyle=':', linewidth=1,
-                          label=f'bg={background_dmg:.3g}')
-    if axs[1, 2].get_legend_handles_labels()[0]:
-        axs[1, 2].legend(loc='upper right')
+        # Damage histogram: restrict to pixels inside the leaf so threshold is meaningful.
+        if mask_leaf is not None and np.any(mask_leaf):
+            dmg_data = img_dmg[mask_leaf].ravel()
+            axs[1, 2].set_xlabel('Intensity (within leaf)')
+        else:
+            dmg_data = img_dmg.ravel()
+            axs[1, 2].set_xlabel('Intensity (NO LEAF MASK FOUND)')
+        axs[1, 2].hist(dmg_data, bins=64, color='gray')
+        if threshold_val_dmg is not None and not (isinstance(threshold_val_dmg, float) and np.isnan(threshold_val_dmg)):
+            axs[1, 2].axvline(threshold_val_dmg, color='red', linestyle='--', linewidth=1,
+                              label=f'thr={threshold_val_dmg:.3g}')
+        if background_dmg is not None and not (isinstance(background_dmg, float) and np.isnan(background_dmg)):
+            axs[1, 2].axvline(background_dmg, color='blue', linestyle=':', linewidth=1,
+                              label=f'bg={background_dmg:.3g}')
+        if axs[1, 2].get_legend_handles_labels()[0]:
+            axs[1, 2].legend(loc='upper right')
     
-    axs[1, 2].set_ylabel('Count')
+        axs[1, 2].set_ylabel('Count')
     
-    plt.tight_layout()
+        plt.tight_layout()
 
-    # Save figure if file_path and outputdir are provided
-    if file_path is not None and outputdir is not None:
-        # Collect these per-image figures in their own directory, separate from
-        # the summary plots, and group them per condition using the image file
-        # name itself. (Each condition maps to exactly one folder, which is
-        # scanned non-recursively, so file names are unique within a condition.)
-        filename = os.path.splitext(os.path.basename(file_path))[0] + filename_suffix + '.png'
-        save_path = os.path.join(outputdir, 'plots', 'segmentation_masks', condition, filename)
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        # Save figure if file_path and outputdir are provided
+        if file_path is not None and outputdir is not None:
+            # Collect these per-image figures in their own directory, separate from
+            # the summary plots, and group them per condition using the image file
+            # name itself. (Each condition maps to exactly one folder, which is
+            # scanned non-recursively, so file names are unique within a condition.)
+            filename = os.path.splitext(os.path.basename(file_path))[0] + filename_suffix + '.png'
+            save_path = os.path.join(outputdir, 'plots', 'segmentation_masks', condition, filename)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
         
-    plt.close(fig)
+        plt.close(fig)
     
 
 
