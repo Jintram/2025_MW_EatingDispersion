@@ -494,7 +494,7 @@ above.)
 
 ## Changelog
 
-See [changelog.md](changelog.md).
+See [changelog.md](changelog.md) as well as [notes/readme.md](notes/readme.md).
 
 
 # LLM attribution
