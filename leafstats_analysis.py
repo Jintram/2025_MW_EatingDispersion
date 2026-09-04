@@ -85,8 +85,6 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
     Finds Otsu threshold for image, applies threshold, and
     then selects the largest continuous region.
     Returns that region as binary mask.
-    
-    mask_user can be used to ignore parts of the input image (img)
     """
     # img = img_leaf; method='bg10'
     
@@ -129,15 +127,24 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
     return img_mask, threshold_val
 
 def get_mask(img, mask_user=None, method='otsu', return_status=False):
-    
+    """
+    Determines a threshold for img and returns the resulting binary mask.
+
+    mask_user can be used to ignore parts of the input image (img); the
+    threshold is determined using only the pixels inside mask_user, and the
+    returned mask is also restricted to mask_user. (Ie for the damage mask,
+    which uses the leaf mask as mask_user, only damage on the leaf itself is
+    taken along, and e.g. bright spots in the background are ignored.)
+    """
+
     if mask_user is None:
         mask_user = np.ones(img.shape, dtype=bool)
 
     if not np.any(mask_user):
         if return_status:
-            return np.zeros(img.shape, dtype=bool), False
-        return np.zeros(img.shape, dtype=bool)
-        
+            return np.zeros(img.shape, dtype=bool), np.nan, False
+        return np.zeros(img.shape, dtype=bool), np.nan
+
     if method == 'otsu':
         threshold_val = threshold_otsu(img[mask_user])
     elif method == 'triangle':        
@@ -157,9 +164,11 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
     elif method == 'pct10':
         threshold_val = 10 * np.percentile(img[mask_user], 10)
         
-    img_mask = img > threshold_val
-    found = np.any(img_mask & mask_user)
-    
+    # restrict the mask to mask_user, such that signal outside the region of
+    # interest (e.g. bright background next to the leaf) isn't counted
+    img_mask = (img > threshold_val) & mask_user
+    found = np.any(img_mask)
+
     if return_status:
         return img_mask, threshold_val, found
     

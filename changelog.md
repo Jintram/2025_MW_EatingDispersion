@@ -2,6 +2,21 @@
 
 ## Changelog
 
+- Current version
+    - **Bug fix, changes results:** the damage mask is now restricted to the
+    leaf mask (`get_mask` applies `mask_user` to its output). Previously,
+    pixels above the damage threshold that lay *outside* the leaf were also
+    counted, which affected `total_damage_area_px`, `total_damage_percentage`,
+    the island counts and the nearest-island distances. For the 3-channel
+    example data the damaged area drops by roughly 5-13%. The `_frozen`
+    example outputs were regenerated accordingly.
+        - Note that this does not affect the autocorrelation or the radial
+        distribution, as those are calculated from the damage *intensity*
+        within the leaf mask, and not from the damage mask.
+    - The readme was brought up to date with the current function calls
+    (`config_channels`, and the `df_samples`/`array_data` that
+    `run_complete_analysis` returns).
+
 - Update as of [4e9e111](https://github.com/Jintram/2025_MW_EatingDispersion/commit/4e9e1115bd6c6fccb50022c70e00542d0159b82b)
     - Structural changes to code to get rid of superfluous code
         - Function calls have changed, see `leafstats_example_1channel.py`,

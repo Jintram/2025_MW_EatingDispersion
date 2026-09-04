@@ -132,8 +132,10 @@ to set a threshold value independent
 of the amount of damage present. It focuses on determining the damage intensity 
 background signal, which is done by using the mode of the damage channel
 (within the leaf mask). 
-Everything with an intensity higher than 2x the mode (or background signal)
-is considered "damaged".
+Everything within the leaf mask with an intensity higher than 2x the mode 
+(or background signal) is considered "damaged". Note that the damage mask is
+restricted to the leaf mask, such that bright signal outside the leaf (e.g. in
+the background) is never counted as damage.
 
 There are some critical assumptions here:
 
