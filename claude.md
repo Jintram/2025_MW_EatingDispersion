@@ -14,8 +14,10 @@ is:
 - Check out [readme.md](readme.md) for an extensive description of 
 the code, this can also be read in its entirity when relevant for the prompt.
 
-- There's a [changelog.md](notes/changelog.md) in the [notes](notes) folder;
-this is mostly claude-written without human checks.
+- The file [notes/readme.md](notes/readme.md) serves for taking notes, and 
+doubles as changelog. All edits you make there should be clearly marked
+as written by you, e.g. add (written by claude) to a sentence, or "(Written
+by Claude:)" at the start of a paragraph, or similarly annotated.
 
 ## Tests
 

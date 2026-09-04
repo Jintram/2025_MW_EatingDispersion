@@ -494,7 +494,8 @@ above.)
 
 ## Changelog
 
-See [changelog.md](changelog.md) as well as [notes/readme.md](notes/readme.md).
+The file [notes/readme.md](notes/readme.md) serves for taking notes, and 
+doubles as changelog.
 
 
 # LLM attribution
