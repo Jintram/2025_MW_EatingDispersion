@@ -2,9 +2,6 @@
 
 # To do / done (2/9/2026)
 
-- [ ] CONTINUE HERE >>> UDPATING PLOTS, AS I ADDED MEAN CLOSEST ISLAND DISTANCE. 
-ADD DESCRIPTION OF WHAT I DID AS WELL
-
 - [ ] Working on readme, currently editing "Island count"
     - But also made some changes (see below), maybe quickly go over whole readme.md
     as well.
@@ -14,6 +11,10 @@ ADD DESCRIPTION OF WHAT I DID AS WELL
 - [ ] Adding LLM acknowledgement
 
 
+- [X] Added average nearest-island distance. Note that both total and
+    average serve their own purpose. Total is "how much did the thrips
+    walk without eating" (very colloquially put), the other is
+    "how far are islands typically apart" (related but not the same).
 
 - [X] Bug fix regarding the acf. I made a mistake and didn't realize
     the scipy correlate function calculates the raw 2nd moment, 
