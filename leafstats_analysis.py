@@ -115,7 +115,7 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
     img_mask = img_lbl == lbl_largest
     
     if apply_smooth:
-        # perform morphological closing with a radius of 10 pixels to smooth the mask
+        # perform morphological opening with a radius of 10 pixels to smooth the mask
         img_mask = opening(img_mask, disk(10))
         # if this erased the mask, act accordingly
         if not np.any(img_mask):
@@ -1339,7 +1339,7 @@ def run_plot_and_save(
     config_channels
 ):
     """
-    Run the plot_and_save_images function for each image in data_all.
+    Run the plot_and_save_images function for each image in df_samples/array_data.
     Saves the plots in outputdir/plots/segmentation_masks/<condition>/.
     These per-image figures show the segmentation underlying all other results,
     and should be checked manually for artifacts.

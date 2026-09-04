@@ -20,13 +20,13 @@ conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn 
 ## To run
 
 To run this script, check out the files:
-- [leafstats_example_1channel.py](leafstats_example_1channel.py), which shows how to analyze a dataset where 1 channel was recorded to identify the leaf and the damage done by thrips.
-- [leafstats_example_3channels.py](leafstats_example_3channels.py), which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, and 1 for quantifying the damage.
+- [leafstats_example_1channel.py](leafstats_example_1channel.py), which shows how to analyze a dataset where 1 channel was recorded to identify both the leaf and the damage done by thrips. (In the example, the same channel of the example images is simply assigned to both roles, for illustratory purposes.)
+- [leafstats_example_3channels.py](leafstats_example_3channels.py), which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, 1 for quantifying the damage, and 1 that is only displayed for reference.
+- [leafstats_syntheticdata.py](leafstats_syntheticdata.py), which runs the analysis on the synthetic images in [Synthetic_data/](Synthetic_data/); it generates the synthetic-data figures shown below, and additionally runs the regular analysis pipeline on those same images.
 
-Both examples run out of the box on the images in [Example_data/](Example_data/).
-They refer to those images with paths relative to the root of this repository,
-so **run them with the repository root as your working directory**. (In VS Code, 
-opening the repository as your workspace folder achieves this.) 
+The first two examples run out of the box on the images in [Example_data/](Example_data/).
+All three scripts refer to those images with paths relative to the root of this repository,
+so **run them with the repository root as your working directory**. 
 Paths may also be given as absolute paths, which is convenient when your own 
 data is located elsewhere.
 
@@ -44,8 +44,9 @@ input aswell.
 
 <img src=figures/Example_A_1.png width=30%><br>
 ***Example input image.** The green channel corresponds to the leaf intensity, 
-and the blue channel to the thrip activity (NIR). The red channel is ignored
-in the analysis.*
+and the blue channel to the thrip activity (NIR). The red channel does not 
+enter any of the metrics; it can be assigned as the "reference" channel, in 
+which case it is only displayed alongside the other two.*
 
 | Red channel | Green channel | Blue Channel |
 | ------- | ------- | ------- |
@@ -55,7 +56,8 @@ in the analysis.*
 are displayed separately here in gray scale.
 The green channel corresponds to the leaf intensity, 
 and the blue channel to the thrip activity (NIR). 
-The red channel is ignored in the analysis.*
+The red channel does not enter any of the metrics, and is only displayed 
+when it is assigned as the "reference" channel.*
 
 ## Considerations of the analysis
 
@@ -107,8 +109,8 @@ Additional tuning parameters are:
     that are not round (and thus likely not proper masks). A cutoff of e.g. 
     0.8 will select leaves that are approximately round.
 - `apply_smooth_leafmask`, default: False
-    - Will apply morphological operation (opening) to make the edge 
-    of the mask more smooth.
+    - Will apply morphological operation (opening, with a disk of radius 
+    10 pixels) to make the edge of the mask more smooth.
     
 ### Determining the damaged area
 
@@ -157,7 +159,8 @@ the red line the threshold that was used for the mask.*
 
 If you took all images under similar acquisition settings and conditions, 
 the background damage (NIR) levels should be equal over all conditions.
-To assess this, you can check out the plot with the damage levels;
+To assess this, you can check out the plot with the background damage levels
+(`background_dmg`, see also below);
 
 <img src=Example_data/OUTPUT-3channels_frozen/plots/background_dmg.png width=50%>
 
@@ -195,13 +198,13 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 ### Metrics to quantify the damage pattern
 
-##### Amount of damage
+#### Amount of damage
 
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_damage.png">
 
 (This was chosen to be ±equal, except for "dual spot".)
 
-### Autocorrelation function (ACF)
+#### Autocorrelation function (ACF)
 
 Average correlation between the damage signal in two pixels that are a distance X apart.
 
@@ -253,7 +256,7 @@ retained $`\vec{X}`$ of length $`\lfloor|\vec{X}|\rfloor = d`$.
 See also [notes/ACF.md](notes/ACF.md).
 
 
-### Radial distribution
+#### Radial distribution
 
 Average signal from the center of the leaf at distance X.
 
@@ -266,17 +269,17 @@ The aim of this function is to characterize whether the location on the leaf
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_dualspot.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_spots.png">
 
-### Island statistics
+#### Island statistics
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.png">
 
-#### Island count
+##### Island count
 
 The number of separate continuous regions of damage (the number of connected components),
 also referred to as *islands*, that are observed in the damage mask.
 This assesses the spatial features of the feeding behavior.
 
-#### Total nearest-island distance
+##### Total nearest-island distance
 
 To further investigate spatial features of feeding behavior, 
 we look at the sum of nearest-island distances $D$.
@@ -293,6 +296,9 @@ islands m (with $m \neq n$ excluding self-distance).
 
 Additionally, we look at the average nearest-island distance, $`\bar{D} = D / N`$, 
 with $`N`$ the number of islands. 
+
+Note that when fewer than two islands are detected, there is no distance to
+another island; both $`D`$ and $`\bar{D}`$ are reported as 0 in that case.
 
 ## Notes on running the script
 
@@ -323,14 +329,19 @@ Additionally, the script needs to know in which channel to look for the
 leaf data and where to look for the damage. A third channel can be displayed
 and is called the reference channel.
 ```{python}
-# Channel configuration
-leaf_channel_spec = {'channel': 1, 'name': 'Leaf'}
-damage_channel_spec = {'channel': 2, 'name': 'Damage'}
-reference_channel_spec = {'channel': 0, 'name': '(Not used)'} # can be set to None
+# Channel configuration (channel index per role; Reference can be None)
+config_channels = {
+    'Leaf': 1,
+    'Damage': 2,
+    'Reference': 0 # optional
+}
 ```
-Again a `dict` is used. For each channel, the `'channel'` entry 
-conveys which channel to use (e.g. `0`, the first channel), and the
-`name` entry conveys the name of that channel.
+Again a `dict` is used. Each entry links a role (`'Leaf'`, `'Damage'` or
+`'Reference'`) to the index of the channel that should be used for that role
+(e.g. `0`, the first channel). The reference channel is only displayed in the
+per-image plots, and can be set to `None` when it isn't needed. To analyze a
+single-channel dataset, simply point both `'Leaf'` and `'Damage'` to the same
+channel (see [leafstats_example_1channel.py](leafstats_example_1channel.py)).
 
 A list of files is then collected by calling the following function:
 ```{python}
@@ -343,10 +354,9 @@ data_file_paths = lsa.get_data_file_paths(condition_path_map)
 The code 
 
 ```{python}
-data_all = lsa.run_complete_analysis(
+df_samples, array_data = lsa.run_complete_analysis(
     data_file_paths = data_file_paths, 
-    leaf_channel_spec = leaf_channel_spec, 
-    damage_channel_spec = damage_channel_spec,   
+    config_channels = config_channels,   
     # optional parameters 
     leaf_threshold_method = 'bg10',
     leaf_roundness_threshold=0,
@@ -355,7 +365,18 @@ data_all = lsa.run_complete_analysis(
 )
 ```
 
-will run all analyses, and collect data in the `data_all` parameter.
+will run all analyses, and returns the results in two objects:
+
+- `df_samples`, a pandas dataframe with one row per image, holding all
+single-value metrics (e.g. `island_counts`, `total_damage_area_px`,
+`total_damage_percentage`, `threshold_val_dmg`, `background_dmg`), plus the
+condition, the file path, and status fields (`leaf_found`, `damage_found`,
+`analysis_status`) that record whether the analysis succeeded for that image.
+- `array_data`, a `dict` keyed by file path, holding the array-like results
+per image (the images themselves, the leaf and damage masks, the centroid, the
+autocorrelation, and the radial distribution).
+
+Both are needed for the plotting functions below.
 
 See above for how to set the optional parameters.
 
@@ -367,27 +388,30 @@ with this factor to determine the area in square centimeters.
 To generate each of the plots, the following functions can be used:
 
 ```{python}
-lsa.plot_acf_norms_avgrs(data_all, OUTPUTDIR)
+lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
 ```
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_lims.png" width=50%>
 
 ```{python}
-lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
-lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False)
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True)
 ```
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/nearest_island_distances.png" width=100%>
 
 ```{python}
-lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
+lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 ```
 <img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs.png" width=100%>
 
 ```{python}
-lsa.plot_damaged_area(data_all, OUTPUTDIR)
+lsa.plot_damaged_area(df_samples, OUTPUTDIR)
 ```
 <img src="Example_data/OUTPUT-3channels_frozen/plots/damaged_area_px.png" width=50%>
+
+(This plot is exported as `damaged_area_px.png` when no `pixel_to_cm2_factor`
+was given, and as `damaged_area_cm2.png` when it was.)
 
 ```python
 lsa.plot_damaged_percentage(df_samples, OUTPUTDIR)
@@ -395,8 +419,12 @@ lsa.plot_damaged_percentage(df_samples, OUTPUTDIR)
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/damaged_percentage.png" width=50%>
 
-The following code can be used to plot the threshold that 
-was used for the something to be considered damaged leaf (`"threshold_val_dmg"`),
+The function `lsa.plot_metric_per_condition` can be used to plot any of the
+single-value metrics in `df_samples` per condition; the plot is exported using
+the metric name as file name.
+
+The following code plots the threshold that 
+was used for something to be considered damaged leaf (`"threshold_val_dmg"`),
 this should not show a dependency on the condition (see also above).
 
 ```python
@@ -404,6 +432,20 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_d
                               y_label = "Intensity threshold for damage", 
                               title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.")
 ```
+
+<img src="Example_data/OUTPUT-3channels_frozen/plots/threshold_val_dmg.png" width=50%>
+
+Likewise, the estimated background level of the damage channel 
+(`"background_dmg"`) can be plotted, which shouldn't show a trend per condition
+either (this is the plot that was also shown above):
+
+```python
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="background_dmg", 
+                              y_label = "Estimated background intensity", 
+                              title=f"Background consistency\nBackground should not\nshow trend per condition.")
+```
+
+Note that currently, the `threshold_val_dmg` is simply twice the `background_dmg`.
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/background_dmg.png" width=50%>
 
@@ -414,12 +456,10 @@ To inspect single segmentation and damage area segmentation, run the following f
 ```{python}
 # 4) Export per-image mask overlays to output folders
 lsa.run_plot_and_save(
-    data_all,
-    data_file_paths,
+    df_samples,
+    array_data,
     OUTPUTDIR,
-    leaf_channel_spec,
-    damage_channel_spec,
-    reference_channel_spec
+    config_channels
 )
 ```
 
@@ -439,16 +479,15 @@ summary plots.
 Finally, the following lines export data to csv and excel files.
 
 ```{python}
-df_singledata = lsa.export_singledatapoints(
-    data_all,
-    data_file_paths
-)
-df_singledata.to_csv(OUTPUTDIR + '/leaf_damage_singlemetrics.csv', index=False)
-df_singledata.to_excel(OUTPUTDIR + '/leaf_damage_singlemetrics.xlsx', index=False)
+df_samples.to_csv(OUTPUTDIR + '/data_leaf_damage_singlemetrics.csv', index=False)
+df_samples.to_excel(OUTPUTDIR + '/data_leaf_damage_singlemetrics.xlsx', index=False)
 ```
 
-The function `lsa.export_singledatapoints` collects all data in a 
-pandas dataframe (`df_singledata` in the example above). 
+(All single-value metrics are collected in the `df_samples` dataframe
+that `lsa.run_complete_analysis` returns (see above), so they can be written
+out directly using the standard pandas export functions. Note that
+`.to_excel` requires the `openpyxl` library, see the installation instructions
+above.)
 
 
 ## Changelog

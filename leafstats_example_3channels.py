@@ -68,11 +68,6 @@ lsa.run_plot_and_save(
 )
 
 # 5) Export single-value metrics to CSV and Excel
-# df_singledata = lsa.export_singledatapoints(
-#     df_samples,
-#     array_data,
-#     data_file_paths
-# )
 df_samples.to_csv(OUTPUTDIR + '/data_leaf_damage_singlemetrics.csv', index=False)
 df_samples.to_excel(OUTPUTDIR + '/data_leaf_damage_singlemetrics.xlsx', index=False)
 
