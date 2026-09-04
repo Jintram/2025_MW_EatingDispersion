@@ -255,21 +255,21 @@ The aim of this function is to characterize whether the location on the leaf
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_dualspot.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_spots.png">
 
-### Island count
+### Island statistics
+
+<img src="Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.pdf">
+
+#### Island count
 
 The number of separate continuous regions of damage (the number of connected components),
 also referred to as *islands*, that are observed in the damage mask.
 
 This assesses the spatial features of the feeding behavior.
 
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_islandcount.png">
-
-### Total nearest-island distance
+#### Total nearest-island distance
 
 To further investigate spatial features of feeding behavior, 
 we look at the sum of nearest-island distances $D$.
-
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_nearestisland.png">
 
 Mathematically, this is defined as 
 

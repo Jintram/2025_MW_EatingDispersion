@@ -954,53 +954,56 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     # Plot
     fig, axs = plt.subplots(1, 3, figsize=(17.2*cm_to_inch, 6*cm_to_inch))
 
+    # plot the island counts
+    sns.barplot(x='condition', y='island_counts',
+                data=df_plot, ax=axs[0], palette=mycolors, hue='condition')
+    sns.violinplot(x='condition', y='island_counts',
+                     data=df_plot, ax=axs[0], color='black', alpha=0.2)
+    sns.stripplot(x='condition', y='island_counts',
+                  data=df_plot, ax=axs[0], color='black')
+    ymax2 = np.nanmax(df_plot['island_counts'])
+    axs[0].set_ylim([0, (ymax2 if ymax2 > 0 else 1) * 1.02])
+    axs[0].tick_params(axis='x', rotation=45)
+    axs[0].set_title(f'Total Islands')
+    axs[0].set_ylabel('Count')
+
     # plot total nearest-island distances using strippplot / seaborn
     sns.barplot(x='condition', y='total_nearest_island_distances',
-                data=df_plot, ax=axs[0], palette=mycolors, hue='condition')
+                data=df_plot, ax=axs[1], palette=mycolors, hue='condition')
     sns.violinplot(x='condition', y='total_nearest_island_distances',
-                   data=df_plot, ax=axs[0], color='black', alpha=0.2)
+                   data=df_plot, ax=axs[1], color='black', alpha=0.2)
     sns.stripplot(x='condition', y='total_nearest_island_distances',
-                  data=df_plot, ax=axs[0], color='black')
+                  data=df_plot, ax=axs[1], color='black')
 
-    axs[0].set_title(f'Total Closest-Island\nDistances')
-    axs[0].set_ylabel('Distance (pixels)')
+    axs[1].set_title(f'Total Closest-Island\nDistances')
+    axs[1].set_ylabel('Distance (pixels)')
     ymax0 = np.nanmax(df_plot['total_nearest_island_distances'])
-    axs[0].set_ylim([0, (ymax0 if ymax0 > 0 else 1) * 1.02])
+    axs[1].set_ylim([0, (ymax0 if ymax0 > 0 else 1) * 1.02])
     # rotate axis 90 deg
-    axs[0].tick_params(axis='x', rotation=45)
+    axs[1].tick_params(axis='x', rotation=45)
 
     # now the same, but averaged over the number of islands
     sns.barplot(x='condition', y='mean_nearest_island_distance',
-                data=df_plot, ax=axs[1], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='mean_nearest_island_distance',
-                   data=df_plot, ax=axs[1], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='mean_nearest_island_distance',
-                  data=df_plot, ax=axs[1], color='black')
-
-    axs[1].set_title(f'Mean Closest-Island\nDistance')
-    axs[1].set_ylabel('Distance (pixels)')
-    ymax1 = np.nanmax(df_plot['mean_nearest_island_distance'])
-    axs[1].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
-    axs[1].tick_params(axis='x', rotation=45)
-
-    # now also plot the island counts themselves
-    sns.barplot(x='condition', y='island_counts',
                 data=df_plot, ax=axs[2], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='island_counts',
-                     data=df_plot, ax=axs[2], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='island_counts',
+    sns.violinplot(x='condition', y='mean_nearest_island_distance',
+                   data=df_plot, ax=axs[2], color='black', alpha=0.2)
+    sns.stripplot(x='condition', y='mean_nearest_island_distance',
                   data=df_plot, ax=axs[2], color='black')
-    ymax2 = np.nanmax(df_plot['island_counts'])
-    axs[2].set_ylim([0, (ymax2 if ymax2 > 0 else 1) * 1.02])
+
+    axs[2].set_title(f'Mean Closest-Island\nDistance')
+    axs[2].set_ylabel('Distance (pixels)')
+    ymax1 = np.nanmax(df_plot['mean_nearest_island_distance'])
+    axs[2].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
     axs[2].tick_params(axis='x', rotation=45)
-    axs[2].set_title(f'Total Islands')
+
+
 
     plt.tight_layout()
     
     # save
     nozero_string = '_nozero' if remove_zerocnt else ''
-    fig.savefig(outputdir+f'/plots/nearest_island_distances_{nozero_string}.pdf', dpi=150)
-    fig.savefig(outputdir+f'/plots/nearest_island_distances_{nozero_string}.png', dpi=150)
+    fig.savefig(outputdir+f'/plots/nearest_island_distances{nozero_string}.pdf', dpi=150)
+    fig.savefig(outputdir+f'/plots/nearest_island_distances{nozero_string}.png', dpi=150)
     plt.show(); plt.close()
     
 def plot_damaged_area(df_samples, outputdir, mycolors=None):
