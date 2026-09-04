@@ -219,8 +219,28 @@ $`ACF(x, \frac{L_y}{2})`$).
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_dualspot.png">
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_spots.png">
 
-**Technical note:** Note that the curve is normalized by the variance over the whole leaf, so 
+**Technical note 1:** Note that the curve is normalized by the variance over the whole leaf, so 
 such a secondary peak can exceed 1 (see "dual spot").
+
+**Technical note 2:** We define the ACF for a displacement vector $`\vec{X}`$ as
+
+```math
+\mathrm{ACF}(\vec{X}) = \frac{1}{\sigma^2\, n(\vec{X})}
+    \sum_{\vec{x} \in M,\ \vec{x}+\vec{X} \in M}
+    \left(I(\vec{x})-\mu\right)\left(I(\vec{x}+\vec{X})-\mu\right)
+```
+
+with $`I`$ the damage channel, $`M`$ the leaf mask holding $`N`$ pixels,
+$`\mu`$ and $`\sigma^2`$ the mean and variance of $`I`$ within $`M`$, and
+$`n(\vec{X})`$ the number of pixel pairs separated by $`\vec{X}`$ that have
+both pixels inside $`M`$. Dividing by $`n(\vec{X})`$ corrects for the leaf
+covering only part of the image, such that the curve reflects the damage
+pattern rather than the shape of the leaf.
+Displacements with too few contributing pairs ($`n(\vec{X}) < fN`$, with
+$`f=0.05`$) are considered unreliable and discarded.
+$`\mathrm{ACF}(d)`$ is then the average of $`\mathrm{ACF}(\vec{X})`$ over all
+retained $`\vec{X}`$ of length $`\lfloor|\vec{X}|\rfloor = d`$.
+See [notes/ACF.md](notes/ACF.md) for a more extensive description.
 
 
 ### Radial distribution
@@ -396,7 +416,8 @@ See [changelog.md](changelog.md).
 # LLM attribution
 
 Parts of this repository were written with the assistance of a large language model
-(Claude Opus, Anthropic), used as a coding assistant for code editing and refactoring.
+(Claude Opus, Anthropic), used as a coding assistant for code editing and refactoring,
+or generating plotting functionalities.
 
 All essential algorithms were designed, reviewed, and validated by the authors.
 AI-generated code was inspected and tested before being committed.
