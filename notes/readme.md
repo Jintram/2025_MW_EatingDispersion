@@ -2,6 +2,9 @@
 
 # To do / done (2/9/2026)
 
+- [ ] CONTINUE HERE >>> UDPATING PLOTS, AS I ADDED MEAN CLOSEST ISLAND DISTANCE. 
+ADD DESCRIPTION OF WHAT I DID AS WELL
+
 - [ ] Working on readme, currently editing "Island count"
     - But also made some changes (see below), maybe quickly go over whole readme.md
     as well.
@@ -9,6 +12,8 @@
     illustrations as well.
 - [ ] Assessing correct working of pipeline
 - [ ] Adding LLM acknowledgement
+
+
 
 - [X] Bug fix regarding the acf. I made a mistake and didn't realize
     the scipy correlate function calculates the raw 2nd moment, 
