@@ -257,7 +257,7 @@ The aim of this function is to characterize whether the location on the leaf
 
 ### Island statistics
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.pdf">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.png">
 
 #### Island count
 
