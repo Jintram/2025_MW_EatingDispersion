@@ -257,15 +257,28 @@ The aim of this function is to characterize whether the location on the leaf
 
 ### Island count
 
-The amount of 
+The number of separate continuous regions of damage (the number of connected components),
+also referred to as *islands*, that are observed in the damage mask.
+
+This assesses the spatial features of the feeding behavior.
 
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_islandcount.png">
 
 ### Total inter-island distance
 
+To further investigate feeding behavior, we look at the total minimum distance
+that would be required to connect all islands.
+
 <img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_interisland.png">
 
+Mathematically, this is defined as 
 
+```math
+D = \sum_{k=1}^{K} \; \min \left\{ \; \|\vec{x}-\vec{y}\| \; : \; \vec{x} \in S_k, \; \vec{y} \in S_j, \; j \neq k \; \right\}
+```
+
+with $`S_1 \ldots S_K`$ the islands, such that each term is the (edge-to-edge)
+distance from island $`k`$ to the island nearest to it. $`D=0`$ when $`K<2`$.
 
 ## Notes on running the script
 
