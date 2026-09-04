@@ -263,7 +263,6 @@ The aim of this function is to characterize whether the location on the leaf
 
 The number of separate continuous regions of damage (the number of connected components),
 also referred to as *islands*, that are observed in the damage mask.
-
 This assesses the spatial features of the feeding behavior.
 
 #### Total nearest-island distance
@@ -367,7 +366,7 @@ lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=False)
 lsa.plot_nearest_island_distances(data_all, OUTPUTDIR, remove_zerocnt=True)
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/nearest_island_distances_.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/nearest_island_distances.png" width=50%>
 
 ```{python}
 lsa.plot_radial_pdfs(data_all, OUTPUTDIR)
