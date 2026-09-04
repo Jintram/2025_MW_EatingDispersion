@@ -2,13 +2,13 @@
 
 # To do / done (2/9/2026)
 
-- [ ] Working on readme, currently editing "Island count"
+- [X] Worked on readme, currently editing "Island count"
     - But also made some changes (see below), maybe quickly go over whole readme.md
     as well.
     - Check if new synthetic plots (usual pipeline) can be used to improve
     illustrations as well.
-- [ ] Assessing correct working of pipeline
-- [ ] Adding LLM acknowledgement
+- [X] Assessed correct working of pipeline
+- [X] Added LLM acknowledgement
 
 
 - [X] Added average nearest-island distance. Note that both total and
