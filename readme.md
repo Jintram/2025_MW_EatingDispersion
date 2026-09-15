@@ -185,7 +185,7 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 - "Noise pattern", basically no pattern for reference:
 
-<img src="Synthetic_data/OUTPUT2_frozen/noise/synthetic_noise_images.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/noise/synthetic_noise_images.png">
 
 - "Disk" damage pattern:
 
@@ -193,15 +193,15 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 - "Donut" damage pattern:
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/donut/synthetic_eatendonut.png.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/donut/synthetic_eatendonut.png">
 
 - "Dual spot" damage pattern:
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/dualspot/synthetic_dualspot_images.png.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/dualspot/synthetic_dualspot_images.png">
 
 - "Spots" damage pattern:
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/spots/synthetic_eatenspots_images.png.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/spots/synthetic_eatenspots_images.png">
 
 ### Metrics to quantify the damage pattern
 
