@@ -31,6 +31,7 @@ import time # for debugging/optimization
 import glob
 import os
 import warnings
+from dataclasses import dataclass, asdict, fields
 
 cm_to_inch = 1/2.54
 # set plotting params
@@ -54,6 +55,61 @@ plt.rcParams.update({
     'ps.fonttype': 42,
     **font_size_rc(8)
 })
+
+# %% dataclasses to store leaf information
+
+@dataclass(slots=True)
+class SampleMetrics:
+    """
+    Data structure to store all metrics belonging to one leaf (image).
+    
+    Single-value metrics for one image; each instance becomes one row of
+    df_samples (field order = column order). The defaults describe the case
+    where no (valid) leaf was found, i.e. all metrics NA.
+    """
+    condition: str
+    file_path: str
+    leaf_found: bool = False
+    damage_found: bool = False
+    analysis_status: str = 'no_leaf_mask' # 'no_leaf_mask', 'no_damage_mask' or 'ok'
+    leaf_roundness: float = np.nan
+    total_nearest_island_distances: float = np.nan
+    mean_nearest_island_distance: float = np.nan
+    island_counts: float = np.nan # int when available, NaN otherwise
+    total_leaf_size_px: float = np.nan
+    total_leaf_size_cm2: float = np.nan
+    total_damage_area_px: float = np.nan
+    total_damage_area_cm2: float = np.nan
+    total_damage_percentage: float = np.nan
+    threshold_val_leaf: float = np.nan
+    threshold_val_dmg: float = np.nan
+    background_leaf: float = np.nan
+    background_dmg: float = np.nan
+
+@dataclass(slots=True)
+class SampleArrays:
+    """
+    Data structure to store more complicated leaf-related analysis data.
+    
+    This dataclass is converted to a dict in the function run_complete_analysis
+    for downstream usage. (So it's only for internal use.)
+    
+    I.e. Array-like results for one image; stored (as dict) in array_data.
+    Fields that are None were not calculated (no leaf, or no damage found).
+    """
+    condition: str
+    img_rgb: np.ndarray
+    img_leaf: np.ndarray
+    img_damage: np.ndarray
+    mask_leaf: np.ndarray
+    mask_damage: np.ndarray
+    centroid: tuple | None = None
+    acf: np.ndarray | None = None
+    acf_norm: np.ndarray | None = None
+    acf_center: tuple | None = None
+    acf_valid: np.ndarray | None = None
+    acf_norm_avgr: np.ndarray | None = None
+    radial_pdf: np.ndarray | None = None
 
 #%% ################################################################################
 # Create output dir if it doesn't exist
@@ -701,6 +757,117 @@ def get_data_file_paths(condition_path_map):
 
 # %%
 
+def analyse_sample(file_path, condition, config_channels,
+                   leaf_threshold_method='bg10', leaf_roundness_threshold=0,
+                   apply_smooth_leafmask=False,
+                   pixel_to_cm2_factor=None):
+    """
+    Run all analyses for a single image file.
+    Returns a SampleMetrics and a SampleArrays object.
+    See run_complete_analysis for the parameters.
+    """
+
+    # Load images
+    img = iio.imread(file_path) # uses tifffile backend for .tif
+    # in case the image doesn't have 3 dimensions, expand to three
+    img = np.atleast_3d(img)
+    # in case dimensions are in order (3, H, W), re-arrange to (H, W, 3)
+    img = arrange_dims(img)
+    # obtain images of interest
+    img_leaf = img[:, :, config_channels['Leaf']]
+    img_damage = img[:, :, config_channels['Damage']]
+        # plt.imshow(img_leaf)
+        # plt.imshow(img_damage)
+
+    # Get leaf mask
+    mask_leaf, threshold_val_leaf, this_leaf_found = \
+        get_largest_mask(img_leaf,
+                         method=leaf_threshold_method,
+                         apply_smooth=apply_smooth_leafmask,
+                         return_status=True)
+        # plt.imshow(img_leaf); plt.contour(mask_leaf, colors='white'); plt.show(); plt.close()
+
+    # Additional check for leaf validity, check roundness
+    if this_leaf_found:
+        leaf_roundness = determine_leaf_roundness(mask_leaf)
+        if not leaf_roundness > leaf_roundness_threshold:
+            this_leaf_found = False
+            print("WARNING: Leaf roundness below threshold, marking as no leaf found.")
+    else:
+        leaf_roundness = np.nan
+
+    # Set up structures to save the data (pre-filled for case data NA)
+    metrics = SampleMetrics(condition=condition, file_path=file_path,
+                            leaf_found=this_leaf_found, leaf_roundness=leaf_roundness)
+    arrays = SampleArrays(condition=condition, img_rgb=img,
+                          img_leaf=img_leaf, img_damage=img_damage,
+                          mask_leaf=mask_leaf,
+                          mask_damage=np.zeros_like(mask_leaf, dtype=bool))
+
+    # CASE NO LEAF FOUND; nothing to analyse
+    if not this_leaf_found:
+        return metrics, arrays
+
+    # CASE LEAF FOUND; PERFORM ANALYSIS
+    # store the size
+    metrics.total_leaf_size_px = float(np.sum(mask_leaf))
+    if pixel_to_cm2_factor is not None:
+        metrics.total_leaf_size_cm2 = metrics.total_leaf_size_px * pixel_to_cm2_factor
+    # store the threshold that was used
+    metrics.threshold_val_leaf = threshold_val_leaf
+    # store the background
+    metrics.background_leaf = calculate_background_img_mask(img_leaf, np.ones_like(img_leaf))
+
+    # Now assess the damage
+    mask_damage, threshold_val_dmg, this_damage_found = get_mask(img=img_damage,
+                                              mask_user=mask_leaf, method='bg2', return_status=True)
+    centroid = regionprops(mask_leaf.astype(int))[0].centroid
+        # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
+        # plt.hist(img_damage[mask_leaf].ravel(), bins=256); plt.show(); plt.close()
+    arrays.mask_damage = mask_damage
+    arrays.centroid = centroid
+    metrics.damage_found = this_damage_found
+
+    # CASE NO DAMAGE FOUND; keep valid zeros for damage metrics
+    if not this_damage_found:
+        metrics.analysis_status = 'no_damage_mask'
+        metrics.total_nearest_island_distances = 0.0
+        metrics.mean_nearest_island_distance = 0.0
+        metrics.island_counts = 0
+        metrics.total_damage_area_px = 0.0
+        if pixel_to_cm2_factor is not None:
+            metrics.total_damage_area_cm2 = 0.0
+        metrics.total_damage_percentage = 0.0
+        return metrics, arrays
+
+    # CASE DAMAGE FOUND; run (spatial) analyses
+    arrays.acf, arrays.acf_norm, arrays.acf_center, arrays.acf_valid = \
+        get_autocorrelation(img_damage, mask_user=mask_leaf)
+    _, _, arrays.acf_norm_avgr, _, _ = \
+        get_radial_pdf(arrays.acf_norm, arrays.acf_center, mask_user=arrays.acf_valid)
+    _, _, _, arrays.radial_pdf, _ = get_radial_pdf(img_damage, centroid, mask_leaf)
+    nearest_island_distances = get_nearest_island_distances(mask_leaf, mask_damage)
+    # save info
+    metrics.threshold_val_dmg = threshold_val_dmg
+    metrics.analysis_status = 'ok'
+    metrics.total_nearest_island_distances = np.sum(nearest_island_distances)
+    metrics.island_counts = get_island_counts(mask_leaf, mask_damage)
+    # for a single island there is no distance to another island,
+    # which we count as a distance of 0
+    metrics.mean_nearest_island_distance = (
+        metrics.total_nearest_island_distances / metrics.island_counts
+        if metrics.island_counts >= 2 else 0.0
+    )
+    metrics.total_damage_area_px = float(np.sum(mask_damage))
+    if pixel_to_cm2_factor is not None:
+        metrics.total_damage_area_cm2 = metrics.total_damage_area_px * pixel_to_cm2_factor
+    metrics.total_damage_percentage = (
+        metrics.total_damage_area_px / metrics.total_leaf_size_px * 100
+    )
+    metrics.background_dmg = calculate_background_img_mask(img_damage, mask_leaf)
+
+    return metrics, arrays
+
 def run_complete_analysis(data_file_paths, config_channels,
                           leaf_threshold_method = 'bg10', leaf_roundness_threshold=0,
                           apply_smooth_leafmask=False,
@@ -721,146 +888,20 @@ def run_complete_analysis(data_file_paths, config_channels,
         for file_path in file_list:
             # file_path = file_list[0]
             # file_path = file_list[7]
-            
+
             # Update user on what's happening
             print(f'Processing {file_path} for condition: {condition}')
-            
-            # Load images
-            img = iio.imread(file_path) # uses tifffile backend for .tif
-            # in case the image doesn't have 3 dimensions, expand to three
-            img = np.atleast_3d(img)
-            # in case dimensions are in order (3, H, W), re-arrange to (H, W, 3)
-            img = arrange_dims(img)
-            # obtain images of interest
-            img_leaf = img[:, :, config_channels['Leaf']]
-            img_damage = img[:, :, config_channels['Damage']]
-                # plt.imshow(img_leaf)
-                # plt.imshow(img_damage)
 
-            # Get leaf mask
-            mask_leaf, threshold_val_leaf, this_leaf_found = \
-                get_largest_mask(img_leaf, 
-                                 method=leaf_threshold_method, 
-                                 apply_smooth=apply_smooth_leafmask,
-                                 return_status=True)
-                # plt.imshow(img_leaf); plt.contour(mask_leaf, colors='white'); plt.show(); plt.close()
+            metrics, arrays = analyse_sample(
+                file_path, condition, config_channels,
+                leaf_threshold_method=leaf_threshold_method,
+                leaf_roundness_threshold=leaf_roundness_threshold,
+                apply_smooth_leafmask=apply_smooth_leafmask,
+                pixel_to_cm2_factor=pixel_to_cm2_factor)
 
-            # Additional check for leaf validity, check roundness
-            if this_leaf_found:
-                leaf_roundness = determine_leaf_roundness(mask_leaf)
-                if not leaf_roundness > leaf_roundness_threshold:
-                    this_leaf_found = False
-                    print("WARNING: Leaf roundness below threshold, marking as no leaf found.")
-            else:
-                leaf_roundness = np.nan
-                
-            # Set up structures to save the data (pre-filled for case data NA)
-            row = {
-                'condition': condition,
-                'file_path': file_path,
-                'leaf_found': this_leaf_found,
-                'damage_found': False,
-                'analysis_status': 'no_leaf_mask',
-                'leaf_roundness': leaf_roundness,
-                'total_nearest_island_distances': np.nan,
-                'mean_nearest_island_distance': np.nan,
-                'island_counts': np.nan,
-                'total_leaf_size_px': np.nan, 
-                'total_leaf_size_cm2': np.nan,
-                'total_damage_area_px': np.nan,
-                'total_damage_area_cm2': np.nan, 
-                'total_damage_percentage': np.nan,
-                'threshold_val_leaf': np.nan,
-                'threshold_val_dmg': np.nan,
-                'background_leaf' : np.nan,
-                'background_dmg': np.nan
-            }
-            # Storage for arrays
-            mask_damage = np.zeros_like(mask_leaf, dtype=bool)
-            centroid = None
-            acf = None
-            acf_norm = None
-            acf_center = None
-            acf_valid = None
-            acf_norm_avgr = None
-            radial_pdf = None
-
-            if this_leaf_found:
-                
-                # store the size
-                row['total_leaf_size_px'] = float(np.sum(mask_leaf))
-                if pixel_to_cm2_factor is not None:
-                    row['total_leaf_size_cm2'] = row['total_leaf_size_px'] * pixel_to_cm2_factor
-                # store the threshold that was used
-                row['threshold_val_leaf'] = threshold_val_leaf
-                # store the background
-                row['background_leaf'] = calculate_background_img_mask(img_leaf, np.ones_like(img_leaf))
-                
-                # CASE LEAF FOUND; PERFORM ANALYSIS
-                mask_damage, threshold_val_dmg, this_damage_found = get_mask(img=img_damage,
-                                                          mask_user=mask_leaf, method='bg2', return_status=True)
-                centroid = regionprops(mask_leaf.astype(int))[0].centroid
-                    # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
-                    # plt.hist(img_damage[mask_leaf].ravel(), bins=256); plt.show(); plt.close()
-
-                row['damage_found'] = this_damage_found
-
-                # If no damage is detected inside leaf, keep valid zeros for damage metrics.
-                if not this_damage_found:
-                    row['analysis_status'] = 'no_damage_mask'
-                    row['total_nearest_island_distances'] = 0.0
-                    row['mean_nearest_island_distance'] = 0.0
-                    row['island_counts'] = 0
-                    row['total_damage_area_px'] = 0.0
-                    row['total_damage_area_cm2'] = (
-                        np.nan if pixel_to_cm2_factor is None else 0.0 * pixel_to_cm2_factor
-                    )
-                    row['total_damage_percentage'] = 0.0
-                    
-                else:
-                    # run analyses
-                    acf, acf_norm, acf_center, acf_valid = get_autocorrelation(img_damage, mask_user=mask_leaf)
-                    _, _, acf_norm_avgr, _, _ = get_radial_pdf(acf_norm, acf_center, mask_user=acf_valid)
-                    _, _, _, radial_pdf, _ = get_radial_pdf(img_damage, centroid, mask_leaf)
-                    nearest_island_distances = get_nearest_island_distances(mask_leaf, mask_damage)
-                    # save info
-                    row['threshold_val_dmg'] = threshold_val_dmg
-                    row['analysis_status'] = 'ok'
-                    row['total_nearest_island_distances'] = np.sum(nearest_island_distances)
-                    row['island_counts'] = get_island_counts(mask_leaf, mask_damage)
-                    # for a single island there is no distance to another island,
-                    # which we count as a distance of 0
-                    row['mean_nearest_island_distance'] = (
-                        row['total_nearest_island_distances'] / row['island_counts']
-                        if row['island_counts'] >= 2 else 0.0
-                    )
-                    row['total_damage_area_px'] = float(np.sum(mask_damage))
-                    row['total_damage_area_cm2'] = (
-                        np.nan if pixel_to_cm2_factor is None
-                        else row['total_damage_area_px'] * pixel_to_cm2_factor
-                    )
-                    row['total_damage_percentage'] = (
-                        row['total_damage_area_px'] / row['total_leaf_size_px'] * 100
-                    )
-                    row['background_dmg'] = calculate_background_img_mask(img_damage, mask_leaf)
-
-            rows.append(row)
-
-            array_data[file_path] = {
-                'condition': condition,
-                'img_rgb': img,
-                'img_leaf': img_leaf,
-                'img_damage': img_damage,
-                'mask_leaf': mask_leaf,
-                'mask_damage': mask_damage,
-                'centroid': centroid,
-                'acf': acf,
-                'acf_norm': acf_norm,
-                'acf_center': acf_center,
-                'acf_valid': acf_valid,
-                'acf_norm_avgr': acf_norm_avgr,
-                'radial_pdf': radial_pdf
-            }
+            rows.append(asdict(metrics))
+            # (not asdict here, as that would deep-copy all images)
+            array_data[file_path] = {f.name: getattr(arrays, f.name) for f in fields(arrays)}
 
     df_samples = pd.DataFrame(rows)
     return df_samples, array_data

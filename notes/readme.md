@@ -2,6 +2,16 @@
 
 # To do / done (2/9/2026)
 
+- [X] (Written by Claude:) Refactored `run_complete_analysis()` (15/9/2026).
+    The per-image work now lives in a new function `analyse_sample()`, which
+    uses early returns for the "no leaf" and "no damage" cases instead of
+    nested if-statements. Results are collected in two dataclasses,
+    `SampleMetrics` (one row of `df_samples`; its defaults are the NA values)
+    and `SampleArrays` (converted to the same dict as before for `array_data`).
+    No change in behavior: `df_samples` and `array_data` were checked to be
+    identical to the previous code for all three example scripts, plus the
+    no-leaf and `pixel_to_cm2_factor=None` cases.
+
 - [X] Worked on readme, currently editing "Island count"
     - But also made some changes (see below), maybe quickly go over whole readme.md
     as well.
