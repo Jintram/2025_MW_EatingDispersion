@@ -183,20 +183,25 @@ To assess the nature of the damage patterns, multiple metrics are calculated.
 To get a feeling for what these metrics can do, a synthetic dataset was used; 
 this dataset contained the following "leafs" with corresponding "damage patterns":
 
+- "Noise pattern", basically no pattern for reference:
+
+<img src="Synthetic_data/OUTPUT2_frozen/noise/synthetic_noise_images.png">
+
 - "Disk" damage pattern:
 
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_disk.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/disk/synthetic_eatendisk_images.png">
 
 - "Donut" damage pattern:
 
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_donut.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/donut/synthetic_eatendonut.png.png">
 
 - "Dual spot" damage pattern:
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_dualspot.png">
+
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/dualspot/synthetic_dualspot_images.png.png">
 
 - "Spots" damage pattern:
 
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_img_spots.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/spots/synthetic_eatenspots_images.png.png">
 
 ### Metrics to quantify the damage pattern
 
