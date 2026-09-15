@@ -202,7 +202,8 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 #### Amount of damage
 
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_damage.png">
+<!--<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_damage.png">-->
+<img src="Synthetic_data/OUTPUT2_frozen/plots/damaged_percentage.png">
 
 (This was chosen to be ±equal, except for "dual spot".)
 
