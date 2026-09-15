@@ -974,7 +974,7 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
     plt.savefig(outputdir+'/plots/Radial_acf_lims.pdf', dpi=150)
     plt.savefig(outputdir+'/plots/Radial_acf_lims.png', dpi=150)
         
-    plt.show(); plt.close()
+    # plt.show(); plt.close()
     
 # Now the same for the nearest-island distance metric
 def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None):
@@ -1054,7 +1054,8 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     nozero_string = '_nozero' if remove_zerocnt else ''
     fig.savefig(outputdir+f'/plots/nearest_island_distances{nozero_string}.pdf', dpi=150)
     fig.savefig(outputdir+f'/plots/nearest_island_distances{nozero_string}.png', dpi=150)
-    plt.show(); plt.close()
+    
+    # plt.show(); plt.close()
     
 def plot_damaged_area(df_samples, outputdir, mycolors=None):
     """
@@ -1106,7 +1107,8 @@ def plot_damaged_area(df_samples, outputdir, mycolors=None):
     plt.tight_layout()
     fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.pdf', dpi=150)
     fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.png', dpi=150)
-    plt.show(); plt.close()
+
+    # plt.show(); plt.close()
     
 def plot_metric_per_condition(df_samples, outputdir, metric_key,
                               y_label=None, title=None, file_suffix=None,
@@ -1152,7 +1154,8 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
     filename = metric_key if file_suffix is None else f'{metric_key}_{file_suffix}'
     fig.savefig(outputdir + f'/plots/{filename}.pdf', dpi=150)
     fig.savefig(outputdir + f'/plots/{filename}.png', dpi=150)
-    plt.show(); plt.close()
+
+    # plt.show(); plt.close()
     
     
 def plot_damaged_percentage(df_samples, outputdir, mycolors=None):
@@ -1193,7 +1196,8 @@ def plot_damaged_percentage(df_samples, outputdir, mycolors=None):
     plt.tight_layout()
     fig.savefig(outputdir + '/plots/damaged_percentage.pdf', dpi=150)
     fig.savefig(outputdir + '/plots/damaged_percentage.png', dpi=150)
-    plt.show(); plt.close()
+
+    # plt.show(); plt.close()
 
 
 
@@ -1255,7 +1259,7 @@ def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
     plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
     plt.savefig(outputdir+'/plots/radial_pdfs.png', dpi=150)
 
-    plt.show(); plt.close()
+    # plt.show(); plt.close()
 
 # %%
 
@@ -1413,6 +1417,128 @@ def run_plot_and_save(
             outputdir=outputdir
         )
 
+
+def _nice_number_below(value):
+    """ Largest number of the form 1, 2 or 5 x 10^n that is <= value. """
+    exponent = 10**np.floor(np.log10(value))
+    for multiplier in (5, 2, 1):
+        if multiplier*exponent <= value:
+            return multiplier*exponent
+    return exponent
+
+def plot_damage_overview(df_samples, array_data, outputdir,
+                         pixel_to_cm2_factor=None, cmap='viridis',
+                         panel_size_cm=3, margin_px=10):
+    """
+    Overview of the damage channel of all images, with the damage mask
+    outlined in white. Conditions are shown in columns, and replicates
+    (i.e. the images within a condition, sorted by file name) in rows.
+
+    All panels show a square window of the same size (in pixels), centered on
+    the leaf, such that the (per-panel) scale bars are comparable. The window
+    is large enough to hold the largest leaf (plus margin_px). Images without
+    a leaf mask are centered on the image center instead.
+
+    The scale bar is in mm/cm when pixel_to_cm2_factor is given, and in
+    pixels otherwise. The figure is panel_size_cm per condition wide, and
+    panel_size_cm per replicate high.
+
+    Saves to outputdir/plots/overview_damage.pdf and .png, and returns fig.
+
+    (Written by Claude, checked by human.)
+    """
+    
+    from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+
+    os.makedirs(os.path.join(outputdir, 'plots'), exist_ok=True)
+
+    # Organize samples: conditions (in order of appearance) and their files
+    conditions = list(dict.fromkeys(df_samples['condition']))
+    files_per_condition = {
+        condition: sorted(df_samples.loc[df_samples['condition'] == condition, 'file_path'],
+                          key=os.path.basename)
+        for condition in conditions
+    }
+    n_cols = len(conditions)
+    n_rows = max(len(files) for files in files_per_condition.values())
+
+    # Determine the leaf bounding box per image, and the common window size
+    bboxes = {}
+    for file_path in df_samples['file_path']:
+        mask_leaf = array_data[file_path]['mask_leaf']
+        if np.any(mask_leaf):
+            bboxes[file_path] = regionprops(mask_leaf.astype(int))[0].bbox
+    if bboxes:
+        window_px = max(max(b[2]-b[0], b[3]-b[1]) for b in bboxes.values()) + 2*margin_px
+    else:
+        window_px = max(max(array_data[f]['img_damage'].shape) for f in df_samples['file_path'])
+
+    # Scale bar of roughly 1/4 of the window
+    if pixel_to_cm2_factor is not None:
+        mm_per_px = np.sqrt(pixel_to_cm2_factor) * 10
+        bar_mm = _nice_number_below(window_px/4 * mm_per_px)
+        bar_px = bar_mm / mm_per_px
+        bar_label = f'{bar_mm/10:g} cm' if bar_mm >= 10 else f'{bar_mm:g} mm'
+    else:
+        bar_px = _nice_number_below(window_px/4)
+        bar_label = f'{bar_px:g} px'
+
+    with plt.rc_context(font_size_rc(6)):
+        fig, axs = plt.subplots(n_rows, n_cols, squeeze=False, layout='constrained',
+                                figsize=(n_cols*panel_size_cm*cm_to_inch,
+                                         n_rows*panel_size_cm*cm_to_inch))
+        # hide all panels; the ones with data are switched on below
+        for ax in axs.ravel():
+            ax.set_axis_off()
+
+        for col, condition in enumerate(conditions):
+            for row, file_path in enumerate(files_per_condition[condition]):
+
+                # Obtain and show the damage image
+                ax = axs[row, col]
+                
+                img_damage = array_data[file_path]['img_damage']
+                mask_damage = array_data[file_path]['mask_damage']
+
+                ax.imshow(img_damage, cmap=cmap)
+                if np.any(mask_damage):
+                    ax.contour(mask_damage, levels=[0.5], colors='white', linewidths=0.5)
+
+                # Zoom to a window centered on the leaf (or image center if no leaf)
+                if file_path in bboxes:
+                    b = bboxes[file_path]
+                    center_r, center_c = (b[0]+b[2])/2, (b[1]+b[3])/2
+                else:
+                    center_r, center_c = img_damage.shape[0]/2, img_damage.shape[1]/2
+
+                ax.set_xlim(center_c - window_px/2, center_c + window_px/2)
+                ax.set_ylim(center_r + window_px/2, center_r - window_px/2)
+                ax.set_axis_off()
+                
+                # other visuals
+                # ax.set_facecolor('black') # area outside the image
+                ax.set_xticks([]); ax.set_yticks([])
+
+                # Title: file name, with the condition (bold) above it on the first row
+                title = os.path.splitext(os.path.basename(file_path))[0]
+                if file_path not in bboxes:
+                    title += ' (no leaf)'
+                ax.set_title(title, pad=2)
+                if row == 0:
+                    # offset (in points) = title pad + approx. height of one title line
+                    ax.annotate(condition, xy=(0.5, 1), xycoords='axes fraction',
+                                xytext=(0, 10), textcoords='offset points',
+                                ha='center', va='bottom', fontweight='bold')
+
+                ax.add_artist(AnchoredSizeBar(ax.transData, bar_px, bar_label,
+                                              loc='lower right', color='white',
+                                              frameon=False, pad=0.3, sep=2,
+                                              size_vertical=window_px/150))
+
+        fig.savefig(os.path.join(outputdir, 'plots', 'overview_damage.pdf'), dpi=300)
+        fig.savefig(os.path.join(outputdir, 'plots', 'overview_damage.png'), dpi=300)
+
+    return fig
 
 
 # %%

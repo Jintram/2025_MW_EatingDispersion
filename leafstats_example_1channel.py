@@ -54,6 +54,7 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_d
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="background_dmg", 
                               y_label = "Estimated background intensity", 
                               title=f"Background consistency\nBackground should not\nshow trend per condition.")
+lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor)
 
 # 4) Export per-image mask overlays to output folders
 lsa.run_plot_and_save(

@@ -1,6 +1,19 @@
 
+# General note
+
+The name of my local conda environment is `2026_leafdamage2`.
+
+
 
 # To do / done (2/9/2026)
+
+- [X] (Written by Claude:) Added `plot_damage_overview()` (15/9/2026), as a
+    first step towards removing the synthetic-data specific code. It plots
+    the damage channel of all images, with the damage mask outlined in white,
+    with conditions in columns and replicates (images within a condition,
+    sorted by file name) in rows; saved to `plots/overview_damage.pdf/.png`.
+    All panels show an equally sized window centered on the leaf, so scale
+    bars are comparable. Called from all three example scripts.
 
 - [X] (Written by Claude:) Refactored `run_complete_analysis()` (15/9/2026).
     The per-image work now lives in a new function `analyse_sample()`, which

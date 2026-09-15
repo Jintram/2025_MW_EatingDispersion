@@ -36,6 +36,7 @@ EXAMPLES = {
             'Example_data/OUTPUT-3channels/data_leaf_damage_singlemetrics.xlsx',
             'Example_data/OUTPUT-3channels/plots/Radial_acf.png',
             'Example_data/OUTPUT-3channels/plots/radial_pdfs.png',
+            'Example_data/OUTPUT-3channels/plots/overview_damage.png',
         ],
     },
     'leafstats_example_1channel.py': {
@@ -45,6 +46,7 @@ EXAMPLES = {
             'Example_data/OUTPUT-1channel/data_leaf_damage_singlemetrics.xlsx',
             'Example_data/OUTPUT-1channel/plots/Radial_acf.png',
             'Example_data/OUTPUT-1channel/plots/radial_pdfs.png',
+            'Example_data/OUTPUT-1channel/plots/overview_damage.png',
         ],
     },
     'leafstats_syntheticdata.py': {
@@ -54,6 +56,7 @@ EXAMPLES = {
             'Synthetic_data/OUTPUT2/data_leaf_damage_singlemetrics.xlsx',
             'Synthetic_data/OUTPUT2/plots/Radial_acf.png',
             'Synthetic_data/OUTPUT2/plots/radial_pdfs.png',
+            'Synthetic_data/OUTPUT2/plots/overview_damage.png',
         ],
     },
 }
