@@ -1272,7 +1272,8 @@ def plot_and_save_images(
 ):
     """
     Plots the images and masks, and saves the figure to
-    outputdir/plots/segmentation_masks/<condition>/<image name>.png.
+    outputdir/plots/segmentation_masks/<condition>/<image name>.png (images +
+    histograms), and a version with only the images to <image name>_images.png.
     this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage', 'centroid', 'img_rgb'.
     row: pandas Series (row of df_samples) with keys 'condition', 'file_path', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2'.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
@@ -1377,10 +1378,17 @@ def plot_and_save_images(
             # the summary plots, and group them per condition using the image file
             # name itself. (Each condition maps to exactly one folder, which is
             # scanned non-recursively, so file names are unique within a condition.)
-            filename = os.path.splitext(os.path.basename(file_path))[0] + filename_suffix + '.png'
-            save_path = os.path.join(outputdir, 'plots', 'segmentation_masks', condition, filename)
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            filename = os.path.splitext(os.path.basename(file_path))[0] + filename_suffix
+            save_dir = os.path.join(outputdir, 'plots', 'segmentation_masks', condition)
+            os.makedirs(save_dir, exist_ok=True)
+            
+            # full figure (images + histograms)
+            fig.savefig(os.path.join(save_dir, filename + '.png'), dpi=300, bbox_inches='tight')
+
+            # image row only; hidden panels are excluded by bbox_inches='tight'
+            for ax in axs[1, :]:
+                ax.set_visible(False)
+            fig.savefig(os.path.join(save_dir, filename + '_images.png'), dpi=300, bbox_inches='tight')
         
         plt.close(fig)
     
