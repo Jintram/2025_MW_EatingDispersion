@@ -128,21 +128,21 @@ This needs to be avoided, as we don't want the amount of true damage influencing
 the detection of the damaged region and the detected damage pattern.
 
 **Above twice background is damage.** The algorithm chosen here attempts 
-to set a threshold value independent
-of the amount of damage present. It focuses on determining the damage intensity 
-background signal, which is done by using the mode of the damage channel
+to set a threshold value independent of the amount of damage present. 
+
+It focuses on determining the base level NIR intensity in undamaged leaf parts.
+The base level is estimated by setting it to the mode of the damage channel
 (within the leaf mask). 
-Everything within the leaf mask with an intensity higher than 2x the mode 
-(or background signal) is considered "damaged". Note that the damage mask is
-restricted to the leaf mask, such that bright signal outside the leaf (e.g. in
-the background) is never counted as damage.
+Everything within the leaf mask with an intensity higher than 2x this "base level" 
+is considered "damaged". 
 
 There are some critical assumptions here:
 
-- **Critical assumption 1:** There should be a substiantal background 
-area present.
-- **Critical assumption 2:** The background intensity scales with the damage 
-intensity. (Or alternatively all images should be taken under equal illumination and 
+- **Critical assumption 1:** A substantial part of the leaf shows base level damage. 
+- **Critical assumption 2:** This base level leaf damage is invariant across conditions
+- **Critical assumption 3:** When changing acquisition conditions, 
+the base level scales with overall damage levels. 
+(Or alternatively all images should be taken under equal illumination and 
 acquisition conditions.)
 
 The image below shows the result of both segmentation of the leaf
