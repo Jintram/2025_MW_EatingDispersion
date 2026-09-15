@@ -937,44 +937,47 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
                 })
     df_acf = pd.DataFrame(acf_df_rows)
     
-    # plotting          
-    fig, axs = plt.subplots(2, 1, figsize=(10*cm_to_inch, 10*cm_to_inch))
-                    
-    # now plot each sample, colored by condition
-    sns.lineplot(
-        x='radius', y='acf_norm_avgr', hue='condition',         
-        units = 'file_path', estimator=None, # plot each sample separately
-        data=df_acf, 
-        ax=axs[0], palette=mycolors, linewidth=0.5, legend=False)
-    
-    # now plot averages per condition
+    # plot each sample, colored by condition
+    fig, ax = plt.subplots(1, 1, figsize=(10*cm_to_inch, 5*cm_to_inch))
     sns.lineplot(
         x='radius', y='acf_norm_avgr', hue='condition',
-        errorbar=None, 
+        units = 'file_path', estimator=None, # plot each sample separately
         data=df_acf,
-        ax=axs[1], palette=mycolors, linewidth=2)
-    
-    fig.suptitle('Radial Autocorrelation')    
-    axs[0].set_xlabel('Radius (pixels)')
-    axs[0].set_ylabel('Normalized Autocorrelation')
-    axs[0].set_title('Per sample')
-    
-    axs[1].set_xlabel('Radius (pixels)')
-    axs[1].set_ylabel('Normalized Autocorrelation')
-    axs[0].set_title('Condition averages')
-    
+        ax=ax, palette=mycolors, linewidth=0.5)
+    sns.move_legend(ax, 'center left', bbox_to_anchor=(1, 0.5), frameon=False)
+    ax.set_title('Radial Autocorrelation\nPer sample')
+    ax.set_xlabel('Radius (pixels)')
+    ax.set_ylabel('Normalized Autocorrelation')
+
     plt.tight_layout()
-    plt.savefig(outputdir+'/plots/Radial_acf.pdf', dpi=150)
-    plt.savefig(outputdir+'/plots/Radial_acf.png', dpi=150)
-    
-    axs[0].set_xlim([0,the_xlimit]); axs[1].set_xlim([0,the_xlimit])
-    axs[1].legend()
-    
+    fig.savefig(outputdir+'/plots/Radial_acf_samples.pdf', dpi=150)
+    fig.savefig(outputdir+'/plots/Radial_acf_samples.png', dpi=150)
+
+    ax.set_xlim([0,the_xlimit])
+    fig.savefig(outputdir+'/plots/Radial_acf_samples_lims.pdf', dpi=150)
+    fig.savefig(outputdir+'/plots/Radial_acf_samples_lims.png', dpi=150)
+    plt.close(fig)
+
+    # plot averages per condition
+    fig, ax = plt.subplots(1, 1, figsize=(10*cm_to_inch, 5*cm_to_inch))
+    sns.lineplot(
+        x='radius', y='acf_norm_avgr', hue='condition',
+        errorbar=None,
+        data=df_acf,
+        ax=ax, palette=mycolors, linewidth=2)
+    sns.move_legend(ax, 'center left', bbox_to_anchor=(1, 0.5), frameon=False)
+    ax.set_title('Radial Autocorrelation\nCondition averages')
+    ax.set_xlabel('Radius (pixels)')
+    ax.set_ylabel('Normalized Autocorrelation')
+
     plt.tight_layout()
-    plt.savefig(outputdir+'/plots/Radial_acf_lims.pdf', dpi=150)
-    plt.savefig(outputdir+'/plots/Radial_acf_lims.png', dpi=150)
-        
-    # plt.show(); plt.close()
+    fig.savefig(outputdir+'/plots/Radial_acf_averages.pdf', dpi=150)
+    fig.savefig(outputdir+'/plots/Radial_acf_averages.png', dpi=150)
+
+    ax.set_xlim([0,the_xlimit])
+    fig.savefig(outputdir+'/plots/Radial_acf_averages_lims.pdf', dpi=150)
+    fig.savefig(outputdir+'/plots/Radial_acf_averages_lims.png', dpi=150)
+    plt.close(fig)
     
 # Now the same for the nearest-island distance metric
 def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None):

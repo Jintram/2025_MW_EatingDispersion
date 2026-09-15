@@ -7,6 +7,13 @@ The name of my local conda environment is `2026_leafdamage2`.
 
 # To do / done (2/9/2026)
 
+- [X] (Written by Claude:) `plot_acf_norms_avgrs()` now saves the per-sample
+    lines and the condition averages to separate files (15/9/2026):
+    `Radial_acf_samples` and `Radial_acf_averages` (plus `_lims` versions),
+    replacing `Radial_acf` and `Radial_acf_lims`. The per-sample plot now also
+    has a legend. `run_plot_and_save()` additionally saves a version of each
+    per-image plot with only the images (`<image name>_images.png`).
+
 - [X] (Written by Claude:) Added `plot_damage_overview()` (15/9/2026), as a
     first step towards removing the synthetic-data specific code. It plots
     the damage channel of all images, with the damage mask outlined in white,
