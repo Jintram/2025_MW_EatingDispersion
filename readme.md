@@ -196,7 +196,7 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 
-The "Noise pattern" contains a uniform "damage" signal with noise.
+`overview_damage.pdf`. The "Noise pattern" contains a uniform "damage" signal with noise.
 The other signals are chosen to be "extreme" representations of 
 different patterns that might be in the data; one big damage spot, a load
 of small spots, only around the edges, two bigger spots.
@@ -223,7 +223,7 @@ for two pixels at distance X is opposite between the two pixels.
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 <img src="Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png"><br>
 
-The different signals clearly pick up the different patterns;
+`Radial_acf_averages.pdf`. The different signals clearly pick up the different patterns;
 
 - The "disk" pattern is positive for the longest distance (biggest structure).
 - The "spots" signal shows multiple small peaks because spots are small and have a regular structure.
@@ -274,6 +274,10 @@ The aim of this function is to characterize whether the location on the leaf
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 <img src="Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs_averages.png"><br>
+
+`radial_pdfs_averages.pdf`. We can again recognize the patterns, e.g. the "donut" 
+only has a signal at a high radius, whereas the "disk" is represented at 
+any radius.
 
 #### Island statistics
 
