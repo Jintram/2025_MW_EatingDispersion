@@ -194,7 +194,7 @@ To assess the nature of the damage patterns, multiple metrics are calculated.
 To get a feeling for what these metrics can do, a synthetic dataset was used; 
 this dataset contained the following "leafs" with corresponding "damage patterns":
 
-<img src="Synthetic_data/OUTPUT2/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 
 - "Noise pattern", basically no pattern for reference
 - "Disk" damage pattern
