@@ -273,7 +273,7 @@ The aim of this function is to characterize whether the location on the leaf
 (in terms of distance from the center) affects the likelyhood of damage.
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
-<img src="Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs.png"><br>
+<img src="Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs_averages.png"><br>
 
 #### Island statistics
 
@@ -409,7 +409,8 @@ lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True)
 ```{python}
 lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs.png" width=100%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs_samples.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs_averages.png" width=50%>
 
 ```{python}
 lsa.plot_damaged_area(df_samples, OUTPUTDIR)

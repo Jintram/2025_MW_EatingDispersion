@@ -1231,38 +1231,38 @@ def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
             })
     df_pdf = pd.DataFrame(pdf_df_rows)
 
-    fig, axs = plt.subplots(2, 1, figsize=(10*cm_to_inch, 10*cm_to_inch))
-
     # plot each sample, colored by condition
+    fig, ax = plt.subplots(1, 1, figsize=(10*cm_to_inch, 5*cm_to_inch))
     sns.lineplot(
         x='radius', y='radial_pdf', hue='condition',
         units='file_path', estimator=None, # plot each sample separately
         data=df_pdf,
-        ax=axs[0], palette=mycolors, linewidth=0.2, legend=False)
+        ax=ax, palette=mycolors, linewidth=0.2, legend=False)
+    ax.set_xlabel('Radius (pixels)')
+    ax.set_ylabel('Radial PDF')
+    ax.set_title('Radial PDF\nPer sample')
+
+    plt.tight_layout()
+    fig.savefig(outputdir+'/plots/radial_pdfs_samples.pdf', dpi=150)
+    fig.savefig(outputdir+'/plots/radial_pdfs_samples.png', dpi=150)
+    plt.close(fig)
 
     # plot averages per condition
+    fig, ax = plt.subplots(1, 1, figsize=(10*cm_to_inch, 5*cm_to_inch))
     sns.lineplot(
         x='radius', y='radial_pdf', hue='condition',
         errorbar=None,
         data=df_pdf,
-        ax=axs[1], palette=mycolors, linewidth=2)
-
-    axs[0].set_xlabel('Radius (pixels)')
-    axs[0].set_ylabel('Radial PDF')
-    axs[0].set_title('Per sample')
-
-    axs[1].set_xlabel('Radius (pixels)')
-    axs[1].set_ylabel('Radial PDF')
-    axs[1].set_title('Condition averages')
-    axs[1].legend()
+        ax=ax, palette=mycolors, linewidth=2)
+    sns.move_legend(ax, 'center left', bbox_to_anchor=(1, 0.5), frameon=False)
+    ax.set_xlabel('Radius (pixels)')
+    ax.set_ylabel('Radial PDF')
+    ax.set_title('Radial PDF\nCondition averages')
 
     plt.tight_layout()
-
-    # save as pdf to outputdir
-    plt.savefig(outputdir+'/plots/radial_pdfs.pdf', dpi=150)
-    plt.savefig(outputdir+'/plots/radial_pdfs.png', dpi=150)
-
-    # plt.show(); plt.close()
+    fig.savefig(outputdir+'/plots/radial_pdfs_averages.pdf', dpi=150)
+    fig.savefig(outputdir+'/plots/radial_pdfs_averages.png', dpi=150)
+    plt.close(fig)
 
 # %%
 

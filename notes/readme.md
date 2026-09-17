@@ -21,6 +21,12 @@ The name of my local conda environment is `2026_leafdamage2`.
             
 # To do / done (2/9/2026)
 
+- [X] (Written by Claude:) `plot_radial_pdfs()` now saves the per-sample lines
+    and the condition averages to separate files (17/9/2026):
+    `radial_pdfs_samples` and `radial_pdfs_averages`, replacing `radial_pdfs`.
+    The `_frozen` output folders referenced in the readme still need to be
+    regenerated to contain these new files.
+
 - [X] (Written by Claude:) `plot_acf_norms_avgrs()` now saves the per-sample
     lines and the condition averages to separate files (15/9/2026):
     `Radial_acf_samples` and `Radial_acf_averages` (plus `_lims` versions),
