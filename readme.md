@@ -220,24 +220,18 @@ to be more similar.
 If the correlation is negative at distance X, it's likely the signal
 for two pixels at distance X is opposite between the two pixels.
 
+
+<img src=Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png><br>
+<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
+
 The 
 distance at which the curve first crosses zero thus reflects the size of the 
 damaged features, whereas a secondary peak reflects a typical spacing between 
 them. 
 
-For our examples the ACF is shown in the plots below.
-Here, the thick black line is the
-radially integrated ACF, ie ACF(X). 
-The grey dotted line can be ignored (it is a technical check, 
-the horizontal center line of the 2d ACF, i.e.
-$`ACF(x, \frac{L_y}{2})`$).
+For our examples the ACF is shown in the plots above.
 
-
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_noise.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_disk.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_donut.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_dualspot.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_acf_spots.png">
+##### Technical points
 
 **Technical note 1:** Note that the curve is normalized by the variance over the whole leaf, so 
 such a secondary peak can exceed 1 (see "dual spot").
