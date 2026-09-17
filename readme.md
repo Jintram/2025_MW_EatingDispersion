@@ -300,10 +300,8 @@ Thus, colloqually, the *total* distance quantifies the total amount of
 whilst the average quantifies the amount of "walking without eating" thrips are willing to to 
 *between one island to the next*.
 
-**Technically, sum of distances.** To further investigate spatial features of feeding behavior, 
-we look at the sum of nearest-island distances $D$.
-
-Mathematically, this is defined as 
+**Technical: sum of distances.** The sum of nearest-island distances $D$,
+mathematically, is defined as
 
 
 ```math
@@ -313,7 +311,7 @@ D = \sum_{n} \min_{m \neq n} d_{nm}
 which is the sum over the smallest edge-to-edge distance $d$ between island n and all other
 islands m (with $m \neq n$ excluding self-distance).
 
-**Technically, average  of distances.** Additionally, we look at the average nearest-island distance, $`\bar{D} = D / N`$, 
+**Technical: average  of distances.** Additionally, we look at the average nearest-island distance, $`\bar{D} = D / N`$, 
 with $`N`$ the number of islands. 
 
 Note that when fewer than two islands are detected, there is no distance to
@@ -410,7 +408,8 @@ To generate each of the plots, the following functions can be used:
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_lims.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_samples.png" width=50%><br>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_averages.png" width=50%>
 
 ```{python}
 lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False)
@@ -422,7 +421,7 @@ lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True)
 ```{python}
 lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs_samples.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs_samples.png" width=50%><br>
 <img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs_averages.png" width=50%>
 
 ```{python}
