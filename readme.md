@@ -221,7 +221,7 @@ If the correlation is negative at distance X, it's likely the signal
 for two pixels at distance X is opposite between the two pixels.
 
 
-<img src=Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png><br>
+<img src="Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png"><br>
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 
 The 
