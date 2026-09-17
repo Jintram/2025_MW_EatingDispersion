@@ -220,16 +220,22 @@ to be more similar.
 If the correlation is negative at distance X, it's likely the signal
 for two pixels at distance X is opposite between the two pixels.
 
-
-<img src="Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png"><br>
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png"><br>
 
-The 
-distance at which the curve first crosses zero thus reflects the size of the 
+The different signals clearly pick up the different patterns;
+
+- The "disk" pattern is positive for the longest distance (biggest structure).
+- The "spots" signal shows multiple small peaks because spots are small and have a regular structure.
+- The "donut" shows a sharp peak (small width), and a peak at high distance
+due to the two sides of the "donut" on each end of the leaf being correlated.
+- The "dualspot" is similar to "spots", but much wider and containing only 
+two peaks.
+
+Note furthermore that the 
+distance at which the curve first crosses zero reflects the size of the 
 damaged features, whereas a secondary peak reflects a typical spacing between 
 them. 
-
-For our examples the ACF is shown in the plots above.
 
 ##### Technical points
 
@@ -258,16 +264,16 @@ See also [notes/ACF.md](notes/ACF.md).
 
 #### Radial distribution
 
-Average signal from the center of the leaf at distance X.
+Whereas the ACF quantifies *relative* spatial patterns, the radial distribution
+quantifies the pattern of damage with respect to the location on the leaf.
+
+It is the average signal from the center of the leaf at distance X.
 
 The aim of this function is to characterize whether the location on the leaf
 (in terms of distance from the center) affects the likelyhood of damage.
 
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_noise.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_disk.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_donut.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_dualspot.png">
-<img src="Synthetic_data/OUTPUT1_frozen/synthdata_radialpdf_spots.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs.png"><br>
 
 #### Island statistics
 
