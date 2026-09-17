@@ -196,11 +196,10 @@ this dataset contained the following "leafs" with corresponding "damage patterns
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 
-- "Noise pattern", basically no pattern for reference
-- "Disk" damage pattern
-- "Donut" damage pattern:
-- "Dual spot" damage pattern:
-- "Spots" damage pattern:
+The "Noise pattern" contains a uniform "damage" signal with noise.
+The other signals are chosen to be "extreme" representations of 
+different patterns that might be in the data; one big damage spot, a load
+of small spots, only around the edges, two bigger spots.
 
 ### Metrics to quantify the damage pattern
 
