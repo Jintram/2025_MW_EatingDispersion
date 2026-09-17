@@ -265,7 +265,7 @@ See also [notes/ACF.md](notes/ACF.md).
 #### Radial distribution
 
 Whereas the ACF quantifies *relative* spatial patterns, the radial distribution
-quantifies the pattern of damage with respect to the location on the leaf.
+quantifies the pattern of damage with respect to the location *on the leaf*.
 
 It is the average signal from the center of the leaf at distance X.
 
@@ -283,15 +283,24 @@ any radius.
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.png">
 
-##### Island count
-
-The number of separate continuous regions of damage (the number of connected components),
+`nearest_island_distances.pdf` This plot quantifes the number of separate 
+continuous regions of damage (the number of connected components),
 also referred to as *islands*, that are observed in the damage mask.
-This assesses the spatial features of the feeding behavior.
+Both the island count as well as metrics regarding the distance inbetween
+are quantified.
 
-##### Total nearest-island distance
+The total closest-island distance "draws lines" between each island and it's
+closest neighbor, and sums those lines. The idea is that this quantifies
+the amount of distance thrips travel from one to the next feeding island.
 
-To further investigate spatial features of feeding behavior, 
+The average clostest-island distance takes the average of those lines.
+
+Thus, colloqually, the *total* distance quantifies the total amount of 
+"walking without eating" on a leaf,
+whilst the average quantifies the amount of "walking without eating" thrips are willing to to 
+*between one island to the next*.
+
+**Technically, sum of distances.** To further investigate spatial features of feeding behavior, 
 we look at the sum of nearest-island distances $D$.
 
 Mathematically, this is defined as 
@@ -304,7 +313,7 @@ D = \sum_{n} \min_{m \neq n} d_{nm}
 which is the sum over the smallest edge-to-edge distance $d$ between island n and all other
 islands m (with $m \neq n$ excluding self-distance).
 
-Additionally, we look at the average nearest-island distance, $`\bar{D} = D / N`$, 
+**Technically, average  of distances.** Additionally, we look at the average nearest-island distance, $`\bar{D} = D / N`$, 
 with $`N`$ the number of islands. 
 
 Note that when fewer than two islands are detected, there is no distance to
