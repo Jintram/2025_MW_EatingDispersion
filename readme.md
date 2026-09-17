@@ -169,9 +169,20 @@ To assess this, you can check out the plot with the background damage levels
 There should not be trends in this plot, unless you can explain the trend
 and know this won't violate above assumptions.
 
-##### Potential improvements
+#### Baselevel damage
 
-The distribution of undamaged leaf intensity could be estimated in more
+The experimental procedure of stamping out leaves also introduces some damage
+to the leave.
+
+##### Potential & necessary improvements
+
+- It turns out the base level damage does change per leaf.
+    - Perhaps a new threshold that relates to a total-dataset reference
+    leaf threshold is required.
+    - Current per-leaf damage thresholds could be interpreted as 
+    per-leaf high damage intensity areas.
+
+- The distribution of undamaged leaf intensity could be estimated in more
 sophisticated ways (e.g. fitting a gaussian to part of the histogram),
 allowing for a better estimate on what the expected range of 
 undamaged signal is, and thus what can be considered damaged area.
@@ -183,25 +194,13 @@ To assess the nature of the damage patterns, multiple metrics are calculated.
 To get a feeling for what these metrics can do, a synthetic dataset was used; 
 this dataset contained the following "leafs" with corresponding "damage patterns":
 
-- "Noise pattern", basically no pattern for reference:
+<img src="Synthetic_data/OUTPUT2/plots/overview_damage.png">
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/noise/synthetic_noise_images.png">
-
-- "Disk" damage pattern:
-
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/disk/synthetic_eatendisk_images.png">
-
+- "Noise pattern", basically no pattern for reference
+- "Disk" damage pattern
 - "Donut" damage pattern:
-
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/donut/synthetic_eatendonut.png">
-
 - "Dual spot" damage pattern:
-
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/dualspot/synthetic_dualspot_images.png">
-
 - "Spots" damage pattern:
-
-<img src="Synthetic_data/OUTPUT2_frozen/plots/segmentation_masks/spots/synthetic_eatenspots_images.png">
 
 ### Metrics to quantify the damage pattern
 
