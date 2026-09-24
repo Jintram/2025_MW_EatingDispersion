@@ -9,14 +9,22 @@ The name of my local conda environment is `2026_leafdamage2`.
 - [x] Refactor to remove bloated analysis function 
 - [x] Remove the synthetic-specific code, which is redundant (ticked by Claude, see changelog 24/9/2026 below)
 	- [x] Currently updating plotting functions, such that I can still create the plots currently shown for synthetic data in the readme.
-		- [ ] **`Radial_acf_samples.pdf` was just updated, but readme isn't updated accordingly. CONTINUE WITH THIS**
-- [ ] Create both total and average damage signal /area.
+- [x] Create both total and average damage signal /area.
+    - [x] Added average damage signal
+        - [ ] Perhaps make dedicated plot? Or a wrapper? Makes it more streamlined.
+
+!!!!! CONTINUE HERE:
+- [ ] I was performing below task, starting with "leaf background" to "leaf baselevel"
+rename, see discussion with Claude ("average damage signal .."). Claude correctly
+points out the baselevel rename is more than naming problem, but I know this.
+Continue on this thread.
+!!!!!!
 
 - [ ] How can damaged area be determined if leaf baselevel doesn't remain equal. 
     - This is a bit complicated, as signal is not uniform across leaf.
     - One solution would be to averge the baselevel signal over healthy leaves. Disadvantage of this is that that might create leaves that are ±100% damaged.
     - [ ] Update readme to reflect this change.
-    
+        
 - [X] Go over assumptions again, because fact that "background" within NIR of leave is taken as reference is now not included in the assumptions.
             
 # To do / done (2/9/2026)
