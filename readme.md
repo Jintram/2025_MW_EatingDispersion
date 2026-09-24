@@ -191,12 +191,12 @@ undamaged signal is, and thus what can be considered damaged area.
 
 To assess the nature of the damage patterns, multiple metrics are calculated.
 
-To understand these metrics, they were first applied to a synthetic dataset.
+To understand these metrics, they were first calculated for a synthetic dataset.
 This dataset contained the following "leafs" with corresponding "damage patterns":
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 
-`overview_damage.pdf` ([folder](Synthetic_data/OUTPUT2_frozen)). The "Noise pattern" contains a uniform "damage" signal with noise.
+`overview_damage.pdf` ([link](Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png)). The "Noise pattern" contains a uniform "damage" signal with noise.
 The other signals are chosen to be "extreme" representations of 
 different patterns that might be in the data; one big damage spot, a load
 of small spots, only around the edges, two bigger spots.
