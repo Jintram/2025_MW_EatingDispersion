@@ -17,7 +17,7 @@ Assuming you already have Conda installed and your preferred environment set up,
 conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn imageio openpyxl -y
 ```
 
-## To run
+## To run (example scripts)
 
 To run this script, check out the files:
 - [leafstats_example_1channel.py](leafstats_example_1channel.py), which shows how to analyze a dataset where 1 channel was recorded to identify both the leaf and the damage done by thrips. (In the example, the same channel of the example images is simply assigned to both roles, for illustratory purposes.)
@@ -191,12 +191,12 @@ undamaged signal is, and thus what can be considered damaged area.
 
 To assess the nature of the damage patterns, multiple metrics are calculated.
 
-To get a feeling for what these metrics can do, a synthetic dataset was used; 
-this dataset contained the following "leafs" with corresponding "damage patterns":
+To understand these metrics, they were first applied to a synthetic dataset.
+This dataset contained the following "leafs" with corresponding "damage patterns":
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 
-`overview_damage.pdf`. The "Noise pattern" contains a uniform "damage" signal with noise.
+`overview_damage.pdf` ([folder](Synthetic_data/OUTPUT2_frozen)). The "Noise pattern" contains a uniform "damage" signal with noise.
 The other signals are chosen to be "extreme" representations of 
 different patterns that might be in the data; one big damage spot, a load
 of small spots, only around the edges, two bigger spots.
