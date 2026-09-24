@@ -12,7 +12,6 @@ import pandas as pd
 
 # import math
 
-from skimage import io
 from skimage.filters import threshold_otsu, threshold_triangle
 from skimage.measure import label, regionprops
 from skimage.morphology import opening, closing, disk
@@ -95,7 +94,7 @@ class SampleArrays:
     for downstream usage. (So it's only for internal use.)
     
     I.e. Array-like results for one image; stored (as dict) in array_data.
-    Fields that are None were not calculated (no leaf, or no damage found).
+    Fields that are None were not calculated (no leaf found).
     """
     condition: str
     img_rgb: np.ndarray
@@ -286,46 +285,6 @@ def get_zoombox(mask, margin=0):
     return [z1, z2, z3, z4]
     
     
-def plot_images(
-    img_leaf,
-    img_dmg,
-    mask_leaf,
-    mask_damage,
-    config_channels,
-    centroid_leaf=None,
-    img0=None
-):
-    """
-    Plots three channels side by side.
-    config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
-    """
-    
-    zm = get_zoombox(mask_leaf, margin=10)
-    
-    fig, axs = plt.subplots(1, 3, figsize=(15*cm_to_inch, 5*cm_to_inch))
-    
-    # Reference channel (skipped if not present)
-    if img0 is not None and config_channels.get('Reference') is not None:
-        axs[0].imshow(img0[:, :, config_channels.get('Reference')][zm[0]:zm[1],zm[2]:zm[3]]); axs[0].set_title(f'Reference channel (idx={config_channels.get("Reference")})')
-    else:
-        axs[0].axis('off')
-    
-    # Leaf channel
-    axs[1].imshow(img_leaf[zm[0]:zm[1],zm[2]:zm[3]]); axs[1].set_title(f'Leaf channel (idx={config_channels['Leaf']}, leaf)')
-    axs[1].contour(mask_leaf[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)    
-    if centroid_leaf is not None:
-        axs[1].plot(centroid_leaf[1]-zm[2], centroid_leaf[0]-zm[0], 'rx', markersize=15)
-            
-    # Damage channel    
-    axs[2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]]); axs[2].set_title(f'Damage channel (idx={config_channels['Damage']}, damage)')
-    axs[2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
-
-    plt.tight_layout()
-        
-    return fig, axs
-    
-        
-
 def get_radial_pdf(img, CoM, mask_user=None):
     '''
     Given an image (img) and center of mass (CoM), integrate 
@@ -516,215 +475,6 @@ def get_island_counts(mask_leaf, mask_damage):
     return np.max(lbl_damage)
     
 
-#%% ################################################################################
-# Now let's first look at data I generated myself
-# Load the synthetic data
-
-# open tiff stack image
-
-
-def load_synthetic_data(synthetic_image_path, config_channels):
-    """
-    Load synthetic TIFF stacks and split them into leaf and damage channels.
-    synthetic_image_path: folder holding the synthetic images; absolute, or
-        relative to the current working directory. A trailing slash is optional.
-    config_channels: dict with at least 'Leaf' and 'Damage' keys mapping to channel indices.
-    """
-
-    img_leafs = {}
-    img_damages = {}
-
-    # Load the leaf w/ only noise
-    img_noise_path = os.path.join(synthetic_image_path, 'images/noise/synthetic_noise.tif')
-    img_noise = io.imread(img_noise_path)  # io.read required for img stack
-    img_leafs['noise'] = img_noise[:, :, config_channels['Leaf']]  # configured leaf channel
-    img_damages['noise'] = img_noise[:, :, config_channels['Damage']]  # configured damage channel
-
-    # Load the leaf w/ eaten disk
-    img_disk_path = os.path.join(synthetic_image_path, 'images/disk/synthetic_eatendisk.tif')
-    img_disk = io.imread(img_disk_path)  # io.read required for img stack
-    img_leafs['disk'] = img_disk[:, :, config_channels['Leaf']]  # configured leaf channel
-    img_damages['disk'] = img_disk[:, :, config_channels['Damage']]  # configured damage channel
-
-    # Load the leaf w/ eaten spots
-    img_spots_damage_path = os.path.join(synthetic_image_path, 'images/spots/synthetic_eatenspots.tif')
-    img_spots_damage = io.imread(img_spots_damage_path)  # io.read required for img stack
-    img_leafs['spots'] = img_spots_damage[:, :, config_channels['Leaf']]  # configured leaf channel
-    img_damages['spots'] = img_spots_damage[:, :, config_channels['Damage']]  # configured damage channel
-
-    # Load the image w/ eaten donut
-    img_donut_path = os.path.join(synthetic_image_path, 'images/donut/synthetic_eatendonut.tif')
-    img_donut = io.imread(img_donut_path)  # io.read required for img stack
-    img_leafs['donut'] = img_donut[:, :, config_channels['Leaf']]  # configured leaf channel
-    img_damages['donut'] = img_donut[:, :, config_channels['Damage']]  # configured damage channel
-
-    # Load dual-spot sample
-    img_dualspot_path = os.path.join(synthetic_image_path, 'images/dualspot/synthetic_dualspot.tif')
-    img_dualspot = io.imread(img_dualspot_path)  # io.read required for img stack
-    img_leafs['dualspot'] = img_dualspot[:, :, config_channels['Leaf']]  # configured leaf channel
-    img_damages['dualspot'] = img_dualspot[:, :, config_channels['Damage']]  # configured damage channel
-
-    return img_leafs, img_damages, img_disk
-
-
-#%% ################################################################################
-# Analysis for multiple synthetic samples
-
-# plot the acf centerline
-def plot_img_n_acf(img_damage, acf_norm, acf_center, acf_norms_avgr, name):
-    # img_damage = img_damages['disk']; acf_norm = acf_norms['disk']; acf_center = acf_centers['disk']; acf_norms_avgr = acf_norms_avgrs['disk']
-    
-    fig, axs = plt.subplots(1, 2, figsize=(15*cm_to_inch, 5*cm_to_inch))
-    axs[0].imshow(img_damage, cmap='gray')
-    
-    x_axis = np.arange(acf_norm.shape[1]) - acf_center[1]
-    
-    axs[1].axhline(0, color='red', linewidth=0.5) # acf can now be negative
-    axs[1].plot(x_axis, acf_norm[acf_center[0],:], color='grey', linestyle=':', label='1d')
-    axs[1].plot(acf_norms_avgr, color='black', linestyle='-', label='Radial average')
-    axs[1].set_title(f'Autocorrelation for {name}')
-    axs[1].set_xlabel('Distance (pixels)'); axs[1].set_ylabel('Correlation')
-    # axs[1].legend()
-    
-    plt.tight_layout()
-    
-    return fig, axs
-
-# %%
-
-# now get masks for leaf and damage, plus centroid for all 
-def run_synthetic_analysis(
-    img_leafs,
-    img_damages,
-    img_disk,
-    config_channels,
-    outputdir=None
-):
-    """
-    Run synthetic-data diagnostics and plots to verify analysis behavior.
-    config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference'.
-    """
-
-    # Build masks and centroids
-    mask_leafs = {}
-    mask_damages = {}
-    centroids = {}
-    for key in img_leafs.keys():
-        # key = list(img_leafs)[0]
-        
-        mask_leafs[key], threshold_val_leaf = get_largest_mask(
-            img_leafs[key], method='otsu'
-        )
-        mask_damages[key], threshold_val_dmg = get_mask(
-            img_damages[key], mask_leafs[key], method='bg2'
-        )  # bg2, otsu, triangle, pct10
-        
-        centroids[key] = regionprops(mask_leafs[key].astype(int))[0].centroid
-
-    # Visual QC for channels/masks
-    for key in img_leafs.keys():
-        fig, axs = plot_images(
-            img_leafs[key],
-            img_damages[key],
-            mask_leafs[key],
-            mask_damages[key],
-            config_channels,
-            centroid_leaf=centroids[key],
-            img0=img_disk
-        )
-        fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.pdf'), dpi=150)
-        fig.savefig(os.path.join(outputdir, f'synthdata_img_{key}.png'), dpi=150)
-        plt.close(fig)
-
-    # Plot the damage quantification in a bar plot
-    damage_areas_percentage = {key: np.sum(mask_damages[key]) / np.sum(mask_leafs[key]) * 100 for key in img_leafs.keys()}
-    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
-    axs.bar(list(damage_areas_percentage.keys()), list(damage_areas_percentage.values()))
-    axs.set_ylabel("Damage area (% of leaf)")
-    plt.tight_layout()
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_damage.pdf'), dpi=150)
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_damage.png'), dpi=150)
-    
-    # Autocorrelation analysis for each synthetic sample
-    acfs = {}
-    acf_norms = {}
-    acf_centers = {}
-    acf_norms_avgrs = {}
-    for key in img_leafs.keys():
-        # key = list(img_leafs)[0]
-        acfs[key], acf_norms[key], acf_centers[key], acf_valid = \
-            get_autocorrelation(img=img_damages[key], 
-                                mask_user=mask_leafs[key])
-        _, _, acf_norms_avgrs[key], _, _ = get_radial_pdf(acf_norms[key], acf_centers[key], mask_user=acf_valid)
-    # Plot ACF curves
-    for key in img_leafs.keys():
-        fig, axs = plot_img_n_acf(img_damages[key], acf_norms[key], acf_centers[key], acf_norms_avgrs[key], key)
-        fig.savefig(os.path.join(outputdir, f'synthdata_acf_{key}.pdf'), dpi=150)
-        fig.savefig(os.path.join(outputdir, f'synthdata_acf_{key}.png'), dpi=150)
-        plt.close(fig)
-
-    # Radial PDFs for synthetic masks
-    radial_pdf = {}
-    for key in img_leafs.keys():
-        _, _, _, radial_pdf[key], _ = get_radial_pdf(img_damages[key], centroids[key], mask_leafs[key])
-    # plot radial PDFs
-    for key in img_leafs.keys():
-        # key = "noise"
-        
-        fig, axs = plt.subplots(1, 2, figsize=(10*cm_to_inch, 5*cm_to_inch))        
-        plt.suptitle("Condition " + key)
-        axs[0].imshow(img_damages[key])
-        axs[1].plot(radial_pdf[key])
-        axs[1].set_ylabel('Radial distribution function')
-        axs[1].set_xlabel('Distance in pixels')
-        plt.tight_layout()
-        fig.savefig(os.path.join(outputdir, f'synthdata_radialpdf_{key}.pdf'), dpi=150)
-        fig.savefig(os.path.join(outputdir, f'synthdata_radialpdf_{key}.png'), dpi=150)
-        plt.close(fig)
-
-    # Summarize island spacing
-    total_nearest_island_distances = {}
-    mean_nearest_island_distances = {}
-    for key in img_leafs.keys():
-        nearest_island_distances = get_nearest_island_distances(mask_leafs[key], mask_damages[key])
-        island_count = get_island_counts(mask_leafs[key], mask_damages[key])
-        total_nearest_island_distances[key] = np.sum(nearest_island_distances)
-        # for a single island there is no distance to another island,
-        # which we count as a distance of 0
-        mean_nearest_island_distances[key] = (
-            total_nearest_island_distances[key] / island_count if island_count >= 2 else 0.0
-        )
-    # plot island spacing
-    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
-    axs.bar(list(img_leafs.keys()), list(total_nearest_island_distances.values()))
-    axs.set_xticklabels(list(img_leafs.keys()), rotation=45, ha="right")
-    axs.set_ylabel("Sum nearest-island distances")
-    plt.tight_layout()
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland.pdf'), dpi=150)
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland.png'), dpi=150)
-    # plot the average island spacing
-    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
-    axs.bar(list(img_leafs.keys()), list(mean_nearest_island_distances.values()))
-    axs.set_xticklabels(list(img_leafs.keys()), rotation=45, ha="right")
-    axs.set_ylabel("Mean nearest-island distance")
-    plt.tight_layout()
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland_mean.pdf'), dpi=150)
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_nearestisland_mean.png'), dpi=150)
-
-    # Summarize island counts
-    island_counts = {}
-    for key in img_leafs.keys():
-        island_counts[key] = get_island_counts(mask_leafs[key], mask_damages[key])
-    # plot island counts
-    fig, axs = plt.subplots(1, 1, figsize=(5*cm_to_inch, 5*cm_to_inch))
-    axs.bar(list(island_counts.keys()), list(island_counts.values()))
-    axs.set_xticklabels(list(island_counts.keys()), rotation=45, ha="right")
-    axs.set_ylabel("Island count")
-    plt.tight_layout()
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_islandcount.pdf'), dpi=150)
-    fig.savefig(os.path.join(outputdir, f'synthdata_summary_islandcount.png'), dpi=150)
-    
-
 #%% ######################################################################
 # Now let's get real data working
 
@@ -827,8 +577,18 @@ def analyse_sample(file_path, condition, config_channels,
     arrays.mask_damage = mask_damage
     arrays.centroid = centroid
     metrics.damage_found = this_damage_found
+    metrics.threshold_val_dmg = threshold_val_dmg
+    metrics.background_dmg = calculate_background_img_mask(img_damage, mask_leaf)
 
-    # CASE NO DAMAGE FOUND; keep valid zeros for damage metrics
+    # Spatial analyses of the damage signal; these only require the leaf mask
+    # (not the damage mask), so are also calculated when no damage is found
+    arrays.acf, arrays.acf_norm, arrays.acf_center, arrays.acf_valid = \
+        get_autocorrelation(img_damage, mask_user=mask_leaf)
+    _, _, arrays.acf_norm_avgr, _, _ = \
+        get_radial_pdf(arrays.acf_norm, arrays.acf_center, mask_user=arrays.acf_valid)
+    _, _, _, arrays.radial_pdf, _ = get_radial_pdf(img_damage, centroid, mask_leaf)
+
+    # CASE NO DAMAGE FOUND; keep valid zeros for damage-mask dependent metrics
     if not this_damage_found:
         metrics.analysis_status = 'no_damage_mask'
         metrics.total_nearest_island_distances = 0.0
@@ -840,15 +600,9 @@ def analyse_sample(file_path, condition, config_channels,
         metrics.total_damage_percentage = 0.0
         return metrics, arrays
 
-    # CASE DAMAGE FOUND; run (spatial) analyses
-    arrays.acf, arrays.acf_norm, arrays.acf_center, arrays.acf_valid = \
-        get_autocorrelation(img_damage, mask_user=mask_leaf)
-    _, _, arrays.acf_norm_avgr, _, _ = \
-        get_radial_pdf(arrays.acf_norm, arrays.acf_center, mask_user=arrays.acf_valid)
-    _, _, _, arrays.radial_pdf, _ = get_radial_pdf(img_damage, centroid, mask_leaf)
+    # CASE DAMAGE FOUND; run damage-mask dependent analyses
     nearest_island_distances = get_nearest_island_distances(mask_leaf, mask_damage)
     # save info
-    metrics.threshold_val_dmg = threshold_val_dmg
     metrics.analysis_status = 'ok'
     metrics.total_nearest_island_distances = np.sum(nearest_island_distances)
     metrics.island_counts = get_island_counts(mask_leaf, mask_damage)
@@ -864,7 +618,6 @@ def analyse_sample(file_path, condition, config_channels,
     metrics.total_damage_percentage = (
         metrics.total_damage_area_px / metrics.total_leaf_size_px * 100
     )
-    metrics.background_dmg = calculate_background_img_mask(img_damage, mask_leaf)
 
     return metrics, arrays
 
@@ -873,7 +626,7 @@ def run_complete_analysis(data_file_paths, config_channels,
                           apply_smooth_leafmask=False,
                           pixel_to_cm2_factor=None):
     """
-    Run all analyses (as for synthetic data) for all files in data_file_paths.
+    Run all analyses for all files in data_file_paths.
     Stores scalar outputs in a dataframe and array-like outputs in a dict.
     config_channels: dict with keys 'Leaf' and 'Damage' mapping to channel indices.
     """

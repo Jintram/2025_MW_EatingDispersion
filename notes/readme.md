@@ -7,8 +7,8 @@ The name of my local conda environment is `2026_leafdamage2`.
 
 
 - [x] Refactor to remove bloated analysis function 
-- [ ] Remove the synthetic-specific code, which is redundant
-	- [ ] Currently updating plotting functions, such that I can still create the plots currently shown for synthetic data in the readme.
+- [x] Remove the synthetic-specific code, which is redundant (ticked by Claude, see changelog 24/9/2026 below)
+	- [x] Currently updating plotting functions, such that I can still create the plots currently shown for synthetic data in the readme.
 		- [ ] **`Radial_acf_samples.pdf` was just updated, but readme isn't updated accordingly. CONTINUE WITH THIS**
 - [ ] Create both total and average damage signal /area.
 
@@ -20,6 +20,20 @@ The name of my local conda environment is `2026_leafdamage2`.
 - [X] Go over assumptions again, because fact that "background" within NIR of leave is taken as reference is now not included in the assumptions.
             
 # To do / done (2/9/2026)
+
+- [X] (Written by Claude:) Removed the synthetic-specific code (24/9/2026),
+    see [refactor-synthetic.md](refactor-synthetic.md). Removed
+    `load_synthetic_data()`, `run_synthetic_analysis()`, `plot_img_n_acf()`,
+    `plot_images()` and the `skimage.io` import from `leafstats_analysis.py`;
+    `leafstats_syntheticdata.py` now only runs the regular pipeline (output
+    in `Synthetic_data/OUTPUT`, renamed from `OUTPUT2`); `Synthetic_data/OUTPUT1_frozen/` was deleted.
+    **Behaviour change (also for real data):** `analyse_sample()` now only
+    skips damage-mask dependent metrics (areas, island statistics) when no
+    damage mask is found. The ACF, radial PDF, `threshold_val_dmg` and
+    `background_dmg` are now calculated whenever a leaf is found. So samples
+    with `analysis_status == 'no_damage_mask'` (e.g. the synthetic "noise"
+    sample) now show up in the ACF and radial PDF plots.
+    `Synthetic_data/OUTPUT_frozen/` (renamed from `OUTPUT2_frozen`) still needs to be regenerated.
 
 - [X] (Written by Claude:) `plot_radial_pdfs()` now saves the per-sample lines
     and the condition averages to separate files (17/9/2026):

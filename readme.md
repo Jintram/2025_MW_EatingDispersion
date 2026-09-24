@@ -22,7 +22,7 @@ conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn 
 To run this script, check out the files:
 - [leafstats_example_1channel.py](leafstats_example_1channel.py), which shows how to analyze a dataset where 1 channel was recorded to identify both the leaf and the damage done by thrips. (In the example, the same channel of the example images is simply assigned to both roles, for illustratory purposes.)
 - [leafstats_example_3channels.py](leafstats_example_3channels.py), which shows how to analyze a dataset where 3 channels were taken, 1 for identifying the leaf, 1 for quantifying the damage, and 1 that is only displayed for reference.
-- [leafstats_syntheticdata.py](leafstats_syntheticdata.py), which runs the analysis on the synthetic images in [Synthetic_data/](Synthetic_data/); it generates the synthetic-data figures shown below, and additionally runs the regular analysis pipeline on those same images.
+- [leafstats_syntheticdata.py](leafstats_syntheticdata.py), which runs the  analysis pipeline on the synthetic images in [Synthetic_data/](Synthetic_data/); it generates the synthetic-data figures shown below.
 
 The first two examples run out of the box on the images in [Example_data/](Example_data/).
 All three scripts refer to those images with paths relative to the root of this repository,
@@ -194,9 +194,9 @@ To assess the nature of the damage patterns, multiple metrics are calculated.
 To understand these metrics, they were first calculated for a synthetic dataset.
 This dataset contained the following "leafs" with corresponding "damage patterns":
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots/overview_damage.png">
 
-[overview_damage.pdf](Synthetic_data/OUTPUT2_frozen/plots/overview_damage.pdf). The "Noise pattern" contains a uniform "damage" signal with noise.
+[overview_damage.pdf](Synthetic_data/OUTPUT_frozen/plots/overview_damage.pdf). The "Noise pattern" contains a uniform "damage" signal with noise.
 The other signals are chosen to be "extreme" representations of 
 different patterns that might be in the data; one big damage spot, a load
 of small spots, only around the edges, two bigger spots.
@@ -205,10 +205,9 @@ of small spots, only around the edges, two bigger spots.
 
 #### Amount of damage
 
-<!--<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_damage.png">-->
-<img src="Synthetic_data/OUTPUT2_frozen/plots/damaged_percentage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.png">
 
-[damaged_percentage.pdf](Synthetic_data/OUTPUT2_frozen/plots/damaged_percentage.pdf) 
+[damaged_percentage.pdf](Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.pdf) 
 Lists the percentage area covered by the damage.
 
 (This was chosen to be ±equal, except for "dual spot".)
@@ -225,10 +224,10 @@ to be more similar.
 If the correlation is negative at distance X, it's likely the signal
 for two pixels at distance X is opposite between the two pixels.
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
-<img src="Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png"><br>
+<img src="Synthetic_data/OUTPUT_frozen/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots/Radial_acf_averages.png"><br>
 
-[Radial_acf_averages.pdf](Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.pdf). The different signals clearly pick up the different patterns;
+[Radial_acf_averages.pdf](Synthetic_data/OUTPUT_frozen/plots/Radial_acf_averages.pdf). The different signals clearly pick up the different patterns;
 
 - The "disk" pattern is positive for the longest distance (biggest structure).
 - The "spots" signal shows multiple small peaks because spots are small and have a regular structure.
@@ -277,18 +276,18 @@ It is the average signal from the center of the leaf at distance X.
 The aim of this function is to characterize whether the location on the leaf
 (in terms of distance from the center) affects the likelyhood of damage.
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
-<img src="Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs_averages.png"><br>
+<img src="Synthetic_data/OUTPUT_frozen/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots/radial_pdfs_averages.png"><br>
 
-[radial_pdfs_averages.pdf](Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs_averages.pdf). We can again recognize the patterns, e.g. the "donut" 
+[radial_pdfs_averages.pdf](Synthetic_data/OUTPUT_frozen/plots/radial_pdfs_averages.pdf). We can again recognize the patterns, e.g. the "donut" 
 only has a signal at a high radius, whereas the "disk" is represented at 
 any radius.
 
 #### Island statistics
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots/nearest_island_distances.png">
 
-[nearest_island_distances.pdf](Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.pdf) This plot quantifes the number of separate 
+[nearest_island_distances.pdf](Synthetic_data/OUTPUT_frozen/plots/nearest_island_distances.pdf) This plot quantifes the number of separate 
 continuous regions of damage (the number of connected components),
 also referred to as *islands*, that are observed in the damage mask.
 Both the island count as well as metrics regarding the distance inbetween
@@ -394,6 +393,10 @@ single-value metrics (e.g. `island_counts`, `total_damage_area_px`,
 `total_damage_percentage`, `threshold_val_dmg`, `background_dmg`), plus the
 condition, the file path, and status fields (`leaf_found`, `damage_found`,
 `analysis_status`) that record whether the analysis succeeded for that image.
+When a leaf is found but no damage, `analysis_status` is `'no_damage_mask'`;
+metrics that depend on the damage mask (areas, island statistics) are then set
+to 0, whereas metrics that only need the leaf mask (autocorrelation, radial
+distribution, damage threshold and background) are still calculated.
 - `array_data`, a `dict` keyed by file path, holding the array-like results
 per image (the images themselves, the leaf and damage masks, the centroid, the
 autocorrelation, and the radial distribution).

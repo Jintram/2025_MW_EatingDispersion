@@ -1,6 +1,8 @@
 # Removing the synthetic-specific code
 
-(Written by Claude, 2026-09-24. Analysis only; no code has been changed yet.)
+(Written by Claude, 2026-09-24. Originally written as an analysis before the refactor; line numbers refer to the code before it.)
+
+**Status (24/9/2026): done** — the refactor below has been carried out; see the changelog in [readme.md](readme.md). The `noise` ACF/radial PDF is kept, by computing these in the pipeline whenever a leaf is found.
 
 ## Synthetic-specific code
 

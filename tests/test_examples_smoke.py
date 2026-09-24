@@ -52,11 +52,11 @@ EXAMPLES = {
     'leafstats_syntheticdata.py': {
         'inputs': ['Synthetic_data/images'],
         'expected_outputs': [
-            'Synthetic_data/OUTPUT2/data_leaf_damage_singlemetrics.csv',
-            'Synthetic_data/OUTPUT2/data_leaf_damage_singlemetrics.xlsx',
-            'Synthetic_data/OUTPUT2/plots/Radial_acf_averages.png',
-            'Synthetic_data/OUTPUT2/plots/radial_pdfs_averages.png',
-            'Synthetic_data/OUTPUT2/plots/overview_damage.png',
+            'Synthetic_data/OUTPUT/data_leaf_damage_singlemetrics.csv',
+            'Synthetic_data/OUTPUT/data_leaf_damage_singlemetrics.xlsx',
+            'Synthetic_data/OUTPUT/plots/Radial_acf_averages.png',
+            'Synthetic_data/OUTPUT/plots/radial_pdfs_averages.png',
+            'Synthetic_data/OUTPUT/plots/overview_damage.png',
         ],
     },
 }
