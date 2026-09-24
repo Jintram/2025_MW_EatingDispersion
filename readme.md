@@ -194,9 +194,9 @@ To assess the nature of the damage patterns, multiple metrics are calculated.
 To understand these metrics, they were first calculated for a synthetic dataset.
 This dataset contained the following "leafs" with corresponding "damage patterns":
 
-<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.pdf">
 
-`overview_damage.pdf` ([link](Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png)). The "Noise pattern" contains a uniform "damage" signal with noise.
+[overview_damage.pdf](Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png). The "Noise pattern" contains a uniform "damage" signal with noise.
 The other signals are chosen to be "extreme" representations of 
 different patterns that might be in the data; one big damage spot, a load
 of small spots, only around the edges, two bigger spots.
@@ -208,7 +208,12 @@ of small spots, only around the edges, two bigger spots.
 <!--<img src="Synthetic_data/OUTPUT1_frozen/synthdata_summary_damage.png">-->
 <img src="Synthetic_data/OUTPUT2_frozen/plots/damaged_percentage.png">
 
+[damaged_percentage.pdf](Synthetic_data/OUTPUT2_frozen/plots/damaged_percentage.pdf) 
+Lists the percentage area covered by the damage.
+
 (This was chosen to be ±equal, except for "dual spot".)
+
+<font color=red>An update will follow here with average NIR intensity per leaf.</font>
 
 #### Autocorrelation function (ACF)
 
@@ -223,7 +228,7 @@ for two pixels at distance X is opposite between the two pixels.
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 <img src="Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.png"><br>
 
-`Radial_acf_averages.pdf`. The different signals clearly pick up the different patterns;
+[Radial_acf_averages.pdf](Synthetic_data/OUTPUT2_frozen/plots/Radial_acf_averages.pdf). The different signals clearly pick up the different patterns;
 
 - The "disk" pattern is positive for the longest distance (biggest structure).
 - The "spots" signal shows multiple small peaks because spots are small and have a regular structure.
@@ -275,7 +280,7 @@ The aim of this function is to characterize whether the location on the leaf
 <img src="Synthetic_data/OUTPUT2_frozen/plots/overview_damage.png">
 <img src="Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs_averages.png"><br>
 
-`radial_pdfs_averages.pdf`. We can again recognize the patterns, e.g. the "donut" 
+[radial_pdfs_averages.pdf](Synthetic_data/OUTPUT2_frozen/plots/radial_pdfs_averages.pdf). We can again recognize the patterns, e.g. the "donut" 
 only has a signal at a high radius, whereas the "disk" is represented at 
 any radius.
 
@@ -283,7 +288,7 @@ any radius.
 
 <img src="Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.png">
 
-`nearest_island_distances.pdf` This plot quantifes the number of separate 
+[nearest_island_distances.pdf](Synthetic_data/OUTPUT2_frozen/plots/nearest_island_distances.pdf) This plot quantifes the number of separate 
 continuous regions of damage (the number of connected components),
 also referred to as *islands*, that are observed in the damage mask.
 Both the island count as well as metrics regarding the distance inbetween
