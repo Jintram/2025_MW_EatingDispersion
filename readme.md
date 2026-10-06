@@ -216,10 +216,10 @@ of small spots, only around the edges, two bigger spots.
 
 <img src="Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.png" width=40%> &nbsp; <img src="Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.png" width=40%>
 
-**left** [mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.pdf) 
+**(left)** [mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.pdf) 
 Shows the mean damage (NIR) signal per leaf pixel, ie the average intensity of 
 the damage channel within the leaf mask. 
-**right** [damaged_percentage.pdf](Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.pdf) 
+**(right)** [damaged_percentage.pdf](Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.pdf) 
 Lists the percentage area covered by the damage. (This was chosen to be ±equal, except for "dual spot".)
 
 
