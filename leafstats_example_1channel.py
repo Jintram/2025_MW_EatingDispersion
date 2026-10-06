@@ -54,6 +54,9 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_d
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
                               y_label = "Estimated base level (damage channel)", 
                               title="Base level per condition\n(damage channel, within leaf)")
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal", 
+                              y_label = "Mean damage signal per leaf pixel", 
+                              title="Mean damage signal per condition")
 lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor)
 
 # 4) Export per-image mask overlays to output folders

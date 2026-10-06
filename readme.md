@@ -399,13 +399,15 @@ will run all analyses, and returns the results in two objects:
 
 - `df_samples`, a pandas dataframe with one row per image, holding all
 single-value metrics (e.g. `island_counts`, `total_damage_area_px`,
-`total_damage_percentage`, `threshold_val_dmg`, `baselvl_dmg`), plus the
+`total_damage_percentage`, `threshold_val_dmg`, `baselvl_dmg`, 
+`mean_dmg_signal`), plus the
 condition, the file path, and status fields (`leaf_found`, `damage_found`,
 `analysis_status`) that record whether the analysis succeeded for that image.
 When a leaf is found but no damage, `analysis_status` is `'no_damage_mask'`;
 metrics that depend on the damage mask (areas, island statistics) are then set
 to 0, whereas metrics that only need the leaf mask (autocorrelation, radial
-distribution, damage threshold and base level) are still calculated.
+distribution, damage threshold, base level and mean damage signal) are still 
+calculated.
 - `array_data`, a `dict` keyed by file path, holding the array-like results
 per image (the images themselves, the leaf and damage masks, the centroid, the
 autocorrelation, and the radial distribution).
@@ -484,6 +486,21 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg",
 Note that currently, the `threshold_val_dmg` is simply twice the `baselvl_dmg`.
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/baselvl_dmg.png" width=50%>
+
+The mean damage signal per leaf pixel (`"mean_dmg_signal"`, ie the mean 
+intensity of the damage channel within the leaf mask) can be plotted in the
+same way. In contrast to the damaged area, this metric does not depend on 
+the damage threshold, and is therefore not affected by changes in the base 
+level (see critical assumption 2 above). It does however include the 
+base level signal itself, and depends on acquisition settings.
+
+```python
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal", 
+                              y_label = "Mean damage signal per leaf pixel", 
+                              title="Mean damage signal per condition")
+```
+
+<img src="Example_data/OUTPUT-3channels_frozen/plots/mean_dmg_signal.png" width=50%>
 
 Set `OUTPUTDIR` to a directory where you want the plots to be exported.
 

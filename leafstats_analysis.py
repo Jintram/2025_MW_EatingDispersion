@@ -84,6 +84,7 @@ class SampleMetrics:
     threshold_val_dmg: float = np.nan
     background_leaf: float = np.nan
     baselvl_dmg: float = np.nan
+    mean_dmg_signal: float = np.nan
 
 @dataclass(slots=True)
 class SampleArrays:
@@ -600,6 +601,8 @@ def analyse_sample(file_path, condition, config_channels,
     metrics.threshold_val_dmg = threshold_val_dmg
     # store the base level (mode of damage signal within the leaf)
     metrics.baselvl_dmg = calculate_mode_in_mask(img_damage, mask_leaf)
+    # store the mean damage signal per leaf pixel
+    metrics.mean_dmg_signal = float(np.mean(img_damage[mask_leaf]))
 
     # Spatial analyses of the damage signal; these only require the leaf mask
     # (not the damage mask), so are also calculated when no damage is found

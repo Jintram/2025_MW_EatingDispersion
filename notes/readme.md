@@ -10,7 +10,7 @@ The name of my local conda environment is `2026_leafdamage2`.
 - [x] Remove the synthetic-specific code, which is redundant (ticked by Claude, see changelog 24/9/2026 below)
 	- [x] Currently updating plotting functions, such that I can still create the plots currently shown for synthetic data in the readme.
 - [x] Create both total and average damage signal /area.
-    - [ ] Added average damage signal
+    - [x] Added average damage signal (ticked by Claude, see changelog 6/10/2026 below)
         - [ ] Perhaps make dedicated plot? Or a wrapper? Makes it more streamlined.
 
 !!!!! CONTINUE HERE:
@@ -28,6 +28,15 @@ Continue on this thread.
 - [X] Go over assumptions again, because fact that "background" within NIR of leave is taken as reference is now not included in the assumptions.
             
 # To do / done (6/10/2026)
+
+- [X] (Written by Claude:) Added metric `mean_dmg_signal` (6/10/2026): the mean
+    damage-channel intensity within the leaf mask. Calculated whenever a leaf is
+    found (also for `no_damage_mask` samples), independent of the damage
+    threshold. Plotted with `plot_metric_per_condition` in the example scripts
+    (`mean_dmg_signal.pdf/png`) and described in the readme. A base-level
+    corrected version was deliberately not added, since the base level itself
+    changes with damage. In the `_frozen` folders, only the CSVs and the new
+    plots were updated (the `.xlsx` files were not).
 
 - [X] (Written by Claude:) Renamed "background" to "base level" for the damage
     channel (6/10/2026). The mode of the damage channel within the leaf mask is
