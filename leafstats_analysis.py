@@ -83,7 +83,7 @@ class SampleMetrics:
     threshold_val_leaf: float = np.nan
     threshold_val_dmg: float = np.nan
     background_leaf: float = np.nan
-    background_dmg: float = np.nan
+    baselvl_dmg: float = np.nan
 
 @dataclass(slots=True)
 class SampleArrays:
@@ -204,7 +204,7 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
         threshold_val = threshold_otsu(img[mask_user])
     elif method == 'triangle':        
         threshold_val = threshold_triangle(img[mask_user])
-    elif method == 'bg2':  
+    elif method == 'baselvl2':  
         # determine mode 
         the_mode = np.bincount(img[mask_user].ravel()).argmax()
         # deal with issue: oversaturation and mode = max val
@@ -229,9 +229,15 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
     
     return img_mask, threshold_val
       
-def calculate_background_img_mask(img, mask):
-    """Estimate background level in image, within mask region, based on mode.
-    
+def calculate_mode_in_mask(img, mask):
+    """Calculates background level or base level of image within mask.
+
+    Whether this is baselevel or background depends on the type of data: 
+    for the whole leaf-channel image it is the (off-leaf) background, 
+    for the damage channel within the leaf mask
+    it is the base level of the leaf (which might be affected by 
+    thrips activity).
+
     TO DO: this function has redundancy with code above. Perhaps address this at some point?
     """
     
@@ -566,11 +572,11 @@ def analyse_sample(file_path, condition, config_channels,
     # store the threshold that was used
     metrics.threshold_val_leaf = threshold_val_leaf
     # store the background
-    metrics.background_leaf = calculate_background_img_mask(img_leaf, np.ones_like(img_leaf))
+    metrics.background_leaf = calculate_mode_in_mask(img_leaf, np.ones_like(img_leaf, dtype=bool))
 
     # Now assess the damage
     mask_damage, threshold_val_dmg, this_damage_found = get_mask(img=img_damage,
-                                              mask_user=mask_leaf, method='bg2', return_status=True)
+                                              mask_user=mask_leaf, method='baselvl2', return_status=True)
     centroid = regionprops(mask_leaf.astype(int))[0].centroid
         # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
         # plt.hist(img_damage[mask_leaf].ravel(), bins=256); plt.show(); plt.close()
@@ -578,7 +584,8 @@ def analyse_sample(file_path, condition, config_channels,
     arrays.centroid = centroid
     metrics.damage_found = this_damage_found
     metrics.threshold_val_dmg = threshold_val_dmg
-    metrics.background_dmg = calculate_background_img_mask(img_damage, mask_leaf)
+    # store the base level (mode of damage signal within the leaf)
+    metrics.baselvl_dmg = calculate_mode_in_mask(img_damage, mask_leaf)
 
     # Spatial analyses of the damage signal; these only require the leaf mask
     # (not the damage mask), so are also calculated when no damage is found
@@ -1050,7 +1057,7 @@ def plot_and_save_images(
     threshold_val_leaf = row['threshold_val_leaf']
     threshold_val_dmg = row['threshold_val_dmg']
     background_leaf = row.get('background_leaf', np.nan)
-    background_dmg = row.get('background_dmg', np.nan)
+    baselvl_dmg = row.get('baselvl_dmg', np.nan)
 
     # These per-image overview panels are dense (2x3 with histograms), so use a
     # smaller font than the global default. Scoped, to not leak into other plots.
@@ -1118,9 +1125,9 @@ def plot_and_save_images(
         if threshold_val_dmg is not None and not (isinstance(threshold_val_dmg, float) and np.isnan(threshold_val_dmg)):
             axs[1, 2].axvline(threshold_val_dmg, color='red', linestyle='--', linewidth=1,
                               label=f'thr={threshold_val_dmg:.3g}')
-        if background_dmg is not None and not (isinstance(background_dmg, float) and np.isnan(background_dmg)):
-            axs[1, 2].axvline(background_dmg, color='blue', linestyle=':', linewidth=1,
-                              label=f'bg={background_dmg:.3g}')
+        if baselvl_dmg is not None and not (isinstance(baselvl_dmg, float) and np.isnan(baselvl_dmg)):
+            axs[1, 2].axvline(baselvl_dmg, color='blue', linestyle=':', linewidth=1,
+                              label=f'baselvl={baselvl_dmg:.3g}')
         if axs[1, 2].get_legend_handles_labels()[0]:
             axs[1, 2].legend(loc='upper right')
     

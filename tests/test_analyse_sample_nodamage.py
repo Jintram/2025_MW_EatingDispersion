@@ -3,7 +3,7 @@ Written by Claude, and not human-checked.
 
 Tests that analyse_sample() only skips damage-mask dependent metrics when no
 damage mask is found, and still calculates the metrics that only need the leaf
-mask (ACF, radial PDF, damage threshold and background). Uses the synthetic
+mask (ACF, radial PDF, damage threshold and base level). Uses the synthetic
 "noise" image, for which no damage is found.
 
 Run from the root of the repository:
@@ -38,7 +38,7 @@ def test_nodamage_still_computes_leafmask_metrics():
     assert arrays.acf_norm_avgr is not None
     assert arrays.radial_pdf is not None
     assert not np.isnan(metrics.threshold_val_dmg)
-    assert not np.isnan(metrics.background_dmg)
+    assert not np.isnan(metrics.baselvl_dmg)
 
     # damage-mask dependent metrics are valid zeros
     assert metrics.island_counts == 0

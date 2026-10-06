@@ -127,7 +127,7 @@ as well as the pattern of high signal (damaged), and inbetween values.
 This needs to be avoided, as we don't want the amount of true damage influencing
 the detection of the damaged region and the detected damage pattern.
 
-**Above twice background is damage.** The algorithm chosen here attempts 
+**Above twice base level is damage.** The algorithm chosen here attempts 
 to set a threshold value independent of the amount of damage present. 
 
 It focuses on determining the base level NIR intensity in undamaged leaf parts.
@@ -139,7 +139,12 @@ is considered "damaged".
 There are some critical assumptions here:
 
 - **Critical assumption 1:** A substantial part of the leaf shows base level damage. 
-- **Critical assumption 2:** This base level leaf damage is invariant across conditions
+- **Critical assumption 2:** This base level leaf damage is invariant across conditions.
+*Note that this is not guaranteed: the base level is real signal (not background),
+and in practice more damaged leaves turn out to have higher base levels. 
+Since the threshold is 2x the base level, the threshold then also increases 
+with damage, which likely leads to underestimating the damaged area in the 
+most damaged leaves (see also "Potential & necessary improvements" below).*
 - **Critical assumption 3:** When changing acquisition conditions, 
 the base level scales with overall damage levels. 
 (Or alternatively all images should be taken under equal illumination and 
@@ -153,21 +158,25 @@ and determining the damaged area:
 ![test](Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png)
 
 ***Figure.** White lines indicate the outline of the segmented areas. Histograms of 
-pixel intensities are shown below the images. For "leaf" and "damage",
-the blue line indicates the extrapolated background intensity, and 
-the red line the threshold that was used for the mask.*
+pixel intensities are shown below the images. The blue line indicates
+the estimated background intensity for "leaf", and the estimated base level
+(within the leaf) for "damage"; the red line indicates the threshold that was 
+used for the mask.*
 
 ##### Testing the critical assumptions
 
 If you took all images under similar acquisition settings and conditions, 
-the background damage (NIR) levels should be equal over all conditions.
-To assess this, you can check out the plot with the background damage levels
-(`background_dmg`, see also below);
+and assumption 2 holds, the base level damage (NIR) levels should be equal 
+over all conditions.
+To assess this, you can check out the plot with the base level damage levels
+(`baselvl_dmg`, see also below);
 
-<img src=Example_data/OUTPUT-3channels_frozen/plots/background_dmg.png width=50%>
+<img src=Example_data/OUTPUT-3channels_frozen/plots/baselvl_dmg.png width=50%>
 
-There should not be trends in this plot, unless you can explain the trend
-and know this won't violate above assumptions.
+A trend in this plot indicates that assumption 2 is violated, unless you can 
+explain the trend and know this won't affect the analysis. Note that a 
+trend that correlates with damage is to be expected if the base level 
+partly reflects damage itself (see above).
 
 #### Baselevel damage
 
@@ -390,13 +399,13 @@ will run all analyses, and returns the results in two objects:
 
 - `df_samples`, a pandas dataframe with one row per image, holding all
 single-value metrics (e.g. `island_counts`, `total_damage_area_px`,
-`total_damage_percentage`, `threshold_val_dmg`, `background_dmg`), plus the
+`total_damage_percentage`, `threshold_val_dmg`, `baselvl_dmg`), plus the
 condition, the file path, and status fields (`leaf_found`, `damage_found`,
 `analysis_status`) that record whether the analysis succeeded for that image.
 When a leaf is found but no damage, `analysis_status` is `'no_damage_mask'`;
 metrics that depend on the damage mask (areas, island statistics) are then set
 to 0, whereas metrics that only need the leaf mask (autocorrelation, radial
-distribution, damage threshold and background) are still calculated.
+distribution, damage threshold and base level) are still calculated.
 - `array_data`, a `dict` keyed by file path, holding the array-like results
 per image (the images themselves, the leaf and damage masks, the centroid, the
 autocorrelation, and the radial distribution).
@@ -462,19 +471,19 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_d
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/threshold_val_dmg.png" width=50%>
 
-Likewise, the estimated background level of the damage channel 
-(`"background_dmg"`) can be plotted, which shouldn't show a trend per condition
-either (this is the plot that was also shown above):
+Likewise, the estimated base level of the damage channel within the leaf
+(`"baselvl_dmg"`) can be plotted, which ideally shouldn't show a trend per 
+condition either (this is the plot that was also shown above):
 
 ```python
-lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="background_dmg", 
-                              y_label = "Estimated background intensity", 
-                              title=f"Background consistency\nBackground should not\nshow trend per condition.")
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
+                              y_label = "Estimated base level (damage channel)", 
+                              title="Base level per condition\n(damage channel, within leaf)")
 ```
 
-Note that currently, the `threshold_val_dmg` is simply twice the `background_dmg`.
+Note that currently, the `threshold_val_dmg` is simply twice the `baselvl_dmg`.
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/background_dmg.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots/baselvl_dmg.png" width=50%>
 
 Set `OUTPUTDIR` to a directory where you want the plots to be exported.
 

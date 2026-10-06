@@ -27,6 +27,32 @@ Continue on this thread.
         
 - [X] Go over assumptions again, because fact that "background" within NIR of leave is taken as reference is now not included in the assumptions.
             
+# To do / done (6/10/2026)
+
+- [X] (Written by Claude:) Renamed "background" to "base level" for the damage
+    channel (6/10/2026). The mode of the damage channel within the leaf mask is
+    real signal (more damaged leaves have higher values), not background.
+    Renames: `background_dmg` → `baselvl_dmg` (column in `df_samples` and the
+    exported CSV, and plot `baselvl_dmg.png`), `get_mask(method='bg2')` →
+    `method='baselvl2'`, and `calculate_background_img_mask()` →
+    `calculate_mode_in_mask()`. The leaf channel keeps `background_leaf` and
+    `'bg10'`, as there the mode of the whole image is real (off-leaf) background.
+    The readme now notes under critical assumption 2 that this assumption can be
+    violated. The name `background_dmg` is now free, but reusing it for a future
+    off-leaf background would give old CSVs a column with the same name and a
+    different meaning.
+
+- [X] (Written by Claude:) Fixed a bug in `background_leaf` (6/10/2026). The
+    mask passed was `np.ones_like(img_leaf)`, an integer array, so `img[mask]`
+    indexed image row 1 repeatedly, and the value was the mode of only that row.
+    Now `dtype=bool`, so the mode of the whole leaf-channel image is used. Only
+    `background_leaf` changes (e.g. 6 → 2 for Example_A_2, 3channels); it is
+    only used for display, not for thresholds. 
+    
+- [X] Removed the `conda activate`
+    line from `regenerate_example_outputs.sh`, which failed in a non-interactive
+    shell (the `conda run` lines already select the environment).
+
 # To do / done (2/9/2026)
 
 - [X] (Written by Claude:) Removed the synthetic-specific code (24/9/2026),

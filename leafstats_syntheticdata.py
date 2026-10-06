@@ -57,9 +57,9 @@ lsa.plot_damaged_percentage(df_samples, OUTPUTDIR)
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
                               y_label = "Intensity threshold for damage", 
                               title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.")
-lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="background_dmg", 
-                              y_label = "Estimated background intensity", 
-                              title=f"Background consistency\nBackground should not\nshow trend per condition.")
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
+                              y_label = "Estimated base level (damage channel)", 
+                              title="Base level per condition\n(damage channel, within leaf)")
 lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor)
 
 

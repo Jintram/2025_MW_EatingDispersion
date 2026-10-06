@@ -36,7 +36,7 @@ def make_test_image():
 def test_mask_is_within_mask_user():
     img, mask_leaf = make_test_image()
 
-    mask_damage, threshold_val = lsa.get_mask(img, mask_leaf, method='bg2')
+    mask_damage, threshold_val = lsa.get_mask(img, mask_leaf, method='baselvl2')
 
     assert np.all(mask_damage <= mask_leaf), \
         "damage mask contains pixels outside mask_user"
@@ -51,7 +51,7 @@ def test_no_mask_user_keeps_everything():
     """Without mask_user the behaviour should be unchanged (both spots found)."""
     img, _ = make_test_image()
 
-    mask_damage, _ = lsa.get_mask(img, method='bg2')
+    mask_damage, _ = lsa.get_mask(img, method='baselvl2')
 
     assert np.sum(mask_damage) == 200, \
         f"expected both 10x10 spots, got {np.sum(mask_damage)} px"
@@ -86,12 +86,12 @@ def test_empty_mask_user_returns_expected_number_of_values():
     img, _ = make_test_image()
     empty_mask = np.zeros(img.shape, dtype=bool)
 
-    mask_damage, threshold_val = lsa.get_mask(img, empty_mask, method='bg2')
+    mask_damage, threshold_val = lsa.get_mask(img, empty_mask, method='baselvl2')
     assert not np.any(mask_damage)
     assert np.isnan(threshold_val)
 
     mask_damage, threshold_val, found = lsa.get_mask(
-        img, empty_mask, method='bg2', return_status=True)
+        img, empty_mask, method='baselvl2', return_status=True)
     assert not np.any(mask_damage)
     assert np.isnan(threshold_val)
     assert found is False
