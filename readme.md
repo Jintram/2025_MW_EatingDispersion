@@ -214,8 +214,8 @@ of small spots, only around the edges, two bigger spots.
 
 #### Amount of damage
 
-<img src="Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.png" width=30%>
-&nbsp; &nbsp; <img src="Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.png" width=30%>
+<img src="Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.png" width=40%>
+<img src="Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.png" width=40%>
 
 **left** [mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.pdf) 
 Shows the mean damage (NIR) signal per leaf pixel, ie the average intensity of 
