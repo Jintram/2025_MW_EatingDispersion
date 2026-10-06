@@ -10,7 +10,7 @@ The name of my local conda environment is `2026_leafdamage2`.
 - [x] Remove the synthetic-specific code, which is redundant (ticked by Claude, see changelog 24/9/2026 below)
 	- [x] Currently updating plotting functions, such that I can still create the plots currently shown for synthetic data in the readme.
 - [x] Create both total and average damage signal /area.
-    - [x] Added average damage signal
+    - [ ] Added average damage signal
         - [ ] Perhaps make dedicated plot? Or a wrapper? Makes it more streamlined.
 
 !!!!! CONTINUE HERE:
@@ -52,6 +52,13 @@ Continue on this thread.
 - [X] Removed the `conda activate`
     line from `regenerate_example_outputs.sh`, which failed in a non-interactive
     shell (the `conda run` lines already select the environment).
+
+- [X] (Written by Claude:) Added `check_bool_mask()` (6/10/2026), which raises
+    a `TypeError` for non-boolean masks, to prevent bugs like the one above. It
+    is called in `get_mask`, `calculate_mode_in_mask`, `get_radial_pdf` and
+    `get_autocorrelation`. The latter previously converted the mask with
+    `astype(bool)`; it now raises an error instead. Tests in
+    `tests/test_bool_mask_check.py`.
 
 # To do / done (2/9/2026)
 

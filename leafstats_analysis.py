@@ -132,8 +132,19 @@ def arrange_dims(img):
     
     if img.ndim == 3 and img.shape[0] == 3:
         img = np.moveaxis(img, 0, -1)  # (3, H, W) -> (H, W, 3)
-        
+
     return img
+
+def check_bool_mask(mask, name='mask'):
+    """
+    Raise an error if mask is not boolean.
+
+    Indexing an image with a non-boolean mask (e.g. img[np.ones_like(img)])
+    doesn't select pixels, but is interpreted as row indices, which gives
+    wrong results without an error.
+    """
+    if mask.dtype != bool:
+        raise TypeError(f"{name} must be a boolean array, got dtype {mask.dtype}.")
 
 def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False):
     """
@@ -194,6 +205,7 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
 
     if mask_user is None:
         mask_user = np.ones(img.shape, dtype=bool)
+    check_bool_mask(mask_user, 'mask_user')
 
     if not np.any(mask_user):
         if return_status:
@@ -240,7 +252,8 @@ def calculate_mode_in_mask(img, mask):
 
     TO DO: this function has redundancy with code above. Perhaps address this at some point?
     """
-    
+
+    check_bool_mask(mask)
     the_mode = np.bincount(img[mask].ravel()).argmax()
     
     if the_mode == np.max(img):
@@ -300,7 +313,8 @@ def get_radial_pdf(img, CoM, mask_user=None):
     
     if mask_user is None:
         mask_user = np.ones(img.shape, dtype=bool)
-    
+    check_bool_mask(mask_user, 'mask_user')
+
     # Create arrays of y and x coordinates for each pixel
     y, x = np.indices(img.shape)
     # Compute the distance of each pixel from the center of mass (CoM)
@@ -375,7 +389,7 @@ def get_autocorrelation(img, mask_user=None, min_pairs_frac=0.05):
     if mask_user is None:
         mask_user = np.ones(img.shape, dtype=bool)
 
-    mask_user = mask_user.astype(bool)
+    check_bool_mask(mask_user, 'mask_user')
     img_float = img.astype(float)
 
     # pre-calculate acf output shape
