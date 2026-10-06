@@ -214,20 +214,17 @@ of small spots, only around the edges, two bigger spots.
 
 #### Amount of damage
 
-<img src="Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.png" width=40%>
+&nbsp; &nbsp; <img src="Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.png" width=40%>
 
-[damaged_percentage.pdf](Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.pdf) 
-Lists the percentage area covered by the damage.
-
-(This was chosen to be ±equal, except for "dual spot".)
-
-<img src="Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.png">
-
-[mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.pdf) 
+**left** [mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.pdf) 
 Shows the mean damage (NIR) signal per leaf pixel, ie the average intensity of 
 the damage channel within the leaf mask. 
+**right** [damaged_percentage.pdf](Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.pdf) 
+Lists the percentage area covered by the damage. (This was chosen to be ±equal, except for "dual spot".)
 
-This metric does not depend on the threshold used to determine the damaged
+
+This mean damage metric does not depend on the threshold used to determine the damaged
 area, but it does include all signal within the leaf, also signal 
 that is not considered damage. The "noise" leaf illustrates this: no damaged 
 area is detected, but its uniform signal still gives a mean signal comparable
