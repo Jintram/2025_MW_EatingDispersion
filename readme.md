@@ -221,7 +221,17 @@ Lists the percentage area covered by the damage.
 
 (This was chosen to be ±equal, except for "dual spot".)
 
-<font color=red>An update will follow here with average NIR intensity per leaf.</font>
+<img src="Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.png">
+
+[mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.pdf) 
+Shows the mean damage (NIR) signal per leaf pixel, ie the average intensity of 
+the damage channel within the leaf mask. 
+
+This metric does not depend on the threshold used to determine the damaged
+area, but it does include all signal within the leaf, also signal 
+that is not considered damage. The "noise" leaf illustrates this: no damaged 
+area is detected, but its uniform signal still gives a mean signal comparable
+to the other leaves.
 
 #### Autocorrelation function (ACF)
 
