@@ -92,6 +92,9 @@ Continue on this thread.
     explicit check anymore whether `damage_mask_method` is valid, or whether
     `apply_reference_threshold` was run before plotting `'refthr'`. Runner 
     calls are unchanged (only comments updated); tests and readme updated.
+    - (Written by Claude:) After the `_frozen` output folders were regenerated
+    with the new layout, the readme figure links were updated to point to them
+    (damage-mask dependent figures: the `_leafthr` versions).
 
 # To do / done (6/10/2026)
 

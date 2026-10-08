@@ -157,7 +157,7 @@ and determining the damaged area:
 
 <!-- img "Example_data/DATA/condition_Control/Example_A_1.tif" -->
 
-![test](Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png)
+![test](Example_data/OUTPUT-3channels_frozen/plots_segmasks_leafthr/Ctrl/Example_A_1.png)
 
 ***Figure.** White lines indicate the outline of the segmented areas. Histograms of 
 pixel intensities are shown below the images. The blue line indicates
@@ -173,7 +173,7 @@ over all conditions.
 To assess this, you can check out the plot with the base level damage levels
 (`baselvl_dmg`, see also below);
 
-<img src=Example_data/OUTPUT-3channels_frozen/plots/baselvl_dmg.png width=50%>
+<img src=Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png width=50%>
 
 A trend in this plot indicates that assumption 2 is violated, unless you can 
 explain the trend and know this won't affect the analysis. Note that a 
@@ -242,9 +242,9 @@ To assess the nature of the damage patterns, multiple metrics are calculated.
 To understand these metrics, they were first calculated for a synthetic dataset.
 This dataset contained the following "leafs" with corresponding "damage patterns":
 
-<img src="Synthetic_data/OUTPUT_frozen/plots/overview_damage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/overview_damage.png">
 
-[overview_damage.pdf](Synthetic_data/OUTPUT_frozen/plots/overview_damage.pdf). The "Noise pattern" contains a uniform "damage" signal with noise.
+[overview_damage.pdf](Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/overview_damage.pdf). The "Noise pattern" contains a uniform "damage" signal with noise.
 The other signals are chosen to be "extreme" representations of 
 different patterns that might be in the data; one big damage spot, a load
 of small spots, only around the edges, two bigger spots.
@@ -253,12 +253,12 @@ of small spots, only around the edges, two bigger spots.
 
 #### Amount of damage
 
-<img src="Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.png" width=40%> &nbsp; <img src="Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.png" width=40%>
+<img src="Synthetic_data/OUTPUT_frozen/plots_general_stats/mean_dmg_signal.png" width=40%> &nbsp; <img src="Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/damaged_percentage.png" width=40%>
 
-**(left)** [mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots/mean_dmg_signal.pdf) 
+**(left)** [mean_dmg_signal.pdf](Synthetic_data/OUTPUT_frozen/plots_general_stats/mean_dmg_signal.pdf) 
 Shows the mean damage (NIR) signal per leaf pixel, ie the average intensity of 
 the damage channel within the leaf mask. 
-**(right)** [damaged_percentage.pdf](Synthetic_data/OUTPUT_frozen/plots/damaged_percentage.pdf) 
+**(right)** [damaged_percentage.pdf](Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/damaged_percentage.pdf) 
 Lists the percentage area covered by the damage. (This was chosen to be ±equal, except for "dual spot".)
 
 
@@ -278,10 +278,10 @@ to be more similar.
 If the correlation is negative at distance X, it's likely the signal
 for two pixels at distance X is opposite between the two pixels.
 
-<img src="Synthetic_data/OUTPUT_frozen/plots/overview_damage.png">
-<img src="Synthetic_data/OUTPUT_frozen/plots/Radial_acf_averages.png"><br>
+<img src="Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/overview_damage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots_general_stats/Radial_acf_averages.png"><br>
 
-[Radial_acf_averages.pdf](Synthetic_data/OUTPUT_frozen/plots/Radial_acf_averages.pdf). The different signals clearly pick up the different patterns;
+[Radial_acf_averages.pdf](Synthetic_data/OUTPUT_frozen/plots_general_stats/Radial_acf_averages.pdf). The different signals clearly pick up the different patterns;
 
 - The "disk" pattern is positive for the longest distance (biggest structure).
 - The "spots" signal shows multiple small peaks because spots are small and have a regular structure.
@@ -330,18 +330,18 @@ It is the average signal from the center of the leaf at distance X.
 The aim of this function is to characterize whether the location on the leaf
 (in terms of distance from the center) affects the likelyhood of damage.
 
-<img src="Synthetic_data/OUTPUT_frozen/plots/overview_damage.png">
-<img src="Synthetic_data/OUTPUT_frozen/plots/radial_pdfs_averages.png"><br>
+<img src="Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/overview_damage.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots_general_stats/radial_pdfs_averages.png"><br>
 
-[radial_pdfs_averages.pdf](Synthetic_data/OUTPUT_frozen/plots/radial_pdfs_averages.pdf). We can again recognize the patterns, e.g. the "donut" 
+[radial_pdfs_averages.pdf](Synthetic_data/OUTPUT_frozen/plots_general_stats/radial_pdfs_averages.pdf). We can again recognize the patterns, e.g. the "donut" 
 only has a signal at a high radius, whereas the "disk" is represented at 
 any radius.
 
 #### Island statistics
 
-<img src="Synthetic_data/OUTPUT_frozen/plots/nearest_island_distances.png">
+<img src="Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/nearest_island_distances.png">
 
-[nearest_island_distances.pdf](Synthetic_data/OUTPUT_frozen/plots/nearest_island_distances.pdf) This plot quantifes the number of separate 
+[nearest_island_distances.pdf](Synthetic_data/OUTPUT_frozen/plots_damageregionstats_leafthr/nearest_island_distances.pdf) This plot quantifes the number of separate 
 continuous regions of damage (the number of connected components),
 also referred to as *islands*, that are observed in the damage mask.
 Both the island count as well as metrics regarding the distance inbetween
@@ -502,33 +502,33 @@ the method, and save their output to `OUTPUTDIR/plots_damageregionstats_<leafthr
 (or `OUTPUTDIR/plots_segmasks_<leafthr|refthr>/` for `run_plot_and_save`). 
 Other plots are saved to `OUTPUTDIR/plots_general_stats/`. For brevity, the 
 examples below show the default; in the example scripts, these plots are made
-for both methods. (Note the figures shown below were made with an earlier 
-version, and are located in `OUTPUTDIR/plots`.)
+for both methods. (The damage-mask dependent figures shown below are those 
+of the per-leaf threshold method, `damage_mask_method='leafthr'`.)
 
 ```{python}
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_samples.png" width=50%><br>
-<img src="Example_data/OUTPUT-3channels_frozen/plots/Radial_acf_averages.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_general_stats/Radial_acf_samples.png" width=50%><br>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_general_stats/Radial_acf_averages.png" width=50%>
 
 ```{python}
 lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False)
 lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True)
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/nearest_island_distances.png" width=100%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_damageregionstats_leafthr/nearest_island_distances.png" width=100%>
 
 ```{python}
 lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs_samples.png" width=50%><br>
-<img src="Example_data/OUTPUT-3channels_frozen/plots/radial_pdfs_averages.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_general_stats/radial_pdfs_samples.png" width=50%><br>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_general_stats/radial_pdfs_averages.png" width=50%>
 
 ```{python}
 lsa.plot_damaged_area(df_samples, OUTPUTDIR)
 ```
-<img src="Example_data/OUTPUT-3channels_frozen/plots/damaged_area_px.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_damageregionstats_leafthr/damaged_area_px.png" width=50%>
 
 (This plot is exported as `damaged_area_px.png` when no `pixel_to_cm2_factor`
 was given, and as `damaged_area_cm2.png` when it was.)
@@ -537,7 +537,7 @@ was given, and as `damaged_area_cm2.png` when it was.)
 lsa.plot_damaged_percentage(df_samples, OUTPUTDIR)
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/damaged_percentage.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_damageregionstats_leafthr/damaged_percentage.png" width=50%>
 
 The function `lsa.plot_metric_per_condition` can be used to plot any of the
 single-value metrics in `df_samples` per condition; the plot is exported using
@@ -553,7 +553,7 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_d
                               title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.")
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/threshold_val_dmg.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_damageregionstats_leafthr/threshold_val_dmg.png" width=50%>
 
 Likewise, the estimated base level of the damage channel within the leaf
 (`"baselvl_dmg"`) can be plotted, which ideally shouldn't show a trend per 
@@ -567,7 +567,7 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg",
 
 Note that currently, the `threshold_val_dmg` is simply twice the `baselvl_dmg`.
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/baselvl_dmg.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png" width=50%>
 
 The mean damage signal per leaf pixel (`"mean_dmg_signal"`, ie the mean 
 intensity of the damage channel within the leaf mask) can be plotted in the
@@ -582,7 +582,7 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal
                               title="Mean damage signal per condition")
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/mean_dmg_signal.png" width=50%>
+<img src="Example_data/OUTPUT-3channels_frozen/plots_general_stats/mean_dmg_signal.png" width=50%>
 
 Set `OUTPUTDIR` to a directory where you want the plots to be exported.
 
@@ -598,7 +598,7 @@ lsa.run_plot_and_save(
 )
 ```
 
-<img src="Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png">
+<img src="Example_data/OUTPUT-3channels_frozen/plots_segmasks_leafthr/Ctrl/Example_A_1.png">
 
 These figures are exported to 
 `OUTPUTDIR/plots_segmasks_<leafthr|refthr>/<condition>/`,
