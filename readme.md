@@ -79,7 +79,7 @@ When you run this line, you can call functions from [leafstats_analysis.py](leaf
 `lsa.run_complete_analysis()`.
 This is shown in the [example scripts](#to-run-example-scripts).
 
-## How the analysis works
+## How the pipeline works
 
 This script:
 - segments the leaves in a straighforward way
@@ -166,15 +166,12 @@ Assumptions here are:
     - **Critical assumption (3):** All images are taken under equal illumination and 
     acquisition conditions.
 
-The base level per condition shows whether the mean base level changes per condition:
-
 <img src=Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png width=50%>
 
-If the base level shows no trend per condition, assumption (2) seems to hold,
-and both methods should give similar results. A trend in this plot indicates 
-that assumption (2) is violated. 
+**Example figure [baselvl_dmg.pdf](Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png)** showing that the base level can show a trend
+per condition.
 
-#### Example
+#### Resulting leaf and damage masks
 
 The image below shows the result of both segmentation of the leaf
 and determining the damaged area (for method (i); the corresponding images for 
