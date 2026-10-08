@@ -19,7 +19,7 @@ condition_path_map = {
     'Ctrl': 'Example_data/DATA/condition_Control',
     'Edited': 'Example_data/DATA/condition_Photoshopped'
 }
-# Reference condition, used to derive the damage threshold for method B
+# Reference condition, used to derive the damage threshold for method (ii)
 # (damage mask based on reference condition, see step 3)
 REFERENCE_CONDITION = 'Ctrl'
 
