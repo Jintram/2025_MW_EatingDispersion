@@ -54,6 +54,31 @@ Continue on this thread.
     - Note: with only two reference leaves, median == mean, so the spread
     warning can never trigger (relevant for the example data, Ctrl thresholds
     78 and 134).
+- [X] (Written by Claude:) Later on 8/10/2026, the above was restructured to
+    keep everything in ONE dataframe (**breaking change in column names**):
+    - All damage-mask dependent metrics (`DAMAGE_MASK_METRICS`: 
+    `damage_found`, `analysis_status`, `threshold_val_dmg`, `island_counts`, 
+    nearest-island distances, damaged area px/cm2 and percentage) now have 
+    the suffix `_leafthr` (per-leaf threshold) or `_refthr` (reference-condition
+    threshold); e.g. `total_damage_area_px` became `total_damage_area_px_leafthr`.
+    In `array_data`, `mask_damage` became `mask_damage_leafthr`, plus 
+    `mask_damage_refthr`. `damage_threshold_method` was replaced by the column 
+    `reference_condition`.
+    - `apply_reference_threshold` now returns `df_samples, array_data` with 
+    the `_refthr` data filled in (array_data is extended in place); there is no
+    `df_samples_ref`/`array_data_ref` anymore.
+    - Damage-mask dependent plot functions take `damage_mask='leafthr'` 
+    (default) or `'refthr'`, which selects the columns and the output folder 
+    `OUTPUTDIR/damage_mask_leafthr/` or `OUTPUTDIR/damage_mask_refthr/`, and 
+    shows the method in the plot title. `plot_metric_per_condition` only does 
+    this for metrics in `DAMAGE_MASK_METRICS`. The runner scripts therefore no
+    longer define `OUTPUTDIR_PERLEAF`/`OUTPUTDIR_REF`.
+    - The CSV/xlsx export (both methods in one table) is back in `OUTPUTDIR`.
+    - Verified: all `_leafthr`/`_refthr` metrics and masks are identical to 
+    the per-leaf/reference output of the previous (two-dataframe) version on 
+    the 3-channel example data. Tests updated.
+    - The `_frozen` output folders (and the readme figures) still use the old
+    layout and column names.
 
 # To do / done (6/10/2026)
 

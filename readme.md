@@ -192,13 +192,13 @@ raises the base level itself), the code offers two methods to set the damage
 threshold. Both are always calculated, and you should choose one of them for 
 your interpretation. Each relies on a different assumption:
 
-- **A) Per-leaf threshold** (`damage_threshold_per_leaf/`): 
+- **A) Per-leaf threshold** (suffix `_leafthr`, folder `damage_mask_leafthr/`): 
   each leaf's threshold is 2x its own base level (as described above). 
   This assumes the true base level is equal across conditions (assumption 2), 
   but is robust to intensity differences between images (e.g. exposure, gain, 
   lamp drift). If the base level does increase with damage, this method 
   underestimates damage in the damaged conditions.
-- **B) Reference-condition threshold** (`damage_threshold_ref_<condition>/`):
+- **B) Reference-condition threshold** (suffix `_refthr`, folder `damage_mask_refthr/`):
   one threshold is derived from the leaves of a reference condition (typically
   the control), namely the median of their per-leaf thresholds, and applied 
   to all leaves. This allows the base level to differ per condition, but 
@@ -212,11 +212,13 @@ your interpretation. Each relies on a different assumption:
 The `baselvl_dmg` plot (see above) helps to choose: if the base level shows 
 a trend per condition, and acquisition settings were identical, method B is 
 more appropriate.
-Outputs that depend on the damage mask (damaged area & percentage, island
-statistics, segmentation overlays, exported tables) are written to a 
+Metrics that depend on the damage mask (damage threshold, damaged area & 
+percentage, island statistics, status fields) are stored twice in 
+`df_samples`, with the suffixes `_leafthr` and `_refthr`. Plots that depend 
+on the damage mask (including the segmentation overlays) are written to a 
 subfolder per method; outputs that don't depend on the damage mask (ACF, 
-radial distribution, base level, mean damage signal) are written to 
-`OUTPUTDIR` directly.
+radial distribution, base level, mean damage signal) and the exported table
+(holding both methods) are written to `OUTPUTDIR` directly.
 
 ##### Potential & necessary improvements
 
@@ -394,7 +396,7 @@ to a specific folder.
 These folder paths can be absolute, or relative to your working directory,
 as in the example above. The same holds for `OUTPUTDIR`.
 The condition names are also used to organize the exported per-image plots,
-which end up in `OUTPUTDIR/plots/segmentation_masks/<condition>/`.
+which end up in `OUTPUTDIR/damage_mask_<leafthr|refthr>/plots/segmentation_masks/<condition>/`.
 
 Additionally, the script needs to know in which channel to look for the
 leaf data and where to look for the damage. A third channel can be displayed
@@ -439,18 +441,24 @@ df_samples, array_data = lsa.run_complete_analysis(
 will run all analyses, and returns the results in two objects:
 
 - `df_samples`, a pandas dataframe with one row per image, holding all
-single-value metrics (e.g. `island_counts`, `total_damage_area_px`,
-`total_damage_percentage`, `threshold_val_dmg`, `baselvl_dmg`, 
+single-value metrics (e.g. `island_counts_leafthr`, `total_damage_area_px_leafthr`,
+`total_damage_percentage_leafthr`, `threshold_val_dmg_leafthr`, `baselvl_dmg`, 
 `mean_dmg_signal`), plus the
-condition, the file path, and status fields (`leaf_found`, `damage_found`,
-`analysis_status`) that record whether the analysis succeeded for that image.
-When a leaf is found but no damage, `analysis_status` is `'no_damage_mask'`;
+condition, the file path, and status fields (`leaf_found`, `damage_found_leafthr`,
+`analysis_status_leafthr`) that record whether the analysis succeeded for that image.
+The suffix `_leafthr` marks metrics that depend on the damage mask, as 
+determined with the per-leaf threshold (method A); the corresponding 
+`_refthr` columns (method B) are filled by `apply_reference_threshold` (see 
+below), and are empty until then (`analysis_status_refthr` is 
+`'not_calculated'`).
+When a leaf is found but no damage, `analysis_status_leafthr` is `'no_damage_mask'`;
 metrics that depend on the damage mask (areas, island statistics) are then set
 to 0, whereas metrics that only need the leaf mask (autocorrelation, radial
 distribution, damage threshold, base level and mean damage signal) are still 
 calculated.
 - `array_data`, a `dict` keyed by file path, holding the array-like results
-per image (the images themselves, the leaf and damage masks, the centroid, the
+per image (the images themselves, the leaf mask, the damage masks 
+`mask_damage_leafthr` and `mask_damage_refthr`, the centroid, the
 autocorrelation, and the radial distribution).
 
 Both are needed for the plotting functions below.
@@ -462,13 +470,13 @@ with this factor to determine the area in square centimeters.
 
 #### Damage threshold based on a reference condition
 
-The results above use the per-leaf damage threshold (method A, see 
-"Two methods to determine the damage threshold" above). The results for 
-method B, which uses a threshold derived from a reference condition, are 
-obtained with:
+`run_complete_analysis` determines the damage mask with the per-leaf damage 
+threshold (method A, see "Two methods to determine the damage threshold" 
+above). The results for method B, which uses a threshold derived from a 
+reference condition, are added with:
 
 ```python
-df_samples_ref, array_data_ref = lsa.apply_reference_threshold(
+df_samples, array_data = lsa.apply_reference_threshold(
     df_samples, array_data,
     reference_condition = REFERENCE_CONDITION,
     pixel_to_cm2_factor = pixel_to_cm2_factor
@@ -476,22 +484,23 @@ df_samples_ref, array_data_ref = lsa.apply_reference_threshold(
 ```
 
 where `REFERENCE_CONDITION` is one of the keys of `condition_path_map` 
-(e.g. `'Ctrl'`). `df_samples_ref` and `array_data_ref` have exactly the same
-structure as `df_samples` and `array_data`; only the damage-mask dependent 
-values (damage mask, `threshold_val_dmg`, `damage_found`, `analysis_status`, 
-areas and island statistics) differ. The column `damage_threshold_method` 
-(`'per_leaf'` or `'ref_<condition>'`) records which method was used. All 
-plotting and export functions below can therefore be used for both methods; 
-in the example scripts, the damage-mask dependent outputs are written to 
-`OUTPUTDIR_PERLEAF` and `OUTPUTDIR_REF` respectively.
+(e.g. `'Ctrl'`). This fills the `_refthr` columns of `df_samples` (and the
+column `reference_condition`), and adds `mask_damage_refthr` to `array_data`.
+(Note that `array_data` is extended in place.)
 
 #### Generating plots
 
 To generate each of the plots, the following functions can be used.
-For brevity, the examples below use `df_samples`, `array_data` and `OUTPUTDIR`;
-in the example scripts, plots that depend on the damage mask are made twice,
-once with `df_samples`/`array_data` to `OUTPUTDIR_PERLEAF`, and once with 
-`df_samples_ref`/`array_data_ref` to `OUTPUTDIR_REF` (see above).
+Functions that plot damage-mask dependent data (`plot_nearest_island_distances`, 
+`plot_damaged_area`, `plot_damaged_percentage`, `plot_damage_overview`, 
+`run_plot_and_save`, and `plot_metric_per_condition` for damage-mask 
+dependent metrics such as `"threshold_val_dmg"`) take the argument 
+`damage_mask='leafthr'` (default) or `damage_mask='refthr'`, which selects 
+the method, and save their output to `OUTPUTDIR/damage_mask_leafthr/` or 
+`OUTPUTDIR/damage_mask_refthr/` respectively. For brevity, the examples below 
+show the default; in the example scripts, these plots are made for both 
+methods. (Note the figures shown below were made before this split, and are 
+located directly in `OUTPUTDIR/plots`.)
 
 ```{python}
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
@@ -588,10 +597,10 @@ lsa.run_plot_and_save(
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png">
 
-These figures are exported to `OUTPUTDIR/plots/segmentation_masks/<condition>/`
-(in the example scripts, `OUTPUTDIR` is the per-method subfolder here),
-one per input image, whilst the summary plots are placed directly in
-`OUTPUTDIR/plots/`. The segmentation shown here is the first analysis step, on
+These figures are exported to 
+`OUTPUTDIR/damage_mask_<leafthr|refthr>/plots/segmentation_masks/<condition>/`,
+one per input image, whilst the summary plots are placed in the `plots/` 
+folder of `OUTPUTDIR` or of the method subfolder. The segmentation shown here is the first analysis step, on
 which all other results depend: the damaged area, the pattern statistics, and
 every value in the exported tables are all derived from these masks. It is
 therefore recommended to inspect these figures manually for artifacts (e.g. a
@@ -607,8 +616,8 @@ df_samples.to_csv(OUTPUTDIR + '/data_leaf_damage_singlemetrics.csv', index=False
 df_samples.to_excel(OUTPUTDIR + '/data_leaf_damage_singlemetrics.xlsx', index=False)
 ```
 
-(All single-value metrics are collected in the `df_samples` dataframe
-that `lsa.run_complete_analysis` returns (see above), so they can be written
+(All single-value metrics, for both damage threshold methods, are collected 
+in the `df_samples` dataframe (see above), so they can be written
 out directly using the standard pandas export functions. Note that
 `.to_excel` requires the `openpyxl` library, see the installation instructions
 above.)

@@ -71,13 +71,13 @@ def test_run_complete_analysis_area_within_leaf():
     )
 
     for _, row in df_samples.iterrows():
-        assert row['total_damage_area_px'] <= row['total_leaf_size_px'], \
+        assert row['total_damage_area_px_leafthr'] <= row['total_leaf_size_px'], \
             f"damage area exceeds leaf area for {row['file_path']}"
-        assert 0 <= row['total_damage_percentage'] <= 100, \
+        assert 0 <= row['total_damage_percentage_leafthr'] <= 100, \
             f"damage percentage out of range for {row['file_path']}"
 
         arrays = array_data[row['file_path']]
-        assert np.all(arrays['mask_damage'] <= arrays['mask_leaf']), \
+        assert np.all(arrays['mask_damage_leafthr'] <= arrays['mask_leaf']), \
             f"damage mask extends beyond leaf mask for {row['file_path']}"
 
 

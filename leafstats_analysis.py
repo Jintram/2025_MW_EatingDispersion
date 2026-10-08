@@ -68,27 +68,51 @@ class SampleMetrics:
     Single-value metrics for one image; each instance becomes one row of
     df_samples (field order = column order). The defaults describe the case
     where no (valid) leaf was found, i.e. all metrics NA.
+
+    Metrics that depend on the damage mask (see DAMAGE_MASK_METRICS) are
+    stored twice, once per method to determine the damage threshold:
+    _leafthr (per-leaf threshold, see analyse_sample) and _refthr (threshold
+    derived from a reference condition, see apply_reference_threshold).
     """
     condition: str
     file_path: str
     leaf_found: bool = False
-    damage_found: bool = False
-    analysis_status: str = 'no_leaf_mask' # 'no_leaf_mask', 'no_damage_mask' or 'ok'
     leaf_roundness: float = np.nan
-    total_nearest_island_distances: float = np.nan
-    mean_nearest_island_distance: float = np.nan
-    island_counts: float = np.nan # int when available, NaN otherwise
     total_leaf_size_px: float = np.nan
     total_leaf_size_cm2: float = np.nan
-    total_damage_area_px: float = np.nan
-    total_damage_area_cm2: float = np.nan
-    total_damage_percentage: float = np.nan
     threshold_val_leaf: float = np.nan
-    threshold_val_dmg: float = np.nan
     background_leaf: float = np.nan
     baselvl_dmg: float = np.nan
     mean_dmg_signal: float = np.nan
-    damage_threshold_method: str = 'per_leaf' # 'per_leaf' or 'ref_<condition>'
+    # damage-mask dependent metrics, per-leaf threshold
+    damage_found_leafthr: bool = False
+    analysis_status_leafthr: str = 'no_leaf_mask' # 'no_leaf_mask', 'no_damage_mask' or 'ok'
+    threshold_val_dmg_leafthr: float = np.nan
+    island_counts_leafthr: float = np.nan # int when available, NaN otherwise
+    total_nearest_island_distances_leafthr: float = np.nan
+    mean_nearest_island_distance_leafthr: float = np.nan
+    total_damage_area_px_leafthr: float = np.nan
+    total_damage_area_cm2_leafthr: float = np.nan
+    total_damage_percentage_leafthr: float = np.nan
+    # damage-mask dependent metrics, reference-condition threshold
+    # (filled by apply_reference_threshold)
+    reference_condition: str | None = None
+    damage_found_refthr: bool = False
+    analysis_status_refthr: str = 'not_calculated' # also 'no_leaf_mask', 'no_damage_mask' or 'ok'
+    threshold_val_dmg_refthr: float = np.nan
+    island_counts_refthr: float = np.nan
+    total_nearest_island_distances_refthr: float = np.nan
+    mean_nearest_island_distance_refthr: float = np.nan
+    total_damage_area_px_refthr: float = np.nan
+    total_damage_area_cm2_refthr: float = np.nan
+    total_damage_percentage_refthr: float = np.nan
+
+# Names of the metrics that depend on the damage mask; in df_samples, these
+# have the suffix _leafthr or _refthr (see SampleMetrics)
+DAMAGE_MASK_METRICS = ['damage_found', 'analysis_status', 'threshold_val_dmg',
+                       'island_counts', 'total_nearest_island_distances',
+                       'mean_nearest_island_distance', 'total_damage_area_px',
+                       'total_damage_area_cm2', 'total_damage_percentage']
 
 @dataclass(slots=True)
 class SampleArrays:
@@ -99,14 +123,16 @@ class SampleArrays:
     for downstream usage. (So it's only for internal use.)
     
     I.e. Array-like results for one image; stored (as dict) in array_data.
-    Fields that are None were not calculated (no leaf found).
+    Fields that are None were not calculated (no leaf found, or for
+    mask_damage_refthr: apply_reference_threshold not run).
     """
     condition: str
     img_rgb: np.ndarray
     img_leaf: np.ndarray
     img_damage: np.ndarray
     mask_leaf: np.ndarray
-    mask_damage: np.ndarray
+    mask_damage_leafthr: np.ndarray
+    mask_damage_refthr: np.ndarray | None = None
     centroid: tuple | None = None
     acf: np.ndarray | None = None
     acf_norm: np.ndarray | None = None
@@ -579,7 +605,7 @@ def analyse_sample(file_path, condition, config_channels,
     arrays = SampleArrays(condition=condition, img_rgb=img,
                           img_leaf=img_leaf, img_damage=img_damage,
                           mask_leaf=mask_leaf,
-                          mask_damage=np.zeros_like(mask_leaf, dtype=bool))
+                          mask_damage_leafthr=np.zeros_like(mask_leaf, dtype=bool))
 
     # CASE NO LEAF FOUND; nothing to analyse
     if not this_leaf_found:
@@ -601,10 +627,10 @@ def analyse_sample(file_path, condition, config_channels,
     centroid = regionprops(mask_leaf.astype(int))[0].centroid
         # plt.imshow(img_damage); plt.contour(mask_damage, colors='white'); plt.show(); plt.close()
         # plt.hist(img_damage[mask_leaf].ravel(), bins=256); plt.show(); plt.close()
-    arrays.mask_damage = mask_damage
+    arrays.mask_damage_leafthr = mask_damage
     arrays.centroid = centroid
-    metrics.damage_found = this_damage_found
-    metrics.threshold_val_dmg = threshold_val_dmg
+    metrics.damage_found_leafthr = this_damage_found
+    metrics.threshold_val_dmg_leafthr = threshold_val_dmg
     # store the base level (mode of damage signal within the leaf)
     metrics.baselvl_dmg = calculate_mode_in_mask(img_damage, mask_leaf)
     # store the mean damage signal per leaf pixel
@@ -620,49 +646,60 @@ def analyse_sample(file_path, condition, config_channels,
 
     # Damage-mask dependent metrics
     metrics = fill_damage_mask_metrics(metrics, mask_leaf, mask_damage, this_damage_found,
+                                       suffix='leafthr',
                                        pixel_to_cm2_factor=pixel_to_cm2_factor)
 
     return metrics, arrays
 
-def fill_damage_mask_metrics(metrics, mask_leaf, mask_damage, damage_found,
+def fill_damage_mask_metrics(metrics, mask_leaf, mask_damage, damage_found, suffix,
                              pixel_to_cm2_factor=None):
     """
     Fills the metrics (SampleMetrics) that depend on the damage mask, i.e.
     analysis_status, island distances & counts, and damaged area/percentage.
+    suffix ('leafthr' or 'refthr') determines which fields are filled, e.g.
+    total_damage_area_px_leafthr or total_damage_area_px_refthr.
     Requires metrics.total_leaf_size_px to be set already.
     Used by analyse_sample and apply_reference_threshold.
     """
 
     # CASE NO DAMAGE FOUND; keep valid zeros for damage-mask dependent metrics
     if not damage_found:
-        metrics.analysis_status = 'no_damage_mask'
-        metrics.total_nearest_island_distances = 0.0
-        metrics.mean_nearest_island_distance = 0.0
-        metrics.island_counts = 0
-        metrics.total_damage_area_px = 0.0
+        damage_metrics = {
+            'analysis_status': 'no_damage_mask',
+            'total_nearest_island_distances': 0.0,
+            'mean_nearest_island_distance': 0.0,
+            'island_counts': 0,
+            'total_damage_area_px': 0.0,
+            'total_damage_percentage': 0.0,
+        }
         if pixel_to_cm2_factor is not None:
-            metrics.total_damage_area_cm2 = 0.0
-        metrics.total_damage_percentage = 0.0
-        return metrics
+            damage_metrics['total_damage_area_cm2'] = 0.0
 
     # CASE DAMAGE FOUND; run damage-mask dependent analyses
-    nearest_island_distances = get_nearest_island_distances(mask_leaf, mask_damage)
-    # save info
-    metrics.analysis_status = 'ok'
-    metrics.total_nearest_island_distances = np.sum(nearest_island_distances)
-    metrics.island_counts = get_island_counts(mask_leaf, mask_damage)
-    # for a single island there is no distance to another island,
-    # which we count as a distance of 0
-    metrics.mean_nearest_island_distance = (
-        metrics.total_nearest_island_distances / metrics.island_counts
-        if metrics.island_counts >= 2 else 0.0
-    )
-    metrics.total_damage_area_px = float(np.sum(mask_damage))
-    if pixel_to_cm2_factor is not None:
-        metrics.total_damage_area_cm2 = metrics.total_damage_area_px * pixel_to_cm2_factor
-    metrics.total_damage_percentage = (
-        metrics.total_damage_area_px / metrics.total_leaf_size_px * 100
-    )
+    else:
+        total_nearest_island_distances = np.sum(get_nearest_island_distances(mask_leaf, mask_damage))
+        island_counts = get_island_counts(mask_leaf, mask_damage)
+        total_damage_area_px = float(np.sum(mask_damage))
+        damage_metrics = {
+            'analysis_status': 'ok',
+            'total_nearest_island_distances': total_nearest_island_distances,
+            # for a single island there is no distance to another island,
+            # which we count as a distance of 0
+            'mean_nearest_island_distance': (
+                total_nearest_island_distances / island_counts
+                if island_counts >= 2 else 0.0),
+            'island_counts': island_counts,
+            'total_damage_area_px': total_damage_area_px,
+            'total_damage_percentage': total_damage_area_px / metrics.total_leaf_size_px * 100,
+        }
+        if pixel_to_cm2_factor is not None:
+            damage_metrics['total_damage_area_cm2'] = total_damage_area_px * pixel_to_cm2_factor
+
+    # Store in metrics, adding the suffix to the names
+    # (setattr(obj, 'name', value) is equal to obj.name = value, but allows
+    # constructing the name, e.g. 'island_counts' + '_leafthr')
+    for name, value in damage_metrics.items():
+        setattr(metrics, f'{name}_{suffix}', value)
 
     return metrics
 
@@ -726,9 +763,11 @@ def apply_reference_threshold(df_samples, array_data, reference_condition,
     reference leaves; a warning is given when the mean differs more than
     max_rel_diff_mean_median (fraction) from the median.
 
-    Returns df_samples_ref and array_data_ref, which have the same structure as
-    the output of run_complete_analysis (with damage-mask dependent metrics and
-    mask_damage replaced), such that all plotting/export functions can be used.
+    Returns df_samples, with the _refthr columns filled (see SampleMetrics),
+    and array_data, to which the damage masks are added as 'mask_damage_refthr'.
+    Note that array_data is extended in place (i.e. the input array_data
+    is modified too).
+    Plotting functions use these via their damage_mask='refthr' argument.
     """
 
     # Determine the reference threshold
@@ -738,7 +777,7 @@ def apply_reference_threshold(df_samples, array_data, reference_condition,
                          f"available conditions: {list(df_samples['condition'].unique())}")
     # Obtain reference damage threshold values (these were already calculated)
     ref_thresholds = df_samples.loc[(df_samples['condition'] == reference_condition)
-                                    & df_samples['leaf_found'], 'threshold_val_dmg']
+                                    & df_samples['leaf_found'], 'threshold_val_dmg_leafthr']
     # (Handle exception where thresholds are unavailable due missing leaves)
     if len(ref_thresholds) == 0:
         raise ValueError(f"No leaves found for reference condition '{reference_condition}'.")
@@ -750,53 +789,87 @@ def apply_reference_threshold(df_samples, array_data, reference_condition,
     if abs(ref_thr_mean - ref_thr) / ref_thr > max_rel_diff_mean_median:
         warnings.warn(f"Reference thresholds of '{reference_condition}' are spread: "
                       f"median={ref_thr:.3g}, mean={ref_thr_mean:.3g}. Check the "
-                      f"threshold_val_dmg plot of the per-leaf method.")
+                      f"threshold_val_dmg plot of the per-leaf threshold method.")
     # Report result
     print(f"Reference damage threshold (median of {len(ref_thresholds)} "
           f"'{reference_condition}' leaves): {ref_thr:.3g}")
 
-    # Re-determine damage masks and damage-mask dependent metrics
-    # Collect the data into "rows" (converted to df later) and "array_data_ref"
+    # Determine damage masks and damage-mask dependent metrics with the
+    # reference threshold
+    # Collect the data into "rows" (converted to df later)
     rows = []
-    array_data_ref = {}
     for _, row in df_samples.iterrows():
 
         # Recreate leaf metrics data object with the df_samples data
         # (`**dict` unpacks the dict into keyword arguments, ie this equals
         # SampleMetrics(condition=..., file_path=..., ...))
         metrics = SampleMetrics(**row.to_dict())
-        metrics.damage_threshold_method = f'ref_{reference_condition}'
-        
+        metrics.reference_condition = reference_condition
+
         # Obtain array data (images, masks) from array data based on sample ID (metrics.file_path)
         this_arrays = array_data[metrics.file_path]
 
         if metrics.leaf_found:
-            mask_damage_ref, _, damage_found = get_mask(
-                img=this_arrays['img_damage'], 
+            mask_damage_refthr, _, damage_found = get_mask(
+                img=this_arrays['img_damage'],
                 mask_user=this_arrays['mask_leaf'],
                 threshold_val=ref_thr, return_status=True)
-            metrics.threshold_val_dmg = ref_thr
-            metrics.damage_found = damage_found
-            metrics = fill_damage_mask_metrics(metrics, this_arrays['mask_leaf'], mask_damage_ref,
-                                               damage_found, pixel_to_cm2_factor=pixel_to_cm2_factor)
+            metrics.threshold_val_dmg_refthr = ref_thr
+            metrics.damage_found_refthr = damage_found
+            metrics = fill_damage_mask_metrics(metrics, this_arrays['mask_leaf'], mask_damage_refthr,
+                                               damage_found, suffix='refthr',
+                                               pixel_to_cm2_factor=pixel_to_cm2_factor)
         else:
             # no leaf found; empty damage mask (as in analyse_sample)
-            mask_damage_ref = np.zeros_like(this_arrays['mask_leaf'], dtype=bool)
+            mask_damage_refthr = np.zeros_like(this_arrays['mask_leaf'], dtype=bool)
+            metrics.analysis_status_refthr = 'no_leaf_mask'
 
         # Collect data
         rows.append(asdict(metrics))
-        # Fill "array_data_ref", which is identical to the original "array_data"
-        # (per sample), except with updated damage mask.
-        # (Again, `**dict` unpacks the dict, now into new dict, ie this equals
-        # {"...":..., "...":..., ...}. Array data that gets handled this way
-        # isn't copied but linked, such that images aren't duplicated.
-        # 'mask_damage' comes last, so it replaces the original mask)
-        array_data_ref[metrics.file_path] = {**this_arrays, 'mask_damage': mask_damage_ref}
+        # Add the damage mask to array_data
+        array_data[metrics.file_path]['mask_damage_refthr'] = mask_damage_refthr
 
     # Convert collected rows to dataframe
-    df_samples_ref = pd.DataFrame(rows)
+    df_samples = pd.DataFrame(rows)
 
-    return df_samples_ref, array_data_ref
+    return df_samples, array_data
+
+def get_damage_mask_outputdir(df_samples, outputdir, damage_mask):
+    """
+    Returns the output directory for plots that depend on the damage mask,
+    i.e. outputdir/damage_mask_leafthr or outputdir/damage_mask_refthr.
+    damage_mask selects the damage threshold method: 'leafthr' (per-leaf
+    threshold) or 'refthr' (threshold derived from a reference condition,
+    requires apply_reference_threshold to have been run).
+    """
+
+    if damage_mask not in ('leafthr', 'refthr'):
+        raise ValueError(f"damage_mask should be 'leafthr' or 'refthr', not '{damage_mask}'.")
+    if damage_mask == 'refthr' and df_samples['threshold_val_dmg_refthr'].isna().all():
+        raise ValueError("No reference-threshold data found; run "
+                         "apply_reference_threshold first.")
+
+    return os.path.join(outputdir, f'damage_mask_{damage_mask}')
+
+def select_damage_mask_columns(df_samples, damage_mask):
+    """
+    Returns a copy of df_samples in which the damage-mask dependent columns
+    of the chosen method (damage_mask, 'leafthr' or 'refthr') are renamed to
+    their names without suffix, e.g. total_damage_area_px_refthr becomes
+    total_damage_area_px. Used by plotting functions.
+    """
+
+    columns_to_rename = {f'{name}_{damage_mask}': name for name in DAMAGE_MASK_METRICS}
+
+    return df_samples.rename(columns=columns_to_rename)
+
+def get_damage_mask_label(df_samples, damage_mask):
+    """Returns a label describing the damage threshold method, for plot titles."""
+
+    if damage_mask == 'refthr':
+        return f"reference threshold: {df_samples['reference_condition'].iloc[0]}"
+
+    return 'per-leaf threshold'
 
 ###############################################################################
 # %% PLOTTING FUNCTIONS
@@ -873,14 +946,22 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
     plt.close(fig)
     
 # Now the same for the nearest-island distance metric
-def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None):
+def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None,
+                                  damage_mask='leafthr'):
     """
     Plot the total nearest-island distances for each condition.
-    """    
-    
+    damage_mask selects the damage threshold method ('leafthr' or 'refthr');
+    the plot is saved to outputdir/damage_mask_<damage_mask>/plots/.
+    """
+
     if mycolors is None:
         sns.color_palette('colorblind')
-    
+
+    # select data and output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
+    method_label = get_damage_mask_label(df_samples, damage_mask)
+    df_samples = select_damage_mask_columns(df_samples, damage_mask)
+
     os.makedirs(outputdir+'/plots/', exist_ok=True)
 
     # Drop rows with missing metrics; optionally drop zero-island samples.
@@ -942,7 +1023,7 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     axs[2].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
     axs[2].tick_params(axis='x', rotation=45)
 
-
+    fig.suptitle(f'Damage mask: {method_label}', fontsize=8)
 
     plt.tight_layout()
     
@@ -953,14 +1034,21 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     
     # plt.show(); plt.close()
     
-def plot_damaged_area(df_samples, outputdir, mycolors=None):
+def plot_damaged_area(df_samples, outputdir, mycolors=None, damage_mask='leafthr'):
     """
     Plot the total damaged area for each condition.
     Uses cm^2 when converted areas are available; otherwise uses pixels.
-    
+    damage_mask selects the damage threshold method ('leafthr' or 'refthr');
+    the plot is saved to outputdir/damage_mask_<damage_mask>/plots/.
+
     (This function was generated by ChatGPT Codex 5.3, and it seems a bit
-    overly complex; TODO: take a look at this later.)    
+    overly complex; TODO: take a look at this later.)
     """
+
+    # select data and output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
+    method_label = get_damage_mask_label(df_samples, damage_mask)
+    df_samples = select_damage_mask_columns(df_samples, damage_mask)
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
 
@@ -992,7 +1080,7 @@ def plot_damaged_area(df_samples, outputdir, mycolors=None):
     sns.violinplot(x='condition', y=metric_key, data=df_area, ax=ax, color='black', alpha=0.2)
     sns.stripplot(x='condition', y=metric_key, data=df_area, ax=ax, color='black')
 
-    ax.set_title('Total Damaged Area')
+    ax.set_title(f'Total Damaged Area\n({method_label})')
     ax.set_ylabel(y_label)
     ax.tick_params(axis='x', rotation=45)
 
@@ -1008,18 +1096,31 @@ def plot_damaged_area(df_samples, outputdir, mycolors=None):
     
 def plot_metric_per_condition(df_samples, outputdir, metric_key,
                               y_label=None, title=None, file_suffix=None,
-                              palette=None):
+                              palette=None, damage_mask='leafthr'):
     """
     Plot a numeric metric from `df_samples` per condition as a combined
     bar / violin / strip plot.
-    """
 
-    os.makedirs(outputdir + '/plots/', exist_ok=True)
+    For metrics that depend on the damage mask (DAMAGE_MASK_METRICS, e.g.
+    "threshold_val_dmg"), damage_mask selects the damage threshold method
+    ('leafthr' or 'refthr'), and the plot is saved to
+    outputdir/damage_mask_<damage_mask>/plots/. For other metrics, damage_mask
+    is ignored and the plot is saved to outputdir/plots/.
+    """
 
     if y_label is None:
         y_label = metric_key
     if title is None:
         title = metric_key
+
+    # for damage-mask dependent metrics, select data and output directory
+    # belonging to damage mask method
+    if metric_key in DAMAGE_MASK_METRICS:
+        outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
+        title = f'{title}\n({get_damage_mask_label(df_samples, damage_mask)})'
+        df_samples = select_damage_mask_columns(df_samples, damage_mask)
+
+    os.makedirs(outputdir + '/plots/', exist_ok=True)
     if palette is None:
         palette = sns.color_palette('colorblind')
 
@@ -1054,10 +1155,17 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
     # plt.show(); plt.close()
     
     
-def plot_damaged_percentage(df_samples, outputdir, mycolors=None):
+def plot_damaged_percentage(df_samples, outputdir, mycolors=None, damage_mask='leafthr'):
     """
     Plot the total damaged area for each condition as percentage of leaf area.
+    damage_mask selects the damage threshold method ('leafthr' or 'refthr');
+    the plot is saved to outputdir/damage_mask_<damage_mask>/plots/.
     """
+
+    # select data and output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
+    method_label = get_damage_mask_label(df_samples, damage_mask)
+    df_samples = select_damage_mask_columns(df_samples, damage_mask)
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
 
@@ -1081,7 +1189,7 @@ def plot_damaged_percentage(df_samples, outputdir, mycolors=None):
     sns.violinplot(x='condition', y=metric_key, data=df_pct, ax=ax, color='black', alpha=0.2)
     sns.stripplot(x='condition', y=metric_key, data=df_pct, ax=ax, color='black')
 
-    ax.set_title('Total Damaged Area (% of leaf)')
+    ax.set_title(f'Total Damaged Area (% of leaf)\n({method_label})')
     ax.set_ylabel(y_label)
     ax.tick_params(axis='x', rotation=45)
 
@@ -1164,21 +1272,25 @@ def plot_and_save_images(
     row,
     config_channels,
     filename_suffix='',
-    outputdir=None
+    outputdir=None,
+    damage_mask='leafthr',
+    method_label=None
 ):
     """
     Plots the images and masks, and saves the figure to
     outputdir/plots/segmentation_masks/<condition>/<image name>.png (images +
     histograms), and a version with only the images to <image name>_images.png.
-    this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage', 'centroid', 'img_rgb'.
-    row: pandas Series (row of df_samples) with keys 'condition', 'file_path', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2'.
+    this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage_<damage_mask>', 'centroid', 'img_rgb'.
+    row: pandas Series (row of df_samples) with keys 'condition', 'file_path', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2', 'threshold_val_dmg'
+        (i.e. damage-mask dependent columns without suffix, see select_damage_mask_columns).
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
     outputdir: base output directory where plots/ will be created; absolute, or relative to the working directory.
+    damage_mask: which damage mask to show ('leafthr' or 'refthr'); method_label is shown in the title.
     """
     img_leaf = this_arrays['img_leaf']
     img_dmg = this_arrays['img_damage']
     mask_leaf = this_arrays['mask_leaf']
-    mask_damage = this_arrays['mask_damage']
+    mask_damage = this_arrays[f'mask_damage_{damage_mask}']
     centroid_leaf = this_arrays['centroid']
     img0 = this_arrays['img_rgb']
 
@@ -1244,7 +1356,8 @@ def plot_and_save_images(
 
         # Plot the damage image
         axs[0, 2].imshow(img_dmg[zm[0]:zm[1],zm[2]:zm[3]])
-        axs[0, 2].set_title(f'Damage\nch={config_channels['Damage']}\n{damage_area_text}')
+        method_text = '' if method_label is None else f'\n{method_label}'
+        axs[0, 2].set_title(f'Damage\nch={config_channels['Damage']}\n{damage_area_text}{method_text}')
         axs[0, 2].contour(mask_damage[zm[0]:zm[1],zm[2]:zm[3]], colors='white', linewidths=1)
 
         # Damage histogram: restrict to pixels inside the leaf so threshold is meaningful.
@@ -1294,15 +1407,23 @@ def run_plot_and_save(
     df_samples,
     array_data,
     outputdir,
-    config_channels
+    config_channels,
+    damage_mask='leafthr'
 ):
     """
     Run the plot_and_save_images function for each image in df_samples/array_data.
-    Saves the plots in outputdir/plots/segmentation_masks/<condition>/.
+    Saves the plots in outputdir/damage_mask_<damage_mask>/plots/segmentation_masks/<condition>/.
     These per-image figures show the segmentation underlying all other results,
     and should be checked manually for artifacts.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference'.
+    damage_mask selects the damage threshold method ('leafthr' or 'refthr').
     """
+
+    # select data and output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
+    method_label = get_damage_mask_label(df_samples, damage_mask)
+    df_samples = select_damage_mask_columns(df_samples, damage_mask)
+
     for _, row in df_samples.iterrows():
         file_path = row['file_path']
         this_arrays = array_data[file_path]
@@ -1318,7 +1439,9 @@ def run_plot_and_save(
             row,
             config_channels,
             filename_suffix=filename_suffix,
-            outputdir=outputdir
+            outputdir=outputdir,
+            damage_mask=damage_mask,
+            method_label=method_label
         )
 
 
@@ -1332,7 +1455,7 @@ def _nice_number_below(value):
 
 def plot_damage_overview(df_samples, array_data, outputdir,
                          pixel_to_cm2_factor=None, cmap='viridis',
-                         panel_size_cm=3, margin_px=10):
+                         panel_size_cm=3, margin_px=10, damage_mask='leafthr'):
     """
     Overview of the damage channel of all images, with the damage mask
     outlined in white. Conditions are shown in columns, and replicates
@@ -1347,12 +1470,20 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     pixels otherwise. The figure is panel_size_cm per condition wide, and
     panel_size_cm per replicate high.
 
-    Saves to outputdir/plots/overview_damage.pdf and .png, and returns fig.
+    damage_mask selects the damage threshold method ('leafthr' or 'refthr')
+    of the outlined damage mask.
+
+    Saves to outputdir/damage_mask_<damage_mask>/plots/overview_damage.pdf
+    and .png, and returns fig.
 
     (Written by Claude, checked by human.)
     """
-    
+
     from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+
+    # select output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
+    method_label = get_damage_mask_label(df_samples, damage_mask)
 
     os.makedirs(os.path.join(outputdir, 'plots'), exist_ok=True)
 
@@ -1402,7 +1533,7 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                 ax = axs[row, col]
                 
                 img_damage = array_data[file_path]['img_damage']
-                mask_damage = array_data[file_path]['mask_damage']
+                mask_damage = array_data[file_path][f'mask_damage_{damage_mask}']
 
                 ax.imshow(img_damage, cmap=cmap)
                 if np.any(mask_damage):
@@ -1438,6 +1569,8 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                                               loc='lower right', color='white',
                                               frameon=False, pad=0.3, sep=2,
                                               size_vertical=window_px/150))
+
+        fig.suptitle(f'Damage mask: {method_label}')
 
         fig.savefig(os.path.join(outputdir, 'plots', 'overview_damage.pdf'), dpi=300)
         fig.savefig(os.path.join(outputdir, 'plots', 'overview_damage.png'), dpi=300)

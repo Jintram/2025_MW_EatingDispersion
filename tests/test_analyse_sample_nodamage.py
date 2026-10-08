@@ -33,23 +33,23 @@ def test_nodamage_still_computes_leafmask_metrics():
 
     # status: leaf found, damage not found
     assert metrics.leaf_found
-    assert not metrics.damage_found
-    assert metrics.analysis_status == 'no_damage_mask'
+    assert not metrics.damage_found_leafthr
+    assert metrics.analysis_status_leafthr == 'no_damage_mask'
 
     # metrics that only need the leaf mask are calculated
     assert arrays.acf_norm is not None
     assert arrays.acf_norm_avgr is not None
     assert arrays.radial_pdf is not None
-    assert not np.isnan(metrics.threshold_val_dmg)
+    assert not np.isnan(metrics.threshold_val_dmg_leafthr)
     assert not np.isnan(metrics.baselvl_dmg)
     assert not np.isnan(metrics.mean_dmg_signal)
 
     # damage-mask dependent metrics are valid zeros
-    assert metrics.island_counts == 0
-    assert metrics.total_nearest_island_distances == 0
-    assert metrics.mean_nearest_island_distance == 0
-    assert metrics.total_damage_area_px == 0
-    assert metrics.total_damage_percentage == 0
+    assert metrics.island_counts_leafthr == 0
+    assert metrics.total_nearest_island_distances_leafthr == 0
+    assert metrics.mean_nearest_island_distance_leafthr == 0
+    assert metrics.total_damage_area_px_leafthr == 0
+    assert metrics.total_damage_percentage_leafthr == 0
 
 
 def test_mean_dmg_signal_value():

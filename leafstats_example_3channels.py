@@ -22,9 +22,6 @@ condition_path_map = {
 # Reference condition, used to derive the damage threshold for method B
 # (damage mask based on reference condition, see step 3)
 REFERENCE_CONDITION = 'Ctrl'
-# Output folders for the damage-mask dependent output, one per method
-OUTPUTDIR_PERLEAF = OUTPUTDIR + '/damage_threshold_per_leaf/'
-OUTPUTDIR_REF = OUTPUTDIR + f'/damage_threshold_ref_{REFERENCE_CONDITION}/'
 
 # Channel configuration (channel index per role; Reference can be None)
 config_channels = {
@@ -53,7 +50,10 @@ df_samples, array_data = lsa.run_complete_analysis(
 # (The per-leaf threshold from step 2 assumes the true base level of the damage
 # signal is equal across conditions; the reference threshold allows it to
 # differ, but assumes identical imaging conditions for all images. See readme.)
-df_samples_ref, array_data_ref = lsa.apply_reference_threshold(
+# This adds the columns with suffix "_refthr" to df_samples (next to the
+# "_leafthr" columns of the per-leaf threshold), and "mask_damage_refthr"
+# to array_data.
+df_samples, array_data = lsa.apply_reference_threshold(
     df_samples, array_data,
     reference_condition = REFERENCE_CONDITION,
     pixel_to_cm2_factor = pixel_to_cm2_factor
@@ -69,34 +69,38 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal
                               y_label = "Mean damage signal per leaf pixel", 
                               title="Mean damage signal per condition")
 
-# 5) Damage mask METHOD A: per-leaf threshold
+# 5) Damage mask METHOD A: per-leaf threshold (damage_mask='leafthr')
 # Assumes equal true base level across conditions; robust to intensity
 # differences between images.
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR_PERLEAF, remove_zerocnt=False)
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR_PERLEAF, remove_zerocnt=True)
-lsa.plot_damaged_area(df_samples, OUTPUTDIR_PERLEAF)
-lsa.plot_damaged_percentage(df_samples, OUTPUTDIR_PERLEAF)
-lsa.plot_metric_per_condition(df_samples, OUTPUTDIR_PERLEAF, metric_key="threshold_val_dmg", 
+# Plots are saved to OUTPUTDIR/damage_mask_leafthr/.
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask='leafthr')
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask='leafthr')
+lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask='leafthr')
+lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask='leafthr')
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
                               y_label = "Intensity threshold for damage", 
-                              title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.")
-lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR_PERLEAF, pixel_to_cm2_factor=pixel_to_cm2_factor)
-lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR_PERLEAF, config_channels)
-df_samples.to_csv(OUTPUTDIR_PERLEAF + 'data_leaf_damage_singlemetrics.csv', index=False)
-df_samples.to_excel(OUTPUTDIR_PERLEAF + 'data_leaf_damage_singlemetrics.xlsx', index=False)
+                              title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.",
+                              damage_mask='leafthr')
+lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask='leafthr')
+lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask='leafthr')
 
-# 6) Damage mask METHOD B: reference-condition threshold
+# 6) Damage mask METHOD B: reference-condition threshold (damage_mask='refthr')
 # Allows the base level to differ per condition; assumes identical imaging
 # conditions for all images.
-lsa.plot_nearest_island_distances(df_samples_ref, OUTPUTDIR_REF, remove_zerocnt=False)
-lsa.plot_nearest_island_distances(df_samples_ref, OUTPUTDIR_REF, remove_zerocnt=True)
-lsa.plot_damaged_area(df_samples_ref, OUTPUTDIR_REF)
-lsa.plot_damaged_percentage(df_samples_ref, OUTPUTDIR_REF)
-lsa.plot_metric_per_condition(df_samples_ref, OUTPUTDIR_REF, metric_key="threshold_val_dmg", 
+# Plots are saved to OUTPUTDIR/damage_mask_refthr/.
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask='refthr')
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask='refthr')
+lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask='refthr')
+lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask='refthr')
+lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
                               y_label = "Intensity threshold for damage", 
-                              title=f"Threshold (reference condition: {REFERENCE_CONDITION})")
-lsa.plot_damage_overview(df_samples_ref, array_data_ref, OUTPUTDIR_REF, pixel_to_cm2_factor=pixel_to_cm2_factor)
-lsa.run_plot_and_save(df_samples_ref, array_data_ref, OUTPUTDIR_REF, config_channels)
-df_samples_ref.to_csv(OUTPUTDIR_REF + 'data_leaf_damage_singlemetrics.csv', index=False)
-df_samples_ref.to_excel(OUTPUTDIR_REF + 'data_leaf_damage_singlemetrics.xlsx', index=False)
+                              title=f"Threshold",
+                              damage_mask='refthr')
+lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask='refthr')
+lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask='refthr')
+
+# 7) Export single-value metrics (both methods) to CSV and Excel
+df_samples.to_csv(OUTPUTDIR + '/data_leaf_damage_singlemetrics.csv', index=False)
+df_samples.to_excel(OUTPUTDIR + '/data_leaf_damage_singlemetrics.xlsx', index=False)
 
 # %%
