@@ -148,7 +148,7 @@ There are two base levels and corresponding damage thresholds determined:
 
 Assumptions here are:
 
-- For both methods:
+- For both methods (i) and (ii):
     - **Critical assumption (1):** A substantial part of the leaves from which the base level is determined show base level damage. 
 - For method (i):
     - **Critical assumption (2):** To compare between conditions with method (i), 
