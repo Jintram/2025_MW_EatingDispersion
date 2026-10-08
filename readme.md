@@ -187,7 +187,7 @@ the estimated background intensity for "leaf", and the estimated base level
 (within the leaf) for "damage"; the red line indicates the threshold that was 
 used for the mask.*
 
-#### Potential & necessary improvements
+#### Potential improvements
 
 - The distribution of undamaged leaf intensity could be estimated in more
 sophisticated ways (e.g. fitting a gaussian to part of the histogram),
