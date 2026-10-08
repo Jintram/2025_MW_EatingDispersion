@@ -167,8 +167,7 @@ Assumptions here are:
     acquisition conditions.
 
 <img src=Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png width=50%>
-
-**Example figure [baselvl_dmg.pdf](Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png)** showing that the base level can show a trend
+**^ Example figure [baselvl_dmg.pdf](Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png)** showing that the base level can show a trend
 per condition.
 
 #### Resulting leaf and damage masks
