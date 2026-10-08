@@ -114,13 +114,9 @@ class SampleArrays:
     acf_norm_avgr: np.ndarray | None = None
     radial_pdf: np.ndarray | None = None
 
-#%% ################################################################################
-# Create output dir if it doesn't exist
-
-# Create in __main__ to avoid side effects during import
 
 #%% ################################################################################
-# Functions
+# Supporting functions to perform calculations etc
 
 def arrange_dims(img):
     """ 
@@ -499,8 +495,8 @@ def get_island_counts(mask_leaf, mask_damage):
     return np.max(lbl_damage)
     
 
-#%% ######################################################################
-# Now let's get real data working
+################################################################################
+#%% Pipeline functions to analyze a whole dataset
 
 def get_data_file_paths(condition_path_map):
     """
@@ -529,7 +525,6 @@ def get_data_file_paths(condition_path_map):
 
     return data_file_paths
 
-# %%
 
 def analyse_sample(file_path, condition, config_channels,
                    leaf_threshold_method='bg10', leaf_roundness_threshold=0,
@@ -662,6 +657,7 @@ def run_complete_analysis(data_file_paths, config_channels,
     rows = []
     array_data = {}
 
+    # collect data into "rows" (converted to df later) and "array_data"
     for condition, file_list in data_file_paths.items():
         # condition, file_list = list(data_file_paths.items())[0]
         # condition, file_list = list(data_file_paths.items())[2]
@@ -683,10 +679,14 @@ def run_complete_analysis(data_file_paths, config_channels,
             # (not asdict here, as that would deep-copy all images)
             array_data[file_path] = {f.name: getattr(arrays, f.name) for f in fields(arrays)}
 
+    # Convert "rows" to dataframe
     df_samples = pd.DataFrame(rows)
+
+    
     return df_samples, array_data
 
-# %% ########################################################################
+###############################################################################
+# %% PLOTTING FUNCTIONS
 
 # Generate a plot of the acf_norms_avgrs, all in the same panel, and 
 # annotated per condition
