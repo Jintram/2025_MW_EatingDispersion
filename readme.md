@@ -194,7 +194,7 @@ sophisticated ways (e.g. fitting a gaussian to part of the histogram),
 allowing for a better estimate on what the expected range of 
 undamaged signal is, and thus what can be considered damaged area.
 
-## How the damage pattern is quantified
+## Quantifying the damage pattern
 
 To assess the nature of the damage patterns, multiple metrics are calculated.
 
