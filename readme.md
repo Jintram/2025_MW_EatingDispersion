@@ -10,12 +10,14 @@ This project analyzes multi-channel leaf images to quantify thrip feeding damage
 To find out how to get started with Python and related required software to 
 conveniently run scripts, please check out our [blog post](https://www.biodsc.nl/posts/installing_conda_python.html) about this.
 
-Assuming you already have Conda installed and your preferred environment set up, install the following libraries to be able to run the scripts in this repository:
+Assuming you already have Conda installed, create and activate an environment with the libraries needed to run the scripts in this repository:
 
 ```bash
-
-conda install -c conda-forge numpy pandas scipy scikit-image matplotlib seaborn imageio openpyxl -y
+conda create -n leafdamage -c conda-forge python numpy pandas scipy scikit-image matplotlib seaborn imageio openpyxl -y
+conda activate leafdamage
 ```
+
+Run `conda activate leafdamage` again whenever you open a new terminal to work with this code.
 
 ## To run (example scripts)
 

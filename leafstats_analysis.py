@@ -32,6 +32,9 @@ import os
 import warnings
 from dataclasses import dataclass, asdict, fields
 
+# Suppress seaborn warnings that the color palette is too large (no issue)
+warnings.filterwarnings('ignore', message='The palette list has more values', category=UserWarning)
+
 cm_to_inch = 1/2.54
 # set plotting params
 # Note that font.size only sets the base size; titles and labels default to
