@@ -75,9 +75,9 @@ from which you import this main pipeline script as follows:
 import leafstats_analysis as lsa
 ```
 
-When you run this line, you can call functions from [leafstats_analysis.py](leafstats_analysis.py) using e.g.
+When you run this line, you can call functions from [leafstats_analysis.py](leafstats_analysis.py) using `lsa.<function name>()`, e.g.
 `lsa.run_complete_analysis()`.
-This is explained in the [example scripts](#to-run-example-scripts).
+This is shown in the [example scripts](#to-run-example-scripts).
 
 ## How the analysis works
 
