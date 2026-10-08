@@ -69,35 +69,35 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal
                               y_label = "Mean damage signal per leaf pixel", 
                               title="Mean damage signal per condition")
 
-# 5) Damage mask METHOD A: per-leaf threshold (damage_mask='leafthr')
+# 5) Damage mask METHOD A: per-leaf threshold (damage_mask_method='leafthr')
 # Assumes equal true base level across conditions; robust to intensity
 # differences between images.
 # Plots are saved to OUTPUTDIR/damage_mask_leafthr/.
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask='leafthr')
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask='leafthr')
-lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask='leafthr')
-lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask='leafthr')
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='leafthr')
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='leafthr')
+lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='leafthr')
+lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask_method='leafthr')
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
                               y_label = "Intensity threshold for damage", 
                               title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.",
-                              damage_mask='leafthr')
-lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask='leafthr')
-lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask='leafthr')
+                              damage_mask_method='leafthr')
+lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='leafthr')
+lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='leafthr')
 
-# 6) Damage mask METHOD B: reference-condition threshold (damage_mask='refthr')
+# 6) Damage mask METHOD B: reference-condition threshold (damage_mask_method='refthr')
 # Allows the base level to differ per condition; assumes identical imaging
 # conditions for all images.
 # Plots are saved to OUTPUTDIR/damage_mask_refthr/.
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask='refthr')
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask='refthr')
-lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask='refthr')
-lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask='refthr')
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='refthr')
+lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='refthr')
+lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='refthr')
+lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask_method='refthr')
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
                               y_label = "Intensity threshold for damage", 
                               title=f"Threshold",
-                              damage_mask='refthr')
-lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask='refthr')
-lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask='refthr')
+                              damage_mask_method='refthr')
+lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='refthr')
+lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='refthr')
 
 # 7) Export single-value metrics (both methods) to CSV and Excel
 df_samples.to_csv(OUTPUTDIR + '/data_leaf_damage_singlemetrics.csv', index=False)

@@ -767,7 +767,7 @@ def apply_reference_threshold(df_samples, array_data, reference_condition,
     and array_data, to which the damage masks are added as 'mask_damage_refthr'.
     Note that array_data is extended in place (i.e. the input array_data
     is modified too).
-    Plotting functions use these via their damage_mask='refthr' argument.
+    Plotting functions use these via their damage_mask_method='refthr' argument.
     """
 
     # Determine the reference threshold
@@ -834,39 +834,27 @@ def apply_reference_threshold(df_samples, array_data, reference_condition,
 
     return df_samples, array_data
 
-def get_damage_mask_outputdir(df_samples, outputdir, damage_mask):
+def get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method):
     """
     Returns the output directory for plots that depend on the damage mask,
     i.e. outputdir/damage_mask_leafthr or outputdir/damage_mask_refthr.
-    damage_mask selects the damage threshold method: 'leafthr' (per-leaf
+    damage_mask_method selects the damage threshold method: 'leafthr' (per-leaf
     threshold) or 'refthr' (threshold derived from a reference condition,
     requires apply_reference_threshold to have been run).
     """
 
-    if damage_mask not in ('leafthr', 'refthr'):
-        raise ValueError(f"damage_mask should be 'leafthr' or 'refthr', not '{damage_mask}'.")
-    if damage_mask == 'refthr' and df_samples['threshold_val_dmg_refthr'].isna().all():
+    if damage_mask_method not in ('leafthr', 'refthr'):
+        raise ValueError(f"damage_mask_method should be 'leafthr' or 'refthr', not '{damage_mask_method}'.")
+    if damage_mask_method == 'refthr' and df_samples['threshold_val_dmg_refthr'].isna().all():
         raise ValueError("No reference-threshold data found; run "
                          "apply_reference_threshold first.")
 
-    return os.path.join(outputdir, f'damage_mask_{damage_mask}')
+    return os.path.join(outputdir, f'damage_mask_{damage_mask_method}')
 
-def select_damage_mask_columns(df_samples, damage_mask):
-    """
-    Returns a copy of df_samples in which the damage-mask dependent columns
-    of the chosen method (damage_mask, 'leafthr' or 'refthr') are renamed to
-    their names without suffix, e.g. total_damage_area_px_refthr becomes
-    total_damage_area_px. Used by plotting functions.
-    """
-
-    columns_to_rename = {f'{name}_{damage_mask}': name for name in DAMAGE_MASK_METRICS}
-
-    return df_samples.rename(columns=columns_to_rename)
-
-def get_damage_mask_label(df_samples, damage_mask):
+def get_damage_mask_label(df_samples, damage_mask_method):
     """Returns a label describing the damage threshold method, for plot titles."""
 
-    if damage_mask == 'refthr':
+    if damage_mask_method == 'refthr':
         return f"reference threshold: {df_samples['reference_condition'].iloc[0]}"
 
     return 'per-leaf threshold'
@@ -947,32 +935,35 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
     
 # Now the same for the nearest-island distance metric
 def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, mycolors=None,
-                                  damage_mask='leafthr'):
+                                  damage_mask_method='leafthr'):
     """
     Plot the total nearest-island distances for each condition.
-    damage_mask selects the damage threshold method ('leafthr' or 'refthr');
-    the plot is saved to outputdir/damage_mask_<damage_mask>/plots/.
+    damage_mask_method selects the damage threshold method ('leafthr' or 'refthr');
+    the plot is saved to outputdir/damage_mask_<damage_mask_method>/plots/.
     """
 
     if mycolors is None:
         sns.color_palette('colorblind')
 
-    # select data and output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
-    method_label = get_damage_mask_label(df_samples, damage_mask)
-    df_samples = select_damage_mask_columns(df_samples, damage_mask)
+    # select output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
+    method_label = get_damage_mask_label(df_samples, damage_mask_method)
+    # column names belonging to damage mask method (e.g. island_counts_leafthr)
+    col_island_counts = f'island_counts_{damage_mask_method}'
+    col_total_distances = f'total_nearest_island_distances_{damage_mask_method}'
+    col_mean_distance = f'mean_nearest_island_distance_{damage_mask_method}'
 
     os.makedirs(outputdir+'/plots/', exist_ok=True)
 
     # Drop rows with missing metrics; optionally drop zero-island samples.
-    # (Note mean_nearest_island_distance is deliberately not part of the dropna
+    # (Note col_mean_distance is deliberately not part of the dropna
     #  subset, such that the other two panels aren't affected by it.)
-    df_plot = df_samples[['condition', 'total_nearest_island_distances',
-                          'mean_nearest_island_distance', 'island_counts']].dropna(
-        subset=['total_nearest_island_distances', 'island_counts']
+    df_plot = df_samples[['condition', col_total_distances,
+                          col_mean_distance, col_island_counts]].dropna(
+        subset=[col_total_distances, col_island_counts]
     )
     if remove_zerocnt:
-        df_plot = df_plot[df_plot['island_counts'] > 0]
+        df_plot = df_plot[df_plot[col_island_counts] > 0]
 
     if df_plot.empty:
         print('WARNING: No valid nearest-island values available for plotting.')
@@ -982,44 +973,44 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     fig, axs = plt.subplots(1, 3, figsize=(17.2*cm_to_inch, 6*cm_to_inch))
 
     # plot the island counts
-    sns.barplot(x='condition', y='island_counts',
+    sns.barplot(x='condition', y=col_island_counts,
                 data=df_plot, ax=axs[0], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='island_counts',
+    sns.violinplot(x='condition', y=col_island_counts,
                      data=df_plot, ax=axs[0], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='island_counts',
+    sns.stripplot(x='condition', y=col_island_counts,
                   data=df_plot, ax=axs[0], color='black')
-    ymax2 = np.nanmax(df_plot['island_counts'])
+    ymax2 = np.nanmax(df_plot[col_island_counts])
     axs[0].set_ylim([0, (ymax2 if ymax2 > 0 else 1) * 1.02])
     axs[0].tick_params(axis='x', rotation=45)
     axs[0].set_title(f'Total Islands')
     axs[0].set_ylabel('Count')
 
     # plot total nearest-island distances using strippplot / seaborn
-    sns.barplot(x='condition', y='total_nearest_island_distances',
+    sns.barplot(x='condition', y=col_total_distances,
                 data=df_plot, ax=axs[1], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='total_nearest_island_distances',
+    sns.violinplot(x='condition', y=col_total_distances,
                    data=df_plot, ax=axs[1], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='total_nearest_island_distances',
+    sns.stripplot(x='condition', y=col_total_distances,
                   data=df_plot, ax=axs[1], color='black')
 
     axs[1].set_title(f'Total Closest-Island\nDistances')
     axs[1].set_ylabel('Distance (pixels)')
-    ymax0 = np.nanmax(df_plot['total_nearest_island_distances'])
+    ymax0 = np.nanmax(df_plot[col_total_distances])
     axs[1].set_ylim([0, (ymax0 if ymax0 > 0 else 1) * 1.02])
     # rotate axis 90 deg
     axs[1].tick_params(axis='x', rotation=45)
 
     # now the same, but averaged over the number of islands
-    sns.barplot(x='condition', y='mean_nearest_island_distance',
+    sns.barplot(x='condition', y=col_mean_distance,
                 data=df_plot, ax=axs[2], palette=mycolors, hue='condition')
-    sns.violinplot(x='condition', y='mean_nearest_island_distance',
+    sns.violinplot(x='condition', y=col_mean_distance,
                    data=df_plot, ax=axs[2], color='black', alpha=0.2)
-    sns.stripplot(x='condition', y='mean_nearest_island_distance',
+    sns.stripplot(x='condition', y=col_mean_distance,
                   data=df_plot, ax=axs[2], color='black')
 
     axs[2].set_title(f'Mean Closest-Island\nDistance')
     axs[2].set_ylabel('Distance (pixels)')
-    ymax1 = np.nanmax(df_plot['mean_nearest_island_distance'])
+    ymax1 = np.nanmax(df_plot[col_mean_distance])
     axs[2].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
     axs[2].tick_params(axis='x', rotation=45)
 
@@ -1034,35 +1025,34 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     
     # plt.show(); plt.close()
     
-def plot_damaged_area(df_samples, outputdir, mycolors=None, damage_mask='leafthr'):
+def plot_damaged_area(df_samples, outputdir, mycolors=None, damage_mask_method='leafthr'):
     """
     Plot the total damaged area for each condition.
     Uses cm^2 when converted areas are available; otherwise uses pixels.
-    damage_mask selects the damage threshold method ('leafthr' or 'refthr');
-    the plot is saved to outputdir/damage_mask_<damage_mask>/plots/.
+    damage_mask_method selects the damage threshold method ('leafthr' or 'refthr');
+    the plot is saved to outputdir/damage_mask_<damage_mask_method>/plots/.
 
     (This function was generated by ChatGPT Codex 5.3, and it seems a bit
     overly complex; TODO: take a look at this later.)
     """
 
-    # select data and output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
-    method_label = get_damage_mask_label(df_samples, damage_mask)
-    df_samples = select_damage_mask_columns(df_samples, damage_mask)
+    # select output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
+    method_label = get_damage_mask_label(df_samples, damage_mask_method)
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
 
     if mycolors is None:
         mycolors = sns.color_palette('colorblind')
 
-    cm2_available = np.any(pd.notna(df_samples['total_damage_area_cm2']))
+    cm2_available = np.any(pd.notna(df_samples[f'total_damage_area_cm2_{damage_mask_method}']))
 
     if cm2_available:
-        metric_key = 'total_damage_area_cm2'
+        metric_key = f'total_damage_area_cm2_{damage_mask_method}'
         y_label = 'Damaged area (cm^2)'
         file_suffix = 'cm2'
     else:
-        metric_key = 'total_damage_area_px'
+        metric_key = f'total_damage_area_px_{damage_mask_method}'
         y_label = 'Damaged area (pixels)'
         file_suffix = 'px'
 
@@ -1096,15 +1086,15 @@ def plot_damaged_area(df_samples, outputdir, mycolors=None, damage_mask='leafthr
     
 def plot_metric_per_condition(df_samples, outputdir, metric_key,
                               y_label=None, title=None, file_suffix=None,
-                              palette=None, damage_mask='leafthr'):
+                              palette=None, damage_mask_method='leafthr'):
     """
     Plot a numeric metric from `df_samples` per condition as a combined
     bar / violin / strip plot.
 
     For metrics that depend on the damage mask (DAMAGE_MASK_METRICS, e.g.
-    "threshold_val_dmg"), damage_mask selects the damage threshold method
+    "threshold_val_dmg"), damage_mask_method selects the damage threshold method
     ('leafthr' or 'refthr'), and the plot is saved to
-    outputdir/damage_mask_<damage_mask>/plots/. For other metrics, damage_mask
+    outputdir/damage_mask_<damage_mask_method>/plots/. For other metrics, damage_mask_method
     is ignored and the plot is saved to outputdir/plots/.
     """
 
@@ -1113,19 +1103,21 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
     if title is None:
         title = metric_key
 
-    # for damage-mask dependent metrics, select data and output directory
-    # belonging to damage mask method
+    # for damage-mask dependent metrics, select the column (with suffix, e.g.
+    # threshold_val_dmg_leafthr) and output directory belonging to damage mask method
     if metric_key in DAMAGE_MASK_METRICS:
-        outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
-        title = f'{title}\n({get_damage_mask_label(df_samples, damage_mask)})'
-        df_samples = select_damage_mask_columns(df_samples, damage_mask)
+        outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
+        title = f'{title}\n({get_damage_mask_label(df_samples, damage_mask_method)})'
+        column_key = f'{metric_key}_{damage_mask_method}'
+    else:
+        column_key = metric_key
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
     if palette is None:
         palette = sns.color_palette('colorblind')
 
-    df_metric = df_samples[['condition', metric_key]].copy()
-    df_metric = df_metric[pd.notna(df_metric[metric_key])]
+    df_metric = df_samples[['condition', column_key]].copy()
+    df_metric = df_metric[pd.notna(df_metric[column_key])]
 
     if df_metric.empty:
         print(f'WARNING: No valid values available for plotting metric "{metric_key}".')
@@ -1133,17 +1125,17 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
 
     fig, ax = plt.subplots(1, 1, figsize=(8 * cm_to_inch, 8 * cm_to_inch))
 
-    sns.barplot(x='condition', y=metric_key, data=df_metric, ax=ax,
+    sns.barplot(x='condition', y=column_key, data=df_metric, ax=ax,
                 palette=palette, hue='condition', legend=False)
-    sns.violinplot(x='condition', y=metric_key, data=df_metric, ax=ax,
+    sns.violinplot(x='condition', y=column_key, data=df_metric, ax=ax,
                    color='black', alpha=0.2)
-    sns.stripplot(x='condition', y=metric_key, data=df_metric, ax=ax, color='black')
+    sns.stripplot(x='condition', y=column_key, data=df_metric, ax=ax, color='black')
 
     ax.set_title(title)
     ax.set_ylabel(y_label)
     ax.tick_params(axis='x', rotation=45)
 
-    ymax = np.nanmax(df_metric[metric_key])
+    ymax = np.nanmax(df_metric[column_key])
     if ymax > 0:
         ax.set_ylim([0, ymax * 1.05])
 
@@ -1155,24 +1147,23 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
     # plt.show(); plt.close()
     
     
-def plot_damaged_percentage(df_samples, outputdir, mycolors=None, damage_mask='leafthr'):
+def plot_damaged_percentage(df_samples, outputdir, mycolors=None, damage_mask_method='leafthr'):
     """
     Plot the total damaged area for each condition as percentage of leaf area.
-    damage_mask selects the damage threshold method ('leafthr' or 'refthr');
-    the plot is saved to outputdir/damage_mask_<damage_mask>/plots/.
+    damage_mask_method selects the damage threshold method ('leafthr' or 'refthr');
+    the plot is saved to outputdir/damage_mask_<damage_mask_method>/plots/.
     """
 
-    # select data and output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
-    method_label = get_damage_mask_label(df_samples, damage_mask)
-    df_samples = select_damage_mask_columns(df_samples, damage_mask)
+    # select output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
+    method_label = get_damage_mask_label(df_samples, damage_mask_method)
 
     os.makedirs(outputdir + '/plots/', exist_ok=True)
 
     if mycolors is None:
         mycolors = sns.color_palette('colorblind')
 
-    metric_key = 'total_damage_percentage'
+    metric_key = f'total_damage_percentage_{damage_mask_method}'
     y_label = 'Damaged area (% of leaf)'
 
     df_pct = df_samples[['condition', metric_key]].copy()
@@ -1273,34 +1264,34 @@ def plot_and_save_images(
     config_channels,
     filename_suffix='',
     outputdir=None,
-    damage_mask='leafthr',
+    damage_mask_method='leafthr',
     method_label=None
 ):
     """
     Plots the images and masks, and saves the figure to
     outputdir/plots/segmentation_masks/<condition>/<image name>.png (images +
     histograms), and a version with only the images to <image name>_images.png.
-    this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage_<damage_mask>', 'centroid', 'img_rgb'.
-    row: pandas Series (row of df_samples) with keys 'condition', 'file_path', 'leaf_roundness', 'total_damage_area_px', 'total_damage_area_cm2', 'threshold_val_dmg'
-        (i.e. damage-mask dependent columns without suffix, see select_damage_mask_columns).
+    this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage_<damage_mask_method>', 'centroid', 'img_rgb'.
+    row: pandas Series (row of df_samples) with keys 'condition', 'file_path', 'leaf_roundness',
+        and 'total_damage_area_px', 'total_damage_area_cm2', 'threshold_val_dmg' with suffix _<damage_mask_method>.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
     outputdir: base output directory where plots/ will be created; absolute, or relative to the working directory.
-    damage_mask: which damage mask to show ('leafthr' or 'refthr'); method_label is shown in the title.
+    damage_mask_method: which damage mask to show ('leafthr' or 'refthr'); method_label is shown in the title.
     """
     img_leaf = this_arrays['img_leaf']
     img_dmg = this_arrays['img_damage']
     mask_leaf = this_arrays['mask_leaf']
-    mask_damage = this_arrays[f'mask_damage_{damage_mask}']
+    mask_damage = this_arrays[f'mask_damage_{damage_mask_method}']
     centroid_leaf = this_arrays['centroid']
     img0 = this_arrays['img_rgb']
 
     file_path = row['file_path']
     condition = row['condition']
     leaf_roundness = row['leaf_roundness']
-    total_damage_area_px = row['total_damage_area_px']
-    total_damage_area_cm2 = row['total_damage_area_cm2']
+    total_damage_area_px = row[f'total_damage_area_px_{damage_mask_method}']
+    total_damage_area_cm2 = row[f'total_damage_area_cm2_{damage_mask_method}']
     threshold_val_leaf = row['threshold_val_leaf']
-    threshold_val_dmg = row['threshold_val_dmg']
+    threshold_val_dmg = row[f'threshold_val_dmg_{damage_mask_method}']
     background_leaf = row.get('background_leaf', np.nan)
     baselvl_dmg = row.get('baselvl_dmg', np.nan)
 
@@ -1408,21 +1399,20 @@ def run_plot_and_save(
     array_data,
     outputdir,
     config_channels,
-    damage_mask='leafthr'
+    damage_mask_method='leafthr'
 ):
     """
     Run the plot_and_save_images function for each image in df_samples/array_data.
-    Saves the plots in outputdir/damage_mask_<damage_mask>/plots/segmentation_masks/<condition>/.
+    Saves the plots in outputdir/damage_mask_<damage_mask_method>/plots/segmentation_masks/<condition>/.
     These per-image figures show the segmentation underlying all other results,
     and should be checked manually for artifacts.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference'.
-    damage_mask selects the damage threshold method ('leafthr' or 'refthr').
+    damage_mask_method selects the damage threshold method ('leafthr' or 'refthr').
     """
 
-    # select data and output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
-    method_label = get_damage_mask_label(df_samples, damage_mask)
-    df_samples = select_damage_mask_columns(df_samples, damage_mask)
+    # select output directory belonging to damage mask method
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
+    method_label = get_damage_mask_label(df_samples, damage_mask_method)
 
     for _, row in df_samples.iterrows():
         file_path = row['file_path']
@@ -1440,7 +1430,7 @@ def run_plot_and_save(
             config_channels,
             filename_suffix=filename_suffix,
             outputdir=outputdir,
-            damage_mask=damage_mask,
+            damage_mask_method=damage_mask_method,
             method_label=method_label
         )
 
@@ -1455,7 +1445,7 @@ def _nice_number_below(value):
 
 def plot_damage_overview(df_samples, array_data, outputdir,
                          pixel_to_cm2_factor=None, cmap='viridis',
-                         panel_size_cm=3, margin_px=10, damage_mask='leafthr'):
+                         panel_size_cm=3, margin_px=10, damage_mask_method='leafthr'):
     """
     Overview of the damage channel of all images, with the damage mask
     outlined in white. Conditions are shown in columns, and replicates
@@ -1470,10 +1460,10 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     pixels otherwise. The figure is panel_size_cm per condition wide, and
     panel_size_cm per replicate high.
 
-    damage_mask selects the damage threshold method ('leafthr' or 'refthr')
+    damage_mask_method selects the damage threshold method ('leafthr' or 'refthr')
     of the outlined damage mask.
 
-    Saves to outputdir/damage_mask_<damage_mask>/plots/overview_damage.pdf
+    Saves to outputdir/damage_mask_<damage_mask_method>/plots/overview_damage.pdf
     and .png, and returns fig.
 
     (Written by Claude, checked by human.)
@@ -1482,8 +1472,8 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
     # select output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask)
-    method_label = get_damage_mask_label(df_samples, damage_mask)
+    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
+    method_label = get_damage_mask_label(df_samples, damage_mask_method)
 
     os.makedirs(os.path.join(outputdir, 'plots'), exist_ok=True)
 
@@ -1533,7 +1523,7 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                 ax = axs[row, col]
                 
                 img_damage = array_data[file_path]['img_damage']
-                mask_damage = array_data[file_path][f'mask_damage_{damage_mask}']
+                mask_damage = array_data[file_path][f'mask_damage_{damage_mask_method}']
 
                 ax.imshow(img_damage, cmap=cmap)
                 if np.any(mask_damage):

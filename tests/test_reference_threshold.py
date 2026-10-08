@@ -4,7 +4,7 @@ Written by Claude, and not human-checked.
 Tests apply_reference_threshold(), which derives one damage threshold from the
 leaves of a reference condition and applies it to all samples, filling the
 "_refthr" columns of df_samples and adding "mask_damage_refthr" to array_data.
-Also tests the damage_mask argument of the plotting functions (output folder
+Also tests the damage_mask_method argument of the plotting functions (output folder
 selection).
 
 Uses small generated 3-channel images (leaf channel 1, damage channel 2),
@@ -123,7 +123,7 @@ def test_unknown_reference_condition_raises():
 
 
 def test_outputdir_selection():
-    """damage_mask selects the output subfolder; refthr requires apply_reference_threshold."""
+    """damage_mask_method selects the output subfolder; refthr requires apply_reference_threshold."""
     df, arr = run_analysis({'Ctrl': [10, 10]})
 
     assert lsa.get_damage_mask_outputdir(df, 'OUT', 'leafthr') == os.path.join('OUT', 'damage_mask_leafthr')
@@ -132,7 +132,7 @@ def test_outputdir_selection():
             lsa.get_damage_mask_outputdir(df, 'OUT', bad_damage_mask)
         except ValueError:
             continue
-        raise AssertionError(f"expected ValueError for damage_mask='{bad_damage_mask}'")
+        raise AssertionError(f"expected ValueError for damage_mask_method='{bad_damage_mask}'")
 
     df, arr = lsa.apply_reference_threshold(df, arr, 'Ctrl')
     assert lsa.get_damage_mask_outputdir(df, 'OUT', 'refthr') == os.path.join('OUT', 'damage_mask_refthr')
@@ -144,8 +144,8 @@ def test_plot_metric_per_condition_routing():
     df, arr = lsa.apply_reference_threshold(df, arr, 'Ctrl')
     outdir = tempfile.mkdtemp(prefix='leafstats_refthr_plots_')
 
-    lsa.plot_metric_per_condition(df, outdir, metric_key='threshold_val_dmg', damage_mask='refthr')
-    lsa.plot_metric_per_condition(df, outdir, metric_key='baselvl_dmg', damage_mask='refthr')
+    lsa.plot_metric_per_condition(df, outdir, metric_key='threshold_val_dmg', damage_mask_method='refthr')
+    lsa.plot_metric_per_condition(df, outdir, metric_key='baselvl_dmg', damage_mask_method='refthr')
 
     assert os.path.isfile(os.path.join(outdir, 'damage_mask_refthr', 'plots', 'threshold_val_dmg.png'))
     assert os.path.isfile(os.path.join(outdir, 'plots', 'baselvl_dmg.png'))

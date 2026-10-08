@@ -495,7 +495,7 @@ Functions that plot damage-mask dependent data (`plot_nearest_island_distances`,
 `plot_damaged_area`, `plot_damaged_percentage`, `plot_damage_overview`, 
 `run_plot_and_save`, and `plot_metric_per_condition` for damage-mask 
 dependent metrics such as `"threshold_val_dmg"`) take the argument 
-`damage_mask='leafthr'` (default) or `damage_mask='refthr'`, which selects 
+`damage_mask_method='leafthr'` (default) or `damage_mask_method='refthr'`, which selects 
 the method, and save their output to `OUTPUTDIR/damage_mask_leafthr/` or 
 `OUTPUTDIR/damage_mask_refthr/` respectively. For brevity, the examples below 
 show the default; in the example scripts, these plots are made for both 

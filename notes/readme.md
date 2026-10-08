@@ -67,8 +67,9 @@ Continue on this thread.
     - `apply_reference_threshold` now returns `df_samples, array_data` with 
     the `_refthr` data filled in (array_data is extended in place); there is no
     `df_samples_ref`/`array_data_ref` anymore.
-    - Damage-mask dependent plot functions take `damage_mask='leafthr'` 
-    (default) or `'refthr'`, which selects the columns and the output folder 
+    - Damage-mask dependent plot functions take `damage_mask_method='leafthr'` 
+    (default) or `'refthr'`, which is used as suffix to select the columns 
+    (e.g. `island_counts_leafthr`) directly, and selects the output folder 
     `OUTPUTDIR/damage_mask_leafthr/` or `OUTPUTDIR/damage_mask_refthr/`, and 
     shows the method in the plot title. `plot_metric_per_condition` only does 
     this for metrics in `DAMAGE_MASK_METRICS`. The runner scripts therefore no
