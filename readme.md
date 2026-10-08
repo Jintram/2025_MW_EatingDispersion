@@ -65,7 +65,7 @@ and the blue channel to the thrip activity (NIR).
 The red channel does not enter any of the metrics, and is only displayed 
 when it is assigned as the "reference" channel.*
 
-## Where the analysis function live
+## The analysis pipeline script 
 
 
 All functions that are used in this pipeline are defined in [leafstats_analysis.py](leafstats_analysis.py). The idea is that you run the pipeline using a second script
