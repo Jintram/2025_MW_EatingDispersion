@@ -834,24 +834,7 @@ def apply_reference_threshold(df_samples, array_data, reference_condition,
 
     return df_samples, array_data
 
-def get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method):
-    """
-    Returns the output directory for plots that depend on the damage mask,
-    i.e. outputdir/damage_mask_leafthr or outputdir/damage_mask_refthr.
-    damage_mask_method selects the damage threshold method: 'leafthr' (per-leaf
-    threshold) or 'refthr' (threshold derived from a reference condition,
-    requires apply_reference_threshold to have been run).
-    """
-
-    if damage_mask_method not in ('leafthr', 'refthr'):
-        raise ValueError(f"damage_mask_method should be 'leafthr' or 'refthr', not '{damage_mask_method}'.")
-    if damage_mask_method == 'refthr' and df_samples['threshold_val_dmg_refthr'].isna().all():
-        raise ValueError("No reference-threshold data found; run "
-                         "apply_reference_threshold first.")
-
-    return os.path.join(outputdir, f'damage_mask_{damage_mask_method}')
-
-def get_damage_mask_label(df_samples, damage_mask_method):
+def get_plotlabel_damagemask(df_samples, damage_mask_method):
     """Returns a label describing the damage threshold method, for plot titles."""
 
     if damage_mask_method == 'refthr':
@@ -869,7 +852,8 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
     Plot the average radial autocorrelation for each condition.
     """
     
-    os.makedirs(outputdir+'/plots/', exist_ok=True)   
+    plotdir = outputdir + '/plots_general_stats'
+    os.makedirs(plotdir, exist_ok=True)   
     
     if mycolors is None:
         sns.color_palette('colorblind')    
@@ -904,12 +888,12 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
     ax.set_ylabel('Normalized Autocorrelation')
 
     plt.tight_layout()
-    fig.savefig(outputdir+'/plots/Radial_acf_samples.pdf', dpi=150)
-    fig.savefig(outputdir+'/plots/Radial_acf_samples.png', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_samples.pdf', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_samples.png', dpi=150)
 
     ax.set_xlim([0,the_xlimit])
-    fig.savefig(outputdir+'/plots/Radial_acf_samples_lims.pdf', dpi=150)
-    fig.savefig(outputdir+'/plots/Radial_acf_samples_lims.png', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_samples_lims.pdf', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_samples_lims.png', dpi=150)
     plt.close(fig)
 
     # plot averages per condition
@@ -925,12 +909,12 @@ def plot_acf_norms_avgrs(df_samples, array_data, outputdir, mycolors = None, the
     ax.set_ylabel('Normalized Autocorrelation')
 
     plt.tight_layout()
-    fig.savefig(outputdir+'/plots/Radial_acf_averages.pdf', dpi=150)
-    fig.savefig(outputdir+'/plots/Radial_acf_averages.png', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_averages.pdf', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_averages.png', dpi=150)
 
     ax.set_xlim([0,the_xlimit])
-    fig.savefig(outputdir+'/plots/Radial_acf_averages_lims.pdf', dpi=150)
-    fig.savefig(outputdir+'/plots/Radial_acf_averages_lims.png', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_averages_lims.pdf', dpi=150)
+    fig.savefig(plotdir+'/Radial_acf_averages_lims.png', dpi=150)
     plt.close(fig)
     
 # Now the same for the nearest-island distance metric
@@ -939,21 +923,21 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     """
     Plot the total nearest-island distances for each condition.
     damage_mask_method selects the damage threshold method ('leafthr' or 'refthr');
-    the plot is saved to outputdir/damage_mask_<damage_mask_method>/plots/.
+    the plot is saved to outputdir/plots_damageregionstats_<damage_mask_method>/.
     """
 
     if mycolors is None:
         sns.color_palette('colorblind')
 
     # select output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
-    method_label = get_damage_mask_label(df_samples, damage_mask_method)
+    plotdir = outputdir + '/plots_damageregionstats_' + damage_mask_method
+    method_label = get_plotlabel_damagemask(df_samples, damage_mask_method)
     # column names belonging to damage mask method (e.g. island_counts_leafthr)
     col_island_counts = f'island_counts_{damage_mask_method}'
     col_total_distances = f'total_nearest_island_distances_{damage_mask_method}'
     col_mean_distance = f'mean_nearest_island_distance_{damage_mask_method}'
 
-    os.makedirs(outputdir+'/plots/', exist_ok=True)
+    os.makedirs(plotdir, exist_ok=True)
 
     # Drop rows with missing metrics; optionally drop zero-island samples.
     # (Note col_mean_distance is deliberately not part of the dropna
@@ -1020,8 +1004,8 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     
     # save
     nozero_string = '_nozero' if remove_zerocnt else ''
-    fig.savefig(outputdir+f'/plots/nearest_island_distances{nozero_string}.pdf', dpi=150)
-    fig.savefig(outputdir+f'/plots/nearest_island_distances{nozero_string}.png', dpi=150)
+    fig.savefig(plotdir+f'/nearest_island_distances{nozero_string}.pdf', dpi=150)
+    fig.savefig(plotdir+f'/nearest_island_distances{nozero_string}.png', dpi=150)
     
     # plt.show(); plt.close()
     
@@ -1030,17 +1014,17 @@ def plot_damaged_area(df_samples, outputdir, mycolors=None, damage_mask_method='
     Plot the total damaged area for each condition.
     Uses cm^2 when converted areas are available; otherwise uses pixels.
     damage_mask_method selects the damage threshold method ('leafthr' or 'refthr');
-    the plot is saved to outputdir/damage_mask_<damage_mask_method>/plots/.
+    the plot is saved to outputdir/plots_damageregionstats_<damage_mask_method>/.
 
     (This function was generated by ChatGPT Codex 5.3, and it seems a bit
     overly complex; TODO: take a look at this later.)
     """
 
     # select output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
-    method_label = get_damage_mask_label(df_samples, damage_mask_method)
+    plotdir = outputdir + '/plots_damageregionstats_' + damage_mask_method
+    method_label = get_plotlabel_damagemask(df_samples, damage_mask_method)
 
-    os.makedirs(outputdir + '/plots/', exist_ok=True)
+    os.makedirs(plotdir, exist_ok=True)
 
     if mycolors is None:
         mycolors = sns.color_palette('colorblind')
@@ -1079,8 +1063,8 @@ def plot_damaged_area(df_samples, outputdir, mycolors=None, damage_mask_method='
         ax.set_ylim([0, ymax * 1.05])
 
     plt.tight_layout()
-    fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.pdf', dpi=150)
-    fig.savefig(outputdir + f'/plots/damaged_area_{file_suffix}.png', dpi=150)
+    fig.savefig(plotdir + f'/damaged_area_{file_suffix}.pdf', dpi=150)
+    fig.savefig(plotdir + f'/damaged_area_{file_suffix}.png', dpi=150)
 
     # plt.show(); plt.close()
     
@@ -1094,8 +1078,8 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
     For metrics that depend on the damage mask (DAMAGE_MASK_METRICS, e.g.
     "threshold_val_dmg"), damage_mask_method selects the damage threshold method
     ('leafthr' or 'refthr'), and the plot is saved to
-    outputdir/damage_mask_<damage_mask_method>/plots/. For other metrics, damage_mask_method
-    is ignored and the plot is saved to outputdir/plots/.
+    outputdir/plots_damageregionstats_<damage_mask_method>/. For other metrics, 
+    damage_mask_method is ignored and the plot is saved to outputdir/plots_general_stats/.
     """
 
     if y_label is None:
@@ -1106,13 +1090,14 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
     # for damage-mask dependent metrics, select the column (with suffix, e.g.
     # threshold_val_dmg_leafthr) and output directory belonging to damage mask method
     if metric_key in DAMAGE_MASK_METRICS:
-        outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
-        title = f'{title}\n({get_damage_mask_label(df_samples, damage_mask_method)})'
+        plotdir = outputdir + '/plots_damageregionstats_' + damage_mask_method
+        title = f'{title}\n({get_plotlabel_damagemask(df_samples, damage_mask_method)})'
         column_key = f'{metric_key}_{damage_mask_method}'
     else:
+        plotdir = outputdir + '/plots_general_stats'
         column_key = metric_key
 
-    os.makedirs(outputdir + '/plots/', exist_ok=True)
+    os.makedirs(plotdir, exist_ok=True)
     if palette is None:
         palette = sns.color_palette('colorblind')
 
@@ -1141,8 +1126,8 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
 
     plt.tight_layout()
     filename = metric_key if file_suffix is None else f'{metric_key}_{file_suffix}'
-    fig.savefig(outputdir + f'/plots/{filename}.pdf', dpi=150)
-    fig.savefig(outputdir + f'/plots/{filename}.png', dpi=150)
+    fig.savefig(plotdir + f'/{filename}.pdf', dpi=150)
+    fig.savefig(plotdir + f'/{filename}.png', dpi=150)
 
     # plt.show(); plt.close()
     
@@ -1151,14 +1136,14 @@ def plot_damaged_percentage(df_samples, outputdir, mycolors=None, damage_mask_me
     """
     Plot the total damaged area for each condition as percentage of leaf area.
     damage_mask_method selects the damage threshold method ('leafthr' or 'refthr');
-    the plot is saved to outputdir/damage_mask_<damage_mask_method>/plots/.
+    the plot is saved to outputdir/plots_damageregionstats_<damage_mask_method>/.
     """
 
     # select output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
-    method_label = get_damage_mask_label(df_samples, damage_mask_method)
+    plotdir = outputdir + '/plots_damageregionstats_' + damage_mask_method
+    method_label = get_plotlabel_damagemask(df_samples, damage_mask_method)
 
-    os.makedirs(outputdir + '/plots/', exist_ok=True)
+    os.makedirs(plotdir, exist_ok=True)
 
     if mycolors is None:
         mycolors = sns.color_palette('colorblind')
@@ -1189,8 +1174,8 @@ def plot_damaged_percentage(df_samples, outputdir, mycolors=None, damage_mask_me
         ax.set_ylim([0, ymax * 1.05])
 
     plt.tight_layout()
-    fig.savefig(outputdir + '/plots/damaged_percentage.pdf', dpi=150)
-    fig.savefig(outputdir + '/plots/damaged_percentage.png', dpi=150)
+    fig.savefig(plotdir + '/damaged_percentage.pdf', dpi=150)
+    fig.savefig(plotdir + '/damaged_percentage.png', dpi=150)
 
     # plt.show(); plt.close()
 
@@ -1203,7 +1188,8 @@ def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
     Plot the radial PDFs for each condition.
     """
 
-    os.makedirs(outputdir+'/plots/', exist_ok=True)
+    plotdir = outputdir + '/plots_general_stats'
+    os.makedirs(plotdir, exist_ok=True)
 
     if mycolors is None:
         mycolors = sns.color_palette('colorblind')
@@ -1235,8 +1221,8 @@ def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
     ax.set_title('Radial PDF\nPer sample')
 
     plt.tight_layout()
-    fig.savefig(outputdir+'/plots/radial_pdfs_samples.pdf', dpi=150)
-    fig.savefig(outputdir+'/plots/radial_pdfs_samples.png', dpi=150)
+    fig.savefig(plotdir+'/radial_pdfs_samples.pdf', dpi=150)
+    fig.savefig(plotdir+'/radial_pdfs_samples.png', dpi=150)
     plt.close(fig)
 
     # plot averages per condition
@@ -1252,8 +1238,8 @@ def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
     ax.set_title('Radial PDF\nCondition averages')
 
     plt.tight_layout()
-    fig.savefig(outputdir+'/plots/radial_pdfs_averages.pdf', dpi=150)
-    fig.savefig(outputdir+'/plots/radial_pdfs_averages.png', dpi=150)
+    fig.savefig(plotdir+'/radial_pdfs_averages.pdf', dpi=150)
+    fig.savefig(plotdir+'/radial_pdfs_averages.png', dpi=150)
     plt.close(fig)
 
 # %%
@@ -1269,13 +1255,13 @@ def plot_and_save_images(
 ):
     """
     Plots the images and masks, and saves the figure to
-    outputdir/plots/segmentation_masks/<condition>/<image name>.png (images +
+    outputdir/<condition>/<image name>.png (images +
     histograms), and a version with only the images to <image name>_images.png.
     this_arrays: dict from array_data with keys 'img_leaf', 'img_damage', 'mask_leaf', 'mask_damage_<damage_mask_method>', 'centroid', 'img_rgb'.
     row: pandas Series (row of df_samples) with keys 'condition', 'file_path', 'leaf_roundness',
         and 'total_damage_area_px', 'total_damage_area_cm2', 'threshold_val_dmg' with suffix _<damage_mask_method>.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference' (value may be None).
-    outputdir: base output directory where plots/ will be created; absolute, or relative to the working directory.
+    outputdir: directory in which the <condition> folders will be created (see run_plot_and_save); absolute, or relative to the working directory.
     damage_mask_method: which damage mask to show ('leafthr' or 'refthr'); method_label is shown in the title.
     """
     img_leaf = this_arrays['img_leaf']
@@ -1379,7 +1365,7 @@ def plot_and_save_images(
             # name itself. (Each condition maps to exactly one folder, which is
             # scanned non-recursively, so file names are unique within a condition.)
             filename = os.path.splitext(os.path.basename(file_path))[0] + filename_suffix
-            save_dir = os.path.join(outputdir, 'plots', 'segmentation_masks', condition)
+            save_dir = os.path.join(outputdir, condition)
             os.makedirs(save_dir, exist_ok=True)
             
             # full figure (images + histograms)
@@ -1403,7 +1389,7 @@ def run_plot_and_save(
 ):
     """
     Run the plot_and_save_images function for each image in df_samples/array_data.
-    Saves the plots in outputdir/damage_mask_<damage_mask_method>/plots/segmentation_masks/<condition>/.
+    Saves the plots in outputdir/plots_segmasks_<damage_mask_method>/<condition>/.
     These per-image figures show the segmentation underlying all other results,
     and should be checked manually for artifacts.
     config_channels: dict with keys 'Leaf', 'Damage', and optional 'Reference'.
@@ -1411,8 +1397,8 @@ def run_plot_and_save(
     """
 
     # select output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
-    method_label = get_damage_mask_label(df_samples, damage_mask_method)
+    plotdir = outputdir + '/plots_segmasks_' + damage_mask_method
+    method_label = get_plotlabel_damagemask(df_samples, damage_mask_method)
 
     for _, row in df_samples.iterrows():
         file_path = row['file_path']
@@ -1429,7 +1415,7 @@ def run_plot_and_save(
             row,
             config_channels,
             filename_suffix=filename_suffix,
-            outputdir=outputdir,
+            outputdir=plotdir,
             damage_mask_method=damage_mask_method,
             method_label=method_label
         )
@@ -1463,7 +1449,7 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     damage_mask_method selects the damage threshold method ('leafthr' or 'refthr')
     of the outlined damage mask.
 
-    Saves to outputdir/damage_mask_<damage_mask_method>/plots/overview_damage.pdf
+    Saves to outputdir/plots_damageregionstats_<damage_mask_method>/overview_damage.pdf
     and .png, and returns fig.
 
     (Written by Claude, checked by human.)
@@ -1472,10 +1458,10 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
     # select output directory belonging to damage mask method
-    outputdir = get_damage_mask_outputdir(df_samples, outputdir, damage_mask_method)
-    method_label = get_damage_mask_label(df_samples, damage_mask_method)
+    plotdir = outputdir + '/plots_damageregionstats_' + damage_mask_method
+    method_label = get_plotlabel_damagemask(df_samples, damage_mask_method)
 
-    os.makedirs(os.path.join(outputdir, 'plots'), exist_ok=True)
+    os.makedirs(plotdir, exist_ok=True)
 
     # Organize samples: conditions (in order of appearance) and their files
     conditions = list(dict.fromkeys(df_samples['condition']))
@@ -1562,8 +1548,8 @@ def plot_damage_overview(df_samples, array_data, outputdir,
 
         fig.suptitle(f'Damage mask: {method_label}')
 
-        fig.savefig(os.path.join(outputdir, 'plots', 'overview_damage.pdf'), dpi=300)
-        fig.savefig(os.path.join(outputdir, 'plots', 'overview_damage.png'), dpi=300)
+        fig.savefig(os.path.join(plotdir, 'overview_damage.pdf'), dpi=300)
+        fig.savefig(os.path.join(plotdir, 'overview_damage.png'), dpi=300)
 
     return fig
 

@@ -80,6 +80,18 @@ Continue on this thread.
     the 3-channel example data. Tests updated.
     - The `_frozen` output folders (and the readme figures) still use the old
     layout and column names.
+- [X] (Written by Claude:) Flattened the output folder structure (8/10/2026):
+    `OUTPUTDIR/plots_general_stats/` (plots that don't depend on the damage 
+    mask), `OUTPUTDIR/plots_damageregionstats_<leafthr|refthr>/` (damage-mask 
+    dependent summary plots), `OUTPUTDIR/plots_segmasks_<leafthr|refthr>/<condition>/`
+    (per-image segmentation plots), and the CSV/xlsx in `OUTPUTDIR`. This 
+    replaces `OUTPUTDIR/plots/` and `OUTPUTDIR/damage_mask_<method>/plots/(segmentation_masks/)`.
+    The folder paths are constructed by simple string concatenation within 
+    each plotting function (e.g. `outputdir + '/plots_damageregionstats_' + damage_mask_method`),
+    deliberately without helper functions. Note this means there is no 
+    explicit check anymore whether `damage_mask_method` is valid, or whether
+    `apply_reference_threshold` was run before plotting `'refthr'`. Runner 
+    calls are unchanged (only comments updated); tests and readme updated.
 
 # To do / done (6/10/2026)
 

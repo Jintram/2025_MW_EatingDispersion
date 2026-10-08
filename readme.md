@@ -192,7 +192,7 @@ raises the base level itself), the code offers two methods to set the damage
 threshold. Both are always calculated, and you should choose one of them for 
 your interpretation. Each relies on a different assumption:
 
-- **A) Per-leaf threshold** (suffix `_leafthr`, folder `damage_mask_leafthr/`): 
+- **A) Per-leaf threshold** (suffix `_leafthr`): 
   each leaf's threshold is 2x its own base level (as described above). 
   This assumes the true base level is equal across conditions (assumption 2), 
   but is robust to intensity differences between images (e.g. exposure, gain, 
@@ -200,7 +200,7 @@ your interpretation. Each relies on a different assumption:
   underestimates damage in the damaged conditions.
   Per-leaf damage thresholds could be interpreted as 
   per-leaf high damage intensity areas.
-- **B) Reference-condition threshold** (suffix `_refthr`, folder `damage_mask_refthr/`):
+- **B) Reference-condition threshold** (suffix `_refthr`):
   one threshold is derived from the leaves of a reference condition (typically
   the control), namely the median of their per-leaf thresholds, and applied 
   to all leaves. This allows the base level to differ per condition, but 
@@ -213,10 +213,20 @@ more appropriate.
 Metrics that depend on the damage mask (damage threshold, damaged area & 
 percentage, island statistics, status fields) are stored twice in 
 `df_samples`, with the suffixes `_leafthr` and `_refthr`. Plots that depend 
-on the damage mask (including the segmentation overlays) are written to a 
-subfolder per method; outputs that don't depend on the damage mask (ACF, 
-radial distribution, base level, mean damage signal) and the exported table
-(holding both methods) are written to `OUTPUTDIR` directly.
+on the damage mask are written to folders per method, resulting in the 
+following output structure:
+
+```
+OUTPUTDIR/
+  plots_general_stats/                 plots that don't depend on the damage mask 
+                                       (ACF, radial distribution, base level, mean damage signal)
+  plots_damageregionstats_leafthr/     damaged area & percentage, island statistics, 
+  plots_damageregionstats_refthr/      damage threshold, damage overview
+  plots_segmasks_leafthr/<condition>/  per-image segmentation plots
+  plots_segmasks_refthr/<condition>/
+  data_leaf_damage_singlemetrics.csv   single-value metrics (both methods)
+  data_leaf_damage_singlemetrics.xlsx
+```
 
 ##### Potential & necessary improvements
 
@@ -388,7 +398,7 @@ to a specific folder.
 These folder paths can be absolute, or relative to your working directory,
 as in the example above. The same holds for `OUTPUTDIR`.
 The condition names are also used to organize the exported per-image plots,
-which end up in `OUTPUTDIR/damage_mask_<leafthr|refthr>/plots/segmentation_masks/<condition>/`.
+which end up in `OUTPUTDIR/plots_segmasks_<leafthr|refthr>/<condition>/`.
 
 Additionally, the script needs to know in which channel to look for the
 leaf data and where to look for the damage. A third channel can be displayed
@@ -488,11 +498,12 @@ Functions that plot damage-mask dependent data (`plot_nearest_island_distances`,
 `run_plot_and_save`, and `plot_metric_per_condition` for damage-mask 
 dependent metrics such as `"threshold_val_dmg"`) take the argument 
 `damage_mask_method='leafthr'` (default) or `damage_mask_method='refthr'`, which selects 
-the method, and save their output to `OUTPUTDIR/damage_mask_leafthr/` or 
-`OUTPUTDIR/damage_mask_refthr/` respectively. For brevity, the examples below 
-show the default; in the example scripts, these plots are made for both 
-methods. (Note the figures shown below were made before this split, and are 
-located directly in `OUTPUTDIR/plots`.)
+the method, and save their output to `OUTPUTDIR/plots_damageregionstats_<leafthr|refthr>/`
+(or `OUTPUTDIR/plots_segmasks_<leafthr|refthr>/` for `run_plot_and_save`). 
+Other plots are saved to `OUTPUTDIR/plots_general_stats/`. For brevity, the 
+examples below show the default; in the example scripts, these plots are made
+for both methods. (Note the figures shown below were made with an earlier 
+version, and are located in `OUTPUTDIR/plots`.)
 
 ```{python}
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
@@ -590,9 +601,9 @@ lsa.run_plot_and_save(
 <img src="Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png">
 
 These figures are exported to 
-`OUTPUTDIR/damage_mask_<leafthr|refthr>/plots/segmentation_masks/<condition>/`,
-one per input image, whilst the summary plots are placed in the `plots/` 
-folder of `OUTPUTDIR` or of the method subfolder. The segmentation shown here is the first analysis step, on
+`OUTPUTDIR/plots_segmasks_<leafthr|refthr>/<condition>/`,
+one per input image, whilst the summary plots are placed in the other 
+`plots_*` folders (see the output structure above). The segmentation shown here is the first analysis step, on
 which all other results depend: the damaged area, the pattern statistics, and
 every value in the exported tables are all derived from these masks. It is
 therefore recommended to inspect these figures manually for artifacts (e.g. a

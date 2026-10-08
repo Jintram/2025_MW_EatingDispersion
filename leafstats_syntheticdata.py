@@ -65,6 +65,7 @@ df_samples, array_data = lsa.apply_reference_threshold(
 )
 
 # 4) Plots that do not depend on the damage mask (same for both methods)
+# Plots are saved to OUTPUTDIR/plots_general_stats/.
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
 lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
@@ -77,7 +78,8 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal
 # 5) Damage mask METHOD A: per-leaf threshold (damage_mask_method='leafthr')
 # Assumes equal true base level across conditions; robust to intensity
 # differences between images.
-# Plots are saved to OUTPUTDIR/damage_mask_leafthr/.
+# Plots are saved to OUTPUTDIR/plots_damageregionstats_leafthr/ and
+# OUTPUTDIR/plots_segmasks_leafthr/ (per-image segmentation plots).
 lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='leafthr')
 lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='leafthr')
 lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='leafthr')
@@ -92,7 +94,8 @@ lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage
 # 6) Damage mask METHOD B: reference-condition threshold (damage_mask_method='refthr')
 # Allows the base level to differ per condition; assumes identical imaging
 # conditions for all images.
-# Plots are saved to OUTPUTDIR/damage_mask_refthr/.
+# Plots are saved to OUTPUTDIR/plots_damageregionstats_refthr/ and
+# OUTPUTDIR/plots_segmasks_refthr/ (per-image segmentation plots).
 lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='refthr')
 lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='refthr')
 lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='refthr')

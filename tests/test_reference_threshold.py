@@ -122,24 +122,8 @@ def test_unknown_reference_condition_raises():
     raise AssertionError("expected ValueError for unknown reference condition")
 
 
-def test_outputdir_selection():
-    """damage_mask_method selects the output subfolder; refthr requires apply_reference_threshold."""
-    df, arr = run_analysis({'Ctrl': [10, 10]})
-
-    assert lsa.get_damage_mask_outputdir(df, 'OUT', 'leafthr') == os.path.join('OUT', 'damage_mask_leafthr')
-    for bad_damage_mask in ['refthr', 'something_else']:
-        try:
-            lsa.get_damage_mask_outputdir(df, 'OUT', bad_damage_mask)
-        except ValueError:
-            continue
-        raise AssertionError(f"expected ValueError for damage_mask_method='{bad_damage_mask}'")
-
-    df, arr = lsa.apply_reference_threshold(df, arr, 'Ctrl')
-    assert lsa.get_damage_mask_outputdir(df, 'OUT', 'refthr') == os.path.join('OUT', 'damage_mask_refthr')
-
-
 def test_plot_metric_per_condition_routing():
-    """Damage-mask dependent metrics go to the method subfolder, others to outputdir."""
+    """Damage-mask dependent metrics go to plots_damageregionstats_<method>, others to plots_general_stats."""
     df, arr = run_analysis({'Ctrl': [10, 10], 'Raised': [15, 15]})
     df, arr = lsa.apply_reference_threshold(df, arr, 'Ctrl')
     outdir = tempfile.mkdtemp(prefix='leafstats_refthr_plots_')
@@ -147,9 +131,9 @@ def test_plot_metric_per_condition_routing():
     lsa.plot_metric_per_condition(df, outdir, metric_key='threshold_val_dmg', damage_mask_method='refthr')
     lsa.plot_metric_per_condition(df, outdir, metric_key='baselvl_dmg', damage_mask_method='refthr')
 
-    assert os.path.isfile(os.path.join(outdir, 'damage_mask_refthr', 'plots', 'threshold_val_dmg.png'))
-    assert os.path.isfile(os.path.join(outdir, 'plots', 'baselvl_dmg.png'))
-    assert not os.path.exists(os.path.join(outdir, 'damage_mask_refthr', 'plots', 'baselvl_dmg.png'))
+    assert os.path.isfile(os.path.join(outdir, 'plots_damageregionstats_refthr', 'threshold_val_dmg.png'))
+    assert os.path.isfile(os.path.join(outdir, 'plots_general_stats', 'baselvl_dmg.png'))
+    assert not os.path.exists(os.path.join(outdir, 'plots_damageregionstats_refthr', 'baselvl_dmg.png'))
 
 
 if __name__ == '__main__':
