@@ -1,7 +1,7 @@
 
 
 
-## Quantification of thrip damage patterns to leafs
+# Quantification of thrip damage patterns to leafs
 
 This project analyzes multi-channel leaf images to quantify thrip feeding damage patterns. The pipeline detects leaf and damage masks, computes spatial metrics (including island counts/distances, radial distributions, autocorrelation, roundness, and total damage area in pixels and optional cm²), and exports both summary tables and diagnostic plots for synthetic and real datasets.
 
@@ -65,15 +65,11 @@ and the blue channel to the thrip activity (NIR).
 The red channel does not enter any of the metrics, and is only displayed 
 when it is assigned as the "reference" channel.*
 
-## Considerations of the analysis
+## Where the analysis function live
 
-This script:
-- segments the leaves in a straighforward way
-- segments and quantifies leaf damage in a straightforward way
-- tries to quantify potential feeding patterns
 
-The main analysis script is [leafstats_analysis.py](leafstats_analysis.py). In the examples referenced
-above, this script is imported as follows:
+All functions that are used in this pipeline are defined in [leafstats_analysis.py](leafstats_analysis.py). The idea is that you run the pipeline using a second script
+from which you import this main pipeline script as follows:
 
 ```{python}
 import leafstats_analysis as lsa
@@ -81,6 +77,14 @@ import leafstats_analysis as lsa
 
 When you run this line, you can call functions from [leafstats_analysis.py](leafstats_analysis.py) using e.g.
 `lsa.run_complete_analysis()`.
+This is explained in the [example scripts](#to-run-example-scripts).
+
+## How the analysis works
+
+This script:
+- segments the leaves in a straighforward way
+- segments and quantifies leaf damage in a straightforward way
+- tries to quantify potential feeding patterns
 
 ### Segmentation of leaves
 
@@ -193,7 +197,7 @@ sophisticated ways (e.g. fitting a gaussian to part of the histogram),
 allowing for a better estimate on what the expected range of 
 undamaged signal is, and thus what can be considered damaged area.
 
-## Quantifying damage patterns
+## How the damage pattern is quantified
 
 To assess the nature of the damage patterns, multiple metrics are calculated.
 
@@ -207,7 +211,7 @@ The other signals are chosen to be "extreme" representations of
 different patterns that might be in the data; one big damage spot, a load
 of small spots, only around the edges, two bigger spots.
 
-### Metrics to quantify the damage pattern
+### Metrics
 
 #### Amount of damage
 
@@ -333,128 +337,22 @@ with $`N`$ the number of islands.
 Note that when fewer than two islands are detected, there is no distance to
 another island; both $`D`$ and $`\bar{D}`$ are reported as 0 in that case.
 
-## Notes on running the script
-
-#### Set up file structure and configuration
-
-Before running the actual analysis, information is constructed about which files to use
-and what configuration these files are.
-
-This is based on choosing different directories with images 
-that each correspond to a specific condition. This can be set as follows:
-```{python}
-# 1) Tell script where data is and which channels should be used
-# Conditions and paths to images for that condition
-condition_path_map = {
-    'Ctrl': 'Example_data/DATA/condition_Control',
-    'Edited': 'Example_data/DATA/condition_Photoshopped'
-}
-```
-Note that a so-called `dict` is used to link each condition (e.g. `'Ctrl'`)
-to a specific folder.
-
-These folder paths can be absolute, or relative to your working directory,
-as in the example above. The same holds for `OUTPUTDIR`.
-The condition names are also used to organize the exported per-image plots,
-which end up in `OUTPUTDIR/plots_segmasks_<leafthr|refthr>/<condition>/`.
-
-Additionally, the script needs to know in which channel to look for the
-leaf data and where to look for the damage. A third channel can be displayed
-and is called the reference channel.
-```{python}
-# Channel configuration (channel index per role; Reference can be None)
-config_channels = {
-    'Leaf': 1,
-    'Damage': 2,
-    'Reference': 0 # optional
-}
-```
-Again a `dict` is used. Each entry links a role (`'Leaf'`, `'Damage'` or
-`'Reference'`) to the index of the channel that should be used for that role
-(e.g. `0`, the first channel). The reference channel is only displayed in the
-per-image plots, and can be set to `None` when it isn't needed. To analyze a
-single-channel dataset, simply point both `'Leaf'` and `'Damage'` to the same
-channel (see [leafstats_example_1channel.py](leafstats_example_1channel.py)).
-
-A list of files is then collected by calling the following function:
-```{python}
-# obtain 
-data_file_paths = lsa.get_data_file_paths(condition_path_map)
-```
-
-#### Running the analysis
-
-The code 
-
-```{python}
-df_samples, array_data = lsa.run_complete_analysis(
-    data_file_paths = data_file_paths, 
-    config_channels = config_channels,   
-    # optional parameters 
-    leaf_threshold_method = 'bg10',
-    leaf_roundness_threshold=0,
-    apply_smooth_leafmask=False,
-    pixel_to_cm2_factor=pixel_to_cm2_factor
-)
-```
-
-will run all analyses, and returns the results in two objects:
-
-- `df_samples`, a pandas dataframe with one row per image, holding all
-single-value metrics (e.g. `island_counts_leafthr`, `total_damage_area_px_leafthr`,
-`total_damage_percentage_leafthr`, `threshold_val_dmg_leafthr`, `baselvl_dmg`, 
-`mean_dmg_signal`), plus the
-condition, the file path, and status fields (`leaf_found`, `damage_found_leafthr`,
-`analysis_status_leafthr`) that record whether the analysis succeeded for that image.
-The suffix `_leafthr` marks metrics that depend on the damage mask, as 
-determined with the per-leaf threshold (method (i)); the corresponding 
-`_refthr` columns (method (ii)) are filled by `apply_reference_threshold` (see 
-below), and are empty until then (`analysis_status_refthr` is 
-`'not_calculated'`).
-When a leaf is found but no damage, `analysis_status_leafthr` is `'no_damage_mask'`;
-metrics that depend on the damage mask (areas, island statistics) are then set
-to 0, whereas metrics that only need the leaf mask (autocorrelation, radial
-distribution, damage threshold, base level and mean damage signal) are still 
-calculated.
-- `array_data`, a `dict` keyed by file path, holding the array-like results
-per image (the images themselves, the leaf mask, the damage masks 
-`mask_damage_leafthr` and `mask_damage_refthr`, the centroid, the
-autocorrelation, and the radial distribution).
-
-Both are needed for the plotting functions below.
-
-See above for how to set the optional parameters.
-
-When `pixel_to_cm2_factor` is set, areas in pixels will be multiplied
-with this factor to determine the area in square centimeters.
-
-#### Damage threshold based on a reference condition
-
-`run_complete_analysis` determines the damage mask with the per-leaf damage 
-threshold (method (i), see "Two methods to determine the damage threshold" 
-above). The results for method (ii), which uses a threshold derived from a 
-reference condition, are added with:
-
-```python
-df_samples, array_data = lsa.apply_reference_threshold(
-    df_samples, array_data,
-    reference_condition = REFERENCE_CONDITION,
-    pixel_to_cm2_factor = pixel_to_cm2_factor
-)
-```
-
-where `REFERENCE_CONDITION` is one of the keys of `condition_path_map` 
-(e.g. `'Ctrl'`). This fills the `_refthr` columns of `df_samples` (and the
-column `reference_condition`), and adds `mask_damage_refthr` to `array_data`.
-(Note that `array_data` is extended in place.)
 
 #### Output folders
 
-Metrics that depend on the damage mask (damage threshold, damaged area & 
-percentage, island statistics, status fields) are stored twice in 
-`df_samples`, with the suffixes `_leafthr` (method (i)) and `_refthr` (method (ii)). 
+The value of metrics that depend on the damage mask (damage threshold, damaged area & 
+percentage, island statistics, status fields) 
+depends on whether the damage mask was determined by method (i) 
+or method (ii).
+The output data indicates this using their identifiers,
+`_leafthr` and `_refthr`, respectively.
 Plots that depend on the damage mask are written to folders per method, 
-resulting in the following output structure:
+plots that do not are written to a general directory.
+Segmentation masks for the two damage mask methods 
+are plotted for reference to two separate folders,
+and a summary table can be found in the root folder.
+
+This results in the following output folder structure:
 
 ```
 OUTPUTDIR/
@@ -467,8 +365,6 @@ OUTPUTDIR/
   data_leaf_damage_singlemetrics.csv   single-value metrics (both methods)
   data_leaf_damage_singlemetrics.xlsx
 ```
-
-
 
 ## Changelog
 

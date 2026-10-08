@@ -1,4 +1,120 @@
 
+
+## Notes on running the script
+
+#### Set up file structure and configuration
+
+Before running the actual analysis, information is constructed about which files to use
+and what configuration these files are.
+
+This is based on choosing different directories with images 
+that each correspond to a specific condition. This can be set as follows:
+```{python}
+# 1) Tell script where data is and which channels should be used
+# Conditions and paths to images for that condition
+condition_path_map = {
+    'Ctrl': 'Example_data/DATA/condition_Control',
+    'Edited': 'Example_data/DATA/condition_Photoshopped'
+}
+```
+Note that a so-called `dict` is used to link each condition (e.g. `'Ctrl'`)
+to a specific folder.
+
+These folder paths can be absolute, or relative to your working directory,
+as in the example above. The same holds for `OUTPUTDIR`.
+The condition names are also used to organize the exported per-image plots,
+which end up in `OUTPUTDIR/plots_segmasks_<leafthr|refthr>/<condition>/`.
+
+Additionally, the script needs to know in which channel to look for the
+leaf data and where to look for the damage. A third channel can be displayed
+and is called the reference channel.
+```{python}
+# Channel configuration (channel index per role; Reference can be None)
+config_channels = {
+    'Leaf': 1,
+    'Damage': 2,
+    'Reference': 0 # optional
+}
+```
+Again a `dict` is used. Each entry links a role (`'Leaf'`, `'Damage'` or
+`'Reference'`) to the index of the channel that should be used for that role
+(e.g. `0`, the first channel). The reference channel is only displayed in the
+per-image plots, and can be set to `None` when it isn't needed. To analyze a
+single-channel dataset, simply point both `'Leaf'` and `'Damage'` to the same
+channel (see [leafstats_example_1channel.py](leafstats_example_1channel.py)).
+
+A list of files is then collected by calling the following function:
+```{python}
+# obtain 
+data_file_paths = lsa.get_data_file_paths(condition_path_map)
+```
+
+#### Running the analysis
+
+The code 
+
+```{python}
+df_samples, array_data = lsa.run_complete_analysis(
+    data_file_paths = data_file_paths, 
+    config_channels = config_channels,   
+    # optional parameters 
+    leaf_threshold_method = 'bg10',
+    leaf_roundness_threshold=0,
+    apply_smooth_leafmask=False,
+    pixel_to_cm2_factor=pixel_to_cm2_factor
+)
+```
+
+will run all analyses, and returns the results in two objects:
+
+- `df_samples`, a pandas dataframe with one row per image, holding all
+single-value metrics (e.g. `island_counts_leafthr`, `total_damage_area_px_leafthr`,
+`total_damage_percentage_leafthr`, `threshold_val_dmg_leafthr`, `baselvl_dmg`, 
+`mean_dmg_signal`), plus the
+condition, the file path, and status fields (`leaf_found`, `damage_found_leafthr`,
+`analysis_status_leafthr`) that record whether the analysis succeeded for that image.
+The suffix `_leafthr` marks metrics that depend on the damage mask, as 
+determined with the per-leaf threshold (method (i)); the corresponding 
+`_refthr` columns (method (ii)) are filled by `apply_reference_threshold` (see 
+below), and are empty until then (`analysis_status_refthr` is 
+`'not_calculated'`).
+When a leaf is found but no damage, `analysis_status_leafthr` is `'no_damage_mask'`;
+metrics that depend on the damage mask (areas, island statistics) are then set
+to 0, whereas metrics that only need the leaf mask (autocorrelation, radial
+distribution, damage threshold, base level and mean damage signal) are still 
+calculated.
+- `array_data`, a `dict` keyed by file path, holding the array-like results
+per image (the images themselves, the leaf mask, the damage masks 
+`mask_damage_leafthr` and `mask_damage_refthr`, the centroid, the
+autocorrelation, and the radial distribution).
+
+Both are needed for the plotting functions below.
+
+See above for how to set the optional parameters.
+
+When `pixel_to_cm2_factor` is set, areas in pixels will be multiplied
+with this factor to determine the area in square centimeters.
+
+#### Damage threshold based on a reference condition
+
+`run_complete_analysis` determines the damage mask with the per-leaf damage 
+threshold (method (i), see "Two methods to determine the damage threshold" 
+above). The results for method (ii), which uses a threshold derived from a 
+reference condition, are added with:
+
+```python
+df_samples, array_data = lsa.apply_reference_threshold(
+    df_samples, array_data,
+    reference_condition = REFERENCE_CONDITION,
+    pixel_to_cm2_factor = pixel_to_cm2_factor
+)
+```
+
+where `REFERENCE_CONDITION` is one of the keys of `condition_path_map` 
+(e.g. `'Ctrl'`). This fills the `_refthr` columns of `df_samples` (and the
+column `reference_condition`), and adds `mask_damage_refthr` to `array_data`.
+(Note that `array_data` is extended in place.)
+
 #### Generating plots
 
 To generate each of the plots, the following functions can be used.
