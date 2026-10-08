@@ -24,9 +24,37 @@ Continue on this thread.
     - This is a bit complicated, as signal is not uniform across leaf.
     - One solution would be to averge the baselevel signal over healthy leaves. Disadvantage of this is that that might create leaves that are ±100% damaged.
     - [ ] Update readme to reflect this change.
+    - (Written by Claude:) Method B "reference-condition threshold" was added
+    (8/10/2026), see the to do / done section of 8/10/2026 below; readme was 
+    also updated.
         
 - [X] Go over assumptions again, because fact that "background" within NIR of leave is taken as reference is now not included in the assumptions.
             
+# To do / done (8/10/2026)
+
+- [X] (Written by Claude:) Added an alternative damage threshold, derived from
+    a reference condition (8/10/2026). New function 
+    `apply_reference_threshold(df_samples, array_data, reference_condition)`
+    takes the median of `threshold_val_dmg` over the reference leaves 
+    (warning when the mean differs >20% from the median), applies it to all 
+    leaves, and returns `df_samples_ref, array_data_ref` with the same 
+    structure as the per-leaf output. Supporting changes: `get_mask` accepts a 
+    fixed `threshold_val`; damage-mask dependent metrics were moved from 
+    `analyse_sample` to the helper `fill_damage_mask_metrics` (output verified 
+    identical to before on the 3-channel example data); new column 
+    `damage_threshold_method` (`'per_leaf'` / `'ref_<condition>'`).
+    - The runner scripts now write damage-mask dependent output to 
+    `OUTPUTDIR/damage_threshold_per_leaf/` and 
+    `OUTPUTDIR/damage_threshold_ref_<condition>/` (reference: `'Ctrl'` for the 
+    example data, `'noise'` for the synthetic data); mask-independent output 
+    (ACF, radial PDF, `baselvl_dmg`, `mean_dmg_signal`) stays in `OUTPUTDIR`.
+    The CSV/xlsx exports therefore moved into these subfolders. The 
+    `_frozen` folders were not updated.
+    - Test: `tests/test_reference_threshold.py`; smoke test updated.
+    - Note: with only two reference leaves, median == mean, so the spread
+    warning can never trigger (relevant for the example data, Ctrl thresholds
+    78 and 134).
+
 # To do / done (6/10/2026)
 
 - [X] (Written by Claude:) Added metric `mean_dmg_signal` (6/10/2026): the mean

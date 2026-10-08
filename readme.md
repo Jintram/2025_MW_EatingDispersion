@@ -185,11 +185,44 @@ partly reflects damage itself (see above).
 The experimental procedure of stamping out leaves also introduces some damage
 to the leave.
 
+#### Two methods to determine the damage threshold
+
+Because the base level can differ per condition (e.g. when thrips activity 
+raises the base level itself), the code offers two methods to set the damage
+threshold. Both are always calculated, and you should choose one of them for 
+your interpretation. Each relies on a different assumption:
+
+- **A) Per-leaf threshold** (`damage_threshold_per_leaf/`): 
+  each leaf's threshold is 2x its own base level (as described above). 
+  This assumes the true base level is equal across conditions (assumption 2), 
+  but is robust to intensity differences between images (e.g. exposure, gain, 
+  lamp drift). If the base level does increase with damage, this method 
+  underestimates damage in the damaged conditions.
+- **B) Reference-condition threshold** (`damage_threshold_ref_<condition>/`):
+  one threshold is derived from the leaves of a reference condition (typically
+  the control), namely the median of their per-leaf thresholds, and applied 
+  to all leaves. This allows the base level to differ per condition, but 
+  assumes that all images were acquired under identical conditions, as one 
+  absolute intensity cutoff is used for all images. 
+  A warning is given when the mean of the reference thresholds differs more 
+  than 20% from the median. Note that with only two reference leaves, the mean
+  and median are always equal, so check the `threshold_val_dmg` plot of 
+  method A to judge the spread of the reference thresholds.
+
+The `baselvl_dmg` plot (see above) helps to choose: if the base level shows 
+a trend per condition, and acquisition settings were identical, method B is 
+more appropriate.
+Outputs that depend on the damage mask (damaged area & percentage, island
+statistics, segmentation overlays, exported tables) are written to a 
+subfolder per method; outputs that don't depend on the damage mask (ACF, 
+radial distribution, base level, mean damage signal) are written to 
+`OUTPUTDIR` directly.
+
 ##### Potential & necessary improvements
 
 - It turns out the base level damage does change per leaf.
-    - Perhaps a new threshold that relates to a total-dataset reference
-    leaf threshold is required.
+    - A threshold derived from a reference condition is now available
+    (method B above).
     - Current per-leaf damage thresholds could be interpreted as 
     per-leaf high damage intensity areas.
 
@@ -427,9 +460,38 @@ See above for how to set the optional parameters.
 When `pixel_to_cm2_factor` is set, areas in pixels will be multiplied
 with this factor to determine the area in square centimeters.
 
+#### Damage threshold based on a reference condition
+
+The results above use the per-leaf damage threshold (method A, see 
+"Two methods to determine the damage threshold" above). The results for 
+method B, which uses a threshold derived from a reference condition, are 
+obtained with:
+
+```python
+df_samples_ref, array_data_ref = lsa.apply_reference_threshold(
+    df_samples, array_data,
+    reference_condition = REFERENCE_CONDITION,
+    pixel_to_cm2_factor = pixel_to_cm2_factor
+)
+```
+
+where `REFERENCE_CONDITION` is one of the keys of `condition_path_map` 
+(e.g. `'Ctrl'`). `df_samples_ref` and `array_data_ref` have exactly the same
+structure as `df_samples` and `array_data`; only the damage-mask dependent 
+values (damage mask, `threshold_val_dmg`, `damage_found`, `analysis_status`, 
+areas and island statistics) differ. The column `damage_threshold_method` 
+(`'per_leaf'` or `'ref_<condition>'`) records which method was used. All 
+plotting and export functions below can therefore be used for both methods; 
+in the example scripts, the damage-mask dependent outputs are written to 
+`OUTPUTDIR_PERLEAF` and `OUTPUTDIR_REF` respectively.
+
 #### Generating plots
 
-To generate each of the plots, the following functions can be used:
+To generate each of the plots, the following functions can be used.
+For brevity, the examples below use `df_samples`, `array_data` and `OUTPUTDIR`;
+in the example scripts, plots that depend on the damage mask are made twice,
+once with `df_samples`/`array_data` to `OUTPUTDIR_PERLEAF`, and once with 
+`df_samples_ref`/`array_data_ref` to `OUTPUTDIR_REF` (see above).
 
 ```{python}
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
@@ -526,7 +588,8 @@ lsa.run_plot_and_save(
 
 <img src="Example_data/OUTPUT-3channels_frozen/plots/segmentation_masks/Ctrl/Example_A_1.png">
 
-These figures are exported to `OUTPUTDIR/plots/segmentation_masks/<condition>/`,
+These figures are exported to `OUTPUTDIR/plots/segmentation_masks/<condition>/`
+(in the example scripts, `OUTPUTDIR` is the per-method subfolder here),
 one per input image, whilst the summary plots are placed directly in
 `OUTPUTDIR/plots/`. The segmentation shown here is the first analysis step, on
 which all other results depend: the damaged area, the pattern statistics, and

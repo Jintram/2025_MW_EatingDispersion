@@ -88,6 +88,7 @@ class SampleMetrics:
     background_leaf: float = np.nan
     baselvl_dmg: float = np.nan
     mean_dmg_signal: float = np.nan
+    damage_threshold_method: str = 'per_leaf' # 'per_leaf' or 'ref_<condition>'
 
 @dataclass(slots=True)
 class SampleArrays:
@@ -192,7 +193,8 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
     
     return img_mask, threshold_val
 
-def get_mask(img, mask_user=None, method='otsu', return_status=False):
+def get_mask(img, mask_user=None, method='otsu', return_status=False,
+             threshold_val=None):
     """
     Determines a threshold for img and returns the resulting binary mask.
 
@@ -201,6 +203,10 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
     returned mask is also restricted to mask_user. (Ie for the damage mask,
     which uses the leaf mask as mask_user, only damage on the leaf itself is
     taken along, and e.g. bright spots in the background are ignored.)
+
+    threshold_val can be given to use a fixed threshold instead of determining
+    one from img (method is then ignored); this is used to apply a threshold
+    derived from a reference condition (see apply_reference_threshold).
     """
 
     if mask_user is None:
@@ -212,7 +218,9 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False):
             return np.zeros(img.shape, dtype=bool), np.nan, False
         return np.zeros(img.shape, dtype=bool), np.nan
 
-    if method == 'otsu':
+    if threshold_val is not None:
+        pass # use the given threshold
+    elif method == 'otsu':
         threshold_val = threshold_otsu(img[mask_user])
     elif method == 'triangle':        
         threshold_val = threshold_triangle(img[mask_user])
@@ -610,8 +618,23 @@ def analyse_sample(file_path, condition, config_channels,
         get_radial_pdf(arrays.acf_norm, arrays.acf_center, mask_user=arrays.acf_valid)
     _, _, _, arrays.radial_pdf, _ = get_radial_pdf(img_damage, centroid, mask_leaf)
 
+    # Damage-mask dependent metrics
+    metrics = fill_damage_mask_metrics(metrics, mask_leaf, mask_damage, this_damage_found,
+                                       pixel_to_cm2_factor=pixel_to_cm2_factor)
+
+    return metrics, arrays
+
+def fill_damage_mask_metrics(metrics, mask_leaf, mask_damage, damage_found,
+                             pixel_to_cm2_factor=None):
+    """
+    Fills the metrics (SampleMetrics) that depend on the damage mask, i.e.
+    analysis_status, island distances & counts, and damaged area/percentage.
+    Requires metrics.total_leaf_size_px to be set already.
+    Used by analyse_sample and apply_reference_threshold.
+    """
+
     # CASE NO DAMAGE FOUND; keep valid zeros for damage-mask dependent metrics
-    if not this_damage_found:
+    if not damage_found:
         metrics.analysis_status = 'no_damage_mask'
         metrics.total_nearest_island_distances = 0.0
         metrics.mean_nearest_island_distance = 0.0
@@ -620,7 +643,7 @@ def analyse_sample(file_path, condition, config_channels,
         if pixel_to_cm2_factor is not None:
             metrics.total_damage_area_cm2 = 0.0
         metrics.total_damage_percentage = 0.0
-        return metrics, arrays
+        return metrics
 
     # CASE DAMAGE FOUND; run damage-mask dependent analyses
     nearest_island_distances = get_nearest_island_distances(mask_leaf, mask_damage)
@@ -641,7 +664,7 @@ def analyse_sample(file_path, condition, config_channels,
         metrics.total_damage_area_px / metrics.total_leaf_size_px * 100
     )
 
-    return metrics, arrays
+    return metrics
 
 def run_complete_analysis(data_file_paths, config_channels,
                           leaf_threshold_method = 'bg10', leaf_roundness_threshold=0,
@@ -682,8 +705,74 @@ def run_complete_analysis(data_file_paths, config_channels,
     # Convert "rows" to dataframe
     df_samples = pd.DataFrame(rows)
 
-    
+
     return df_samples, array_data
+
+def apply_reference_threshold(df_samples, array_data, reference_condition,
+                              pixel_to_cm2_factor=None, max_rel_diff_mean_median=0.2):
+    """
+    Alternative to the per-leaf damage threshold: derive one damage threshold
+    from the leaves of a reference condition (e.g. 'Ctrl'), and apply it to all
+    samples.
+
+    The per-leaf threshold (2x the base level of each leaf) assumes the true
+    base level is equal across conditions, but is robust to intensity
+    differences between images. The reference threshold allows the base level
+    to differ per condition (e.g. due to thrips activity), but assumes that
+    imaging conditions were identical for all images, as one absolute
+    intensity cutoff is used.
+
+    The reference threshold is the median of threshold_val_dmg of the
+    reference leaves; a warning is given when the mean differs more than
+    max_rel_diff_mean_median (fraction) from the median.
+
+    Returns df_samples_ref and array_data_ref, which have the same structure as
+    the output of run_complete_analysis (with damage-mask dependent metrics and
+    mask_damage replaced), such that all plotting/export functions can be used.
+    """
+
+    # Determine the reference threshold
+    if reference_condition not in df_samples['condition'].values:
+        raise ValueError(f"Reference condition '{reference_condition}' not found; "
+                         f"available conditions: {list(df_samples['condition'].unique())}")
+    ref_thresholds = df_samples.loc[(df_samples['condition'] == reference_condition)
+                                    & df_samples['leaf_found'], 'threshold_val_dmg']
+    if len(ref_thresholds) == 0:
+        raise ValueError(f"No leaves found for reference condition '{reference_condition}'.")
+    ref_thr = float(np.median(ref_thresholds))
+    ref_thr_mean = float(np.mean(ref_thresholds))
+    if abs(ref_thr_mean - ref_thr) / ref_thr > max_rel_diff_mean_median:
+        warnings.warn(f"Reference thresholds of '{reference_condition}' are spread: "
+                      f"median={ref_thr:.3g}, mean={ref_thr_mean:.3g}. Check the "
+                      f"threshold_val_dmg plot of the per-leaf method.")
+    print(f"Reference damage threshold (median of {len(ref_thresholds)} "
+          f"'{reference_condition}' leaves): {ref_thr:.3g}")
+
+    # Re-determine damage masks and damage-mask dependent metrics
+    rows = []
+    array_data_ref = {}
+    for _, row in df_samples.iterrows():
+        metrics = SampleMetrics(**row.to_dict())
+        metrics.damage_threshold_method = f'ref_{reference_condition}'
+        this_arrays = array_data[metrics.file_path]
+        mask_damage_ref = this_arrays['mask_damage']
+
+        if metrics.leaf_found:
+            mask_damage_ref, _, damage_found = get_mask(
+                img=this_arrays['img_damage'], mask_user=this_arrays['mask_leaf'],
+                threshold_val=ref_thr, return_status=True)
+            metrics.threshold_val_dmg = ref_thr
+            metrics.damage_found = damage_found
+            metrics = fill_damage_mask_metrics(metrics, this_arrays['mask_leaf'], mask_damage_ref,
+                                               damage_found, pixel_to_cm2_factor=pixel_to_cm2_factor)
+
+        rows.append(asdict(metrics))
+        # (shallow copy, such that images aren't duplicated)
+        array_data_ref[metrics.file_path] = {**this_arrays, 'mask_damage': mask_damage_ref}
+
+    df_samples_ref = pd.DataFrame(rows)
+
+    return df_samples_ref, array_data_ref
 
 ###############################################################################
 # %% PLOTTING FUNCTIONS
