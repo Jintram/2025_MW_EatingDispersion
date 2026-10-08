@@ -198,16 +198,14 @@ your interpretation. Each relies on a different assumption:
   but is robust to intensity differences between images (e.g. exposure, gain, 
   lamp drift). If the base level does increase with damage, this method 
   underestimates damage in the damaged conditions.
+  Per-leaf damage thresholds could be interpreted as 
+  per-leaf high damage intensity areas.
 - **B) Reference-condition threshold** (suffix `_refthr`, folder `damage_mask_refthr/`):
   one threshold is derived from the leaves of a reference condition (typically
   the control), namely the median of their per-leaf thresholds, and applied 
   to all leaves. This allows the base level to differ per condition, but 
   assumes that all images were acquired under identical conditions, as one 
   absolute intensity cutoff is used for all images. 
-  A warning is given when the mean of the reference thresholds differs more 
-  than 20% from the median. Note that with only two reference leaves, the mean
-  and median are always equal, so check the `threshold_val_dmg` plot of 
-  method A to judge the spread of the reference thresholds.
 
 The `baselvl_dmg` plot (see above) helps to choose: if the base level shows 
 a trend per condition, and acquisition settings were identical, method B is 
@@ -221,12 +219,6 @@ radial distribution, base level, mean damage signal) and the exported table
 (holding both methods) are written to `OUTPUTDIR` directly.
 
 ##### Potential & necessary improvements
-
-- It turns out the base level damage does change per leaf.
-    - A threshold derived from a reference condition is now available
-    (method B above).
-    - Current per-leaf damage thresholds could be interpreted as 
-    per-leaf high damage intensity areas.
 
 - The distribution of undamaged leaf intensity could be estimated in more
 sophisticated ways (e.g. fitting a gaussian to part of the histogram),
