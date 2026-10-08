@@ -732,44 +732,68 @@ def apply_reference_threshold(df_samples, array_data, reference_condition,
     """
 
     # Determine the reference threshold
+    # Check if desired condition present
     if reference_condition not in df_samples['condition'].values:
         raise ValueError(f"Reference condition '{reference_condition}' not found; "
                          f"available conditions: {list(df_samples['condition'].unique())}")
+    # Obtain reference damage threshold values (these were already calculated)
     ref_thresholds = df_samples.loc[(df_samples['condition'] == reference_condition)
                                     & df_samples['leaf_found'], 'threshold_val_dmg']
+    # (Handle exception where thresholds are unavailable due missing leaves)
     if len(ref_thresholds) == 0:
         raise ValueError(f"No leaves found for reference condition '{reference_condition}'.")
+    # Calculate the reference threshold (median)
     ref_thr = float(np.median(ref_thresholds))
+
+    # Throw warning in case mean and median differ too much)
     ref_thr_mean = float(np.mean(ref_thresholds))
     if abs(ref_thr_mean - ref_thr) / ref_thr > max_rel_diff_mean_median:
         warnings.warn(f"Reference thresholds of '{reference_condition}' are spread: "
                       f"median={ref_thr:.3g}, mean={ref_thr_mean:.3g}. Check the "
                       f"threshold_val_dmg plot of the per-leaf method.")
+    # Report result
     print(f"Reference damage threshold (median of {len(ref_thresholds)} "
           f"'{reference_condition}' leaves): {ref_thr:.3g}")
 
     # Re-determine damage masks and damage-mask dependent metrics
+    # Collect the data into "rows" (converted to df later) and "array_data_ref"
     rows = []
     array_data_ref = {}
     for _, row in df_samples.iterrows():
+
+        # Recreate leaf metrics data object with the df_samples data
+        # (`**dict` unpacks the dict into keyword arguments, ie this equals
+        # SampleMetrics(condition=..., file_path=..., ...))
         metrics = SampleMetrics(**row.to_dict())
         metrics.damage_threshold_method = f'ref_{reference_condition}'
+        
+        # Obtain array data (images, masks) from array data based on sample ID (metrics.file_path)
         this_arrays = array_data[metrics.file_path]
-        mask_damage_ref = this_arrays['mask_damage']
 
         if metrics.leaf_found:
             mask_damage_ref, _, damage_found = get_mask(
-                img=this_arrays['img_damage'], mask_user=this_arrays['mask_leaf'],
+                img=this_arrays['img_damage'], 
+                mask_user=this_arrays['mask_leaf'],
                 threshold_val=ref_thr, return_status=True)
             metrics.threshold_val_dmg = ref_thr
             metrics.damage_found = damage_found
             metrics = fill_damage_mask_metrics(metrics, this_arrays['mask_leaf'], mask_damage_ref,
                                                damage_found, pixel_to_cm2_factor=pixel_to_cm2_factor)
+        else:
+            # no leaf found; empty damage mask (as in analyse_sample)
+            mask_damage_ref = np.zeros_like(this_arrays['mask_leaf'], dtype=bool)
 
+        # Collect data
         rows.append(asdict(metrics))
-        # (shallow copy, such that images aren't duplicated)
+        # Fill "array_data_ref", which is identical to the original "array_data"
+        # (per sample), except with updated damage mask.
+        # (Again, `**dict` unpacks the dict, now into new dict, ie this equals
+        # {"...":..., "...":..., ...}. Array data that gets handled this way
+        # isn't copied but linked, such that images aren't duplicated.
+        # 'mask_damage' comes last, so it replaces the original mask)
         array_data_ref[metrics.file_path] = {**this_arrays, 'mask_damage': mask_damage_ref}
 
+    # Convert collected rows to dataframe
     df_samples_ref = pd.DataFrame(rows)
 
     return df_samples_ref, array_data_ref
