@@ -129,31 +129,48 @@ as well as the pattern of high signal (damaged), and inbetween values.
 This needs to be avoided, as we don't want the amount of true damage influencing
 the detection of the damaged region and the detected damage pattern.
 
+#### Base level and threshold
+
 **Above twice base level is damage.** The algorithm chosen here attempts 
 to set a threshold value independent of the amount of damage present. 
 
 It focuses on determining the base level NIR intensity in undamaged leaf parts.
 The base level is estimated by setting it to the mode of the damage channel
 (within the leaf mask). 
-Everything within the leaf mask with an intensity higher than 2x this "base level" 
-is considered "damaged". 
+Everything within the leaf mask with an intensity higher than 2x a 
+"base level" is considered "damaged". 
 
-There are some critical assumptions here:
+There are two base levels and corresponding damage thresholds determined:
+- **Per-leaf base level and threshold.** Per-leaf base levels are calculated using the mode.
+    - Damage threshold based on these base levels are identified with the keyword `_leafthr`.
+- **Reference-condition threshold.** The median per-leaf base level in a reference condition (e.g. a control sample) is used to determine.
+    - Damage threshold based on these base levels are identified with the keyword `_refthr`.
 
-- **Critical assumption 1:** A substantial part of the leaf shows base level damage. 
-- **Critical assumption 2:** This base level leaf damage is invariant across conditions.
-*Note that this is not guaranteed: the base level is real signal (not background),
-and in practice more damaged leaves turn out to have higher base levels. 
-Since the threshold is 2x the base level, the threshold then also increases 
-with damage, which likely leads to underestimating the damaged area in the 
-most damaged leaves (see also "Potential & necessary improvements" below).*
-- **Critical assumption 3:** When changing acquisition conditions, 
-the base level scales with overall damage levels. 
-(Or alternatively all images should be taken under equal illumination and 
-acquisition conditions.)
+Assumptions here are:
+
+- For both methods:
+    - **Critical assumption (1):** A substantial part of the leaves from which the base level is determined show base level damage. 
+- For method (i):
+    - **Critical assumption (2):** To compare between conditions with method (i), 
+    the base level leaf damage should be invariant across conditions. Otherwise,
+    the damaged area indicates per-leaf high damage ares.
+- For method (ii):
+    - **Critical assumption (3):** All images are taken under equal illumination and 
+    acquisition conditions.
+
+The base level per condition shows whether the mean base level changes per condition:
+
+<img src=Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png width=50%>
+
+If the base level shows no trend per condition, assumption (2) seems to hold,
+and both methods should give similar results. A trend in this plot indicates 
+that assumption (2) is violated. 
+
+#### Example
 
 The image below shows the result of both segmentation of the leaf
-and determining the damaged area:
+and determining the damaged area (for method (i); the corresponding images for 
+method (ii) are exported as well, see "Output folders" below):
 
 <!-- img "Example_data/DATA/condition_Control/Example_A_1.tif" -->
 
@@ -165,70 +182,7 @@ the estimated background intensity for "leaf", and the estimated base level
 (within the leaf) for "damage"; the red line indicates the threshold that was 
 used for the mask.*
 
-##### Testing the critical assumptions
-
-If you took all images under similar acquisition settings and conditions, 
-and assumption 2 holds, the base level damage (NIR) levels should be equal 
-over all conditions.
-To assess this, you can check out the plot with the base level damage levels
-(`baselvl_dmg`, see also below);
-
-<img src=Example_data/OUTPUT-3channels_frozen/plots_general_stats/baselvl_dmg.png width=50%>
-
-A trend in this plot indicates that assumption 2 is violated, unless you can 
-explain the trend and know this won't affect the analysis. Note that a 
-trend that correlates with damage is to be expected if the base level 
-partly reflects damage itself (see above).
-
-#### Baselevel damage
-
-The experimental procedure of stamping out leaves also introduces some damage
-to the leave.
-
-#### Two methods to determine the damage threshold
-
-Because the base level can differ per condition (e.g. when thrips activity 
-raises the base level itself), the code offers two methods to set the damage
-threshold. Both are always calculated, and you should choose one of them for 
-your interpretation. Each relies on a different assumption:
-
-- **A) Per-leaf threshold** (suffix `_leafthr`): 
-  each leaf's threshold is 2x its own base level (as described above). 
-  This assumes the true base level is equal across conditions (assumption 2), 
-  but is robust to intensity differences between images (e.g. exposure, gain, 
-  lamp drift). If the base level does increase with damage, this method 
-  underestimates damage in the damaged conditions.
-  Per-leaf damage thresholds could be interpreted as 
-  per-leaf high damage intensity areas.
-- **B) Reference-condition threshold** (suffix `_refthr`):
-  one threshold is derived from the leaves of a reference condition (typically
-  the control), namely the median of their per-leaf thresholds, and applied 
-  to all leaves. This allows the base level to differ per condition, but 
-  assumes that all images were acquired under identical conditions, as one 
-  absolute intensity cutoff is used for all images. 
-
-The `baselvl_dmg` plot (see above) helps to choose: if the base level shows 
-a trend per condition, and acquisition settings were identical, method B is 
-more appropriate.
-Metrics that depend on the damage mask (damage threshold, damaged area & 
-percentage, island statistics, status fields) are stored twice in 
-`df_samples`, with the suffixes `_leafthr` and `_refthr`. Plots that depend 
-on the damage mask are written to folders per method, resulting in the 
-following output structure:
-
-```
-OUTPUTDIR/
-  plots_general_stats/                 plots that don't depend on the damage mask 
-                                       (ACF, radial distribution, base level, mean damage signal)
-  plots_damageregionstats_leafthr/     damaged area & percentage, island statistics, 
-  plots_damageregionstats_refthr/      damage threshold, damage overview
-  plots_segmasks_leafthr/<condition>/  per-image segmentation plots
-  plots_segmasks_refthr/<condition>/
-  data_leaf_damage_singlemetrics.csv   single-value metrics (both methods)
-  data_leaf_damage_singlemetrics.xlsx
-```
-
-##### Potential & necessary improvements
+#### Potential & necessary improvements
 
 - The distribution of undamaged leaf intensity could be estimated in more
 sophisticated ways (e.g. fitting a gaussian to part of the histogram),
@@ -449,8 +403,8 @@ single-value metrics (e.g. `island_counts_leafthr`, `total_damage_area_px_leafth
 condition, the file path, and status fields (`leaf_found`, `damage_found_leafthr`,
 `analysis_status_leafthr`) that record whether the analysis succeeded for that image.
 The suffix `_leafthr` marks metrics that depend on the damage mask, as 
-determined with the per-leaf threshold (method A); the corresponding 
-`_refthr` columns (method B) are filled by `apply_reference_threshold` (see 
+determined with the per-leaf threshold (method (i)); the corresponding 
+`_refthr` columns (method (ii)) are filled by `apply_reference_threshold` (see 
 below), and are empty until then (`analysis_status_refthr` is 
 `'not_calculated'`).
 When a leaf is found but no damage, `analysis_status_leafthr` is `'no_damage_mask'`;
@@ -473,8 +427,8 @@ with this factor to determine the area in square centimeters.
 #### Damage threshold based on a reference condition
 
 `run_complete_analysis` determines the damage mask with the per-leaf damage 
-threshold (method A, see "Two methods to determine the damage threshold" 
-above). The results for method B, which uses a threshold derived from a 
+threshold (method (i), see "Two methods to determine the damage threshold" 
+above). The results for method (ii), which uses a threshold derived from a 
 reference condition, are added with:
 
 ```python
@@ -489,6 +443,26 @@ where `REFERENCE_CONDITION` is one of the keys of `condition_path_map`
 (e.g. `'Ctrl'`). This fills the `_refthr` columns of `df_samples` (and the
 column `reference_condition`), and adds `mask_damage_refthr` to `array_data`.
 (Note that `array_data` is extended in place.)
+
+#### Output folders
+
+Metrics that depend on the damage mask (damage threshold, damaged area & 
+percentage, island statistics, status fields) are stored twice in 
+`df_samples`, with the suffixes `_leafthr` (method (i)) and `_refthr` (method (ii)). 
+Plots that depend on the damage mask are written to folders per method, 
+resulting in the following output structure:
+
+```
+OUTPUTDIR/
+  plots_general_stats/                 plots that don't depend on the damage mask 
+                                       (ACF, radial distribution, base level, mean damage signal)
+  plots_damageregionstats_leafthr/     damaged area & percentage, island statistics, 
+  plots_damageregionstats_refthr/      damage threshold, damage overview
+  plots_segmasks_leafthr/<condition>/  per-image segmentation plots
+  plots_segmasks_refthr/<condition>/
+  data_leaf_damage_singlemetrics.csv   single-value metrics (both methods)
+  data_leaf_damage_singlemetrics.xlsx
+```
 
 #### Generating plots
 
@@ -573,8 +547,7 @@ The mean damage signal per leaf pixel (`"mean_dmg_signal"`, ie the mean
 intensity of the damage channel within the leaf mask) can be plotted in the
 same way. In contrast to the damaged area, this metric does not depend on 
 the damage threshold, and is therefore not affected by changes in the base 
-level (see critical assumption 2 above). It does however include the 
-base level signal itself, and depends on acquisition settings.
+level (see assumptions above). 
 
 ```python
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal", 

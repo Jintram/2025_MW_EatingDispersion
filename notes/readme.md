@@ -95,6 +95,15 @@ Continue on this thread.
     - (Written by Claude:) After the `_frozen` output folders were regenerated
     with the new layout, the readme figure links were updated to point to them
     (damage-mask dependent figures: the `_leafthr` versions).
+- [X] (Written by Claude:) Restructured the readme section "Determining the 
+    damaged area" (8/10/2026), such that the two threshold methods are part of
+    the main story instead of an add-on: shared base level & 2x rule with 
+    assumption 1, then the two methods each with their own assumption (A: 
+    equal base level across conditions; B: identical acquisition conditions),
+    strength and weakness, then how to choose (`baselvl_dmg` plot), then the
+    example figure. The former "critical assumptions 2 & 3" became assumptions
+    A and B. The output folder tree moved to "Notes on running the script" 
+    (new subsection "Output folders").
 
 # To do / done (6/10/2026)
 
