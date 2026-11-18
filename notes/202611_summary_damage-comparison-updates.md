@@ -2,7 +2,7 @@
 
 (Written by Claude, based on the conversation and the git log of 18/11/2026.)
 
-**Leaf mask detection.** `get_largest_mask` now returns `None` as its mask when no leaf is found, replacing `return_status`, and `analyse_sample` was simplified accordingly. Smoothing can no longer produce a mask with multiple regions, because the largest region is selected again afterwards.
+**Leaf mask detection (refactor/bug fix).** `get_largest_mask` now returns `None` as its mask when no leaf is found, replacing `return_status`, and `analyse_sample` was simplified accordingly. Smoothing can no longer produce a mask with multiple regions, because the largest region is selected again afterwards.
 
 **Damage overview: layout.** Long file names now wrap and stay readable. Leaves rejected by the roundness check are labelled "(no leaf)" and centered on the image.
 
