@@ -973,7 +973,8 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
                   data=df_plot, ax=axs[0], color='black')
     ymax2 = np.nanmax(df_plot[col_island_counts])
     axs[0].set_ylim([0, (ymax2 if ymax2 > 0 else 1) * 1.02])
-    axs[0].tick_params(axis='x', rotation=45)
+    # rotate around the end of each label, such that this end is at the tick
+    plt.setp(axs[0].get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
     axs[0].set_title(f'Total Islands')
     axs[0].set_ylabel('Count')
 
@@ -989,8 +990,8 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     axs[1].set_ylabel('Distance (pixels)')
     ymax0 = np.nanmax(df_plot[col_total_distances])
     axs[1].set_ylim([0, (ymax0 if ymax0 > 0 else 1) * 1.02])
-    # rotate axis 90 deg
-    axs[1].tick_params(axis='x', rotation=45)
+    # rotate around the end of each label, such that this end is at the tick
+    plt.setp(axs[1].get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
 
     # now the same, but averaged over the number of islands
     sns.barplot(x='condition', y=col_mean_distance,
@@ -1004,7 +1005,8 @@ def plot_nearest_island_distances(df_samples, outputdir, remove_zerocnt=True, my
     axs[2].set_ylabel('Distance (pixels)')
     ymax1 = np.nanmax(df_plot[col_mean_distance])
     axs[2].set_ylim([0, (ymax1 if ymax1 > 0 else 1) * 1.02])
-    axs[2].tick_params(axis='x', rotation=45)
+    # rotate around the end of each label, such that this end is at the tick
+    plt.setp(axs[2].get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
 
     fig.suptitle(f'Damage mask: {method_label}', fontsize=8)
 
@@ -1064,7 +1066,8 @@ def plot_damaged_area(df_samples, outputdir, mycolors=None, damage_mask_method='
 
     ax.set_title(f'Total Damaged Area\n({method_label})')
     ax.set_ylabel(y_label)
-    ax.tick_params(axis='x', rotation=45)
+    # rotate around the end of each label, such that this end is at the tick
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
 
     ymax = np.max(df_area[metric_key])
     if ymax > 0:
@@ -1126,7 +1129,8 @@ def plot_metric_per_condition(df_samples, outputdir, metric_key,
 
     ax.set_title(title)
     ax.set_ylabel(y_label)
-    ax.tick_params(axis='x', rotation=45)
+    # rotate around the end of each label, such that this end is at the tick
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
 
     ymax = np.nanmax(df_metric[column_key])
     if ymax > 0:
@@ -1175,7 +1179,8 @@ def plot_damaged_percentage(df_samples, outputdir, mycolors=None, damage_mask_me
 
     ax.set_title(f'Total Damaged Area (% of leaf)\n({method_label})')
     ax.set_ylabel(y_label)
-    ax.tick_params(axis='x', rotation=45)
+    # rotate around the end of each label, such that this end is at the tick
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
 
     ymax = np.max(df_pct[metric_key])
     if ymax > 0:
