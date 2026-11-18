@@ -199,14 +199,17 @@ def get_largest_mask(img, method='bg10', apply_smooth=False):
         return None, threshold_val
 
     img_lbl = label(img_mask)
+        # plt.imshow(img_lbl)
     
     lbl_largest = np.argmax([region.area for region in regionprops(img_lbl)]) + 1
     
     img_mask = img_lbl == lbl_largest
+        # plt.imshow(img_mask)
     
     if apply_smooth:
         # perform morphological opening with a radius of 10 pixels to smooth the mask
         img_mask = opening(img_mask, disk(10))
+            # plt.imshow(img_mask)
         # if this erased the mask, act accordingly
         if not np.any(img_mask):
             return None, threshold_val
@@ -553,6 +556,7 @@ def get_data_file_paths(condition_path_map):
 
     return data_file_paths
 
+# %%
 
 def analyse_sample(file_path, condition, config_channels,
                    leaf_threshold_method='bg10', leaf_roundness_threshold=0,
@@ -578,7 +582,7 @@ def analyse_sample(file_path, condition, config_channels,
 
     # Get leaf mask (None if no leaf was found)
     mask_leaf, threshold_val_leaf = \
-        get_largest_mask(img_leaf,
+        get_largest_mask(img=img_leaf,
                          method=leaf_threshold_method,
                          apply_smooth=apply_smooth_leafmask)
         # plt.imshow(img_leaf); plt.contour(mask_leaf, colors='white'); plt.show(); plt.close()
