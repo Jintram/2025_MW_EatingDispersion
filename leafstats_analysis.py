@@ -29,6 +29,7 @@ import time # for debugging/optimization
 
 import glob
 import os
+import re
 import warnings
 from dataclasses import dataclass, asdict, fields
 
@@ -1443,7 +1444,8 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     All panels show a square window of the same size (in pixels), centered on
     the leaf, such that the (per-panel) scale bars are comparable. The window
     is large enough to hold the largest leaf (plus margin_px). Images without
-    a leaf mask are centered on the image center instead.
+    a valid leaf (no leaf mask, or a mask rejected by the roundness check) are
+    labeled "(no leaf)" and centered on the image center instead.
 
     The scale bar is in mm/cm when pixel_to_cm2_factor is given, and in
     pixels otherwise. The figure is panel_size_cm per condition wide, and
@@ -1477,11 +1479,11 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     n_rows = max(len(files) for files in files_per_condition.values())
 
     # Determine the leaf bounding box per image, and the common window size
+    # (only for valid leaves; a mask rejected by the roundness check is ignored)
     bboxes = {}
-    for file_path in df_samples['file_path']:
+    for file_path in df_samples.loc[df_samples['leaf_found'], 'file_path']:
         mask_leaf = array_data[file_path]['mask_leaf']
-        if np.any(mask_leaf):
-            bboxes[file_path] = regionprops(mask_leaf.astype(int))[0].bbox
+        bboxes[file_path] = regionprops(mask_leaf.astype(int))[0].bbox
     if bboxes:
         window_px = max(max(b[2]-b[0], b[3]-b[1]) for b in bboxes.values()) + 2*margin_px
     else:
@@ -1537,11 +1539,16 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                 title = os.path.splitext(os.path.basename(file_path))[0]
                 if file_path not in bboxes:
                     title += ' (no leaf)'
-                ax.set_title(title, pad=2)
+                # wrap long names to the panel width, preferably after an underscore
+                # (0.55 = approx. character width relative to the font size)
+                title_fontsize = 5
+                max_chars = int(panel_size_cm*cm_to_inch*72 / (0.55*title_fontsize))
+                title = '\n'.join(re.findall(rf'.{{1,{max_chars}}}(?:_|$)|.{{1,{max_chars}}}', title))
+                ax.set_title(title, pad=2, fontsize=title_fontsize, linespacing=1)
                 if row == 0:
-                    # offset (in points) = title pad + approx. height of one title line
-                    ax.annotate(condition, xy=(0.5, 1), xycoords='axes fraction',
-                                xytext=(0, 10), textcoords='offset points',
+                    # position relative to the title, as its height depends on the wrapping
+                    ax.annotate(condition, xy=(0.5, 1), xycoords=ax.title,
+                                xytext=(0, 1), textcoords='offset points',
                                 ha='center', va='bottom', fontweight='bold')
 
                 ax.add_artist(AnchoredSizeBar(ax.transData, bar_px, bar_label,

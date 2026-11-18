@@ -26,13 +26,19 @@ OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/A
 # 1) Tell script where data is and which channels should be used
 # Conditions and paths to images for that condition
 condition_path_map = {
-    'Ctrl': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control',
-    'Thrips': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/thrips'
+    'Ctrl_3H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control/3H/',
+    'Ctrl_6H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control/6H/',
+    'Ctrl_9H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control/9H/',
+    'Ctrl_12H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control/12H/',    
+    'Thrips_3H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/thrips/3H/',
+    'Thrips_6H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/thrips/6H/',
+    'Thrips_9H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/thrips/9H/',
+    'Thrips_12H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/thrips/12H/'
 }
 
 # Reference condition, used to derive the damage threshold for method (ii)
 # (damage mask based on reference condition, see step 3)
-REFERENCE_CONDITION = 'Ctrl'
+REFERENCE_CONDITION = 'Ctrl_3H'
 
 # Channel configuration (channel index per role; Reference can be None)
 config_channels = {
