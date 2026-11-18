@@ -34,6 +34,7 @@ EXAMPLES = {
         'expected_outputs': [
             'Example_data/OUTPUT-3channels/plots_general_stats/Radial_acf_averages.png',
             'Example_data/OUTPUT-3channels/plots_general_stats/radial_pdfs_averages.png',
+            'Example_data/OUTPUT-3channels/plots_general_stats/leaf_intensity_profiles.png',
             'Example_data/OUTPUT-3channels/data_leaf_damage_singlemetrics.csv',
             'Example_data/OUTPUT-3channels/data_leaf_damage_singlemetrics.xlsx',
             'Example_data/OUTPUT-3channels/plots_damageregionstats_leafthr/overview_damage.png',
@@ -49,6 +50,7 @@ EXAMPLES = {
         'expected_outputs': [
             'Example_data/OUTPUT-1channel/plots_general_stats/Radial_acf_averages.png',
             'Example_data/OUTPUT-1channel/plots_general_stats/radial_pdfs_averages.png',
+            'Example_data/OUTPUT-1channel/plots_general_stats/leaf_intensity_profiles.png',
             'Example_data/OUTPUT-1channel/data_leaf_damage_singlemetrics.csv',
             'Example_data/OUTPUT-1channel/data_leaf_damage_singlemetrics.xlsx',
             'Example_data/OUTPUT-1channel/plots_damageregionstats_leafthr/overview_damage.png',
@@ -64,6 +66,7 @@ EXAMPLES = {
         'expected_outputs': [
             'Synthetic_data/OUTPUT/plots_general_stats/Radial_acf_averages.png',
             'Synthetic_data/OUTPUT/plots_general_stats/radial_pdfs_averages.png',
+            'Synthetic_data/OUTPUT/plots_general_stats/leaf_intensity_profiles.png',
             'Synthetic_data/OUTPUT/data_leaf_damage_singlemetrics.csv',
             'Synthetic_data/OUTPUT/data_leaf_damage_singlemetrics.xlsx',
             'Synthetic_data/OUTPUT/plots_damageregionstats_leafthr/overview_damage.png',

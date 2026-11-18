@@ -1255,6 +1255,66 @@ def plot_radial_pdfs(df_samples, array_data, outputdir, mycolors=None):
     fig.savefig(plotdir+'/radial_pdfs_averages.png', dpi=150)
     plt.close(fig)
 
+
+def plot_leaf_intensity_profiles(df_samples, array_data, outputdir, n_bins=64):
+    """
+    Plot the histogram of the damage signal within the leaf mask, with one line
+    per valid leaf, and one panel per condition (stacked, with shared axes).
+
+    The y-axis shows the fraction of leaf pixels, such that leaves of different
+    sizes are comparable, on a log scale, such that the bright damage signal
+    (few pixels) remains visible. Bins without pixels are not drawn.
+
+    Saves to outputdir/plots_general_stats/leaf_intensity_profiles.pdf and .png.
+
+    (Written by Claude.)
+    """
+
+    plotdir = outputdir + '/plots_general_stats'
+    os.makedirs(plotdir, exist_ok=True)
+
+    df_valid = df_samples[df_samples['leaf_found']]
+    if df_valid.empty:
+        print('WARNING: No valid leaves available for plotting intensity profiles.')
+        return
+
+    # Collect the signal within each leaf, and determine bins shared by all leaves
+    leaf_pixels = {f: array_data[f]['img_damage'][array_data[f]['mask_leaf']]
+                   for f in df_valid['file_path']}
+    max_intensity = max(pixels.max() for pixels in leaf_pixels.values())
+    bin_edges = np.linspace(0, float(max_intensity) + 1, n_bins + 1)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    conditions = list(dict.fromkeys(df_samples['condition']))
+
+    with plt.rc_context(font_size_rc(6)):
+        fig, axs = plt.subplots(len(conditions), 1, sharex=True, sharey=True,
+                                squeeze=False, layout='constrained',
+                                figsize=(10*cm_to_inch, (1.8*len(conditions) + 1.5)*cm_to_inch))
+        axs = axs.ravel()
+
+        for ax, condition in zip(axs, conditions):
+            files = df_valid.loc[df_valid['condition'] == condition, 'file_path']
+            for file_path in files:
+                counts, _ = np.histogram(leaf_pixels[file_path], bins=bin_edges)
+                fractions = counts / len(leaf_pixels[file_path])
+                # empty bins can't be shown on a log scale
+                fractions[counts == 0] = np.nan
+                ax.plot(bin_centers, fractions, color='black', alpha=0.9, linewidth=1)
+
+            ax.set_yscale('log')
+            ax.text(0.99, 0.92, f'{condition} (n={len(files)})', transform=ax.transAxes,
+                    ha='right', va='top')
+
+        axs[-1].set_xlim(bin_edges[0], bin_edges[-1])
+        axs[-1].set_xlabel('Damage signal intensity')
+        fig.supylabel('Fraction of leaf pixels')
+        fig.suptitle('Damage signal within leaf mask')
+
+        fig.savefig(plotdir + '/leaf_intensity_profiles.pdf', dpi=300)
+        fig.savefig(plotdir + '/leaf_intensity_profiles.png', dpi=300)
+    plt.close(fig)
+
 # %%
 
 def plot_and_save_images(

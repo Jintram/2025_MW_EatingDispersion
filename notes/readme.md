@@ -191,6 +191,12 @@ Continue on this thread.
     by the roundness check, with the panel centered on that mask), to assess
     damage by eye and check the leaf masks.
 
+- [X] (Written by Claude:) Added `plot_leaf_intensity_profiles()` (18/11/2026).
+    This plots the histogram of the damage signal within the leaf mask, with one
+    black line per valid leaf and one stacked panel per condition (shared axes,
+    log-scaled fraction of leaf pixels); saved to
+    `plots_general_stats/leaf_intensity_profiles.pdf/.png`.
+
 - [X] (Written by Claude:) Refactored `run_complete_analysis()` (15/9/2026).
     The per-image work now lives in a new function `analyse_sample()`, which
     uses early returns for the "no leaf" and "no damage" cases instead of

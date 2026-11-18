@@ -79,6 +79,7 @@ df_samples, array_data = lsa.apply_reference_threshold(
 # Plots are saved to OUTPUTDIR/plots_general_stats/.
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
 lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
+lsa.plot_leaf_intensity_profiles(df_samples, array_data, OUTPUTDIR)
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
                               y_label = "Estimated base level (damage channel)", 
                               title="Base level per condition\n(damage channel, within leaf)")
