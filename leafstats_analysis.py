@@ -1506,20 +1506,31 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     else:
         window_px = max(max(array_data[f]['img_damage'].shape) for f in df_samples['file_path'])
 
-    # Value to divide each image by for display: 'leafthr' shows the signal
-    # relative to the base level of each leaf, 'refthr' the absolute signal
-    # (at least 1 to avoid dividing by zero, as in get_mask)
+    # Value to divide each image by for display
+    # Get mean baselevel per condition as fallback normalization option
     baselvls = df_samples.set_index('file_path')['baselvl_dmg']
     df_valid = df_samples[df_samples['leaf_found']]
     mean_baselvl_all = df_valid['baselvl_dmg'].mean()
     mean_baselvl_per_condition = df_valid.groupby('condition')['baselvl_dmg'].mean()
+    # Determine normalization constants
     divisors = {}
     for file_path, condition in zip(df_samples['file_path'], df_samples['condition']):
-        if damage_mask_method != 'leafthr':
+        # in case reference was used, we don't normalize;
+        # intensities are assumed to reflect damage
+        if damage_mask_method == 'refthr':
             divisors[file_path] = 1
+        # otherwise, we use normalization per leaf-specific base level
+        # this makes everything relative to the base level and therefore
+        # damage threshold as well, allowing for the relevant comparison.
+        # (divisors are at least 1 to avoid dividing by zero, as in get_mask)
+        # (In the leafthr case, the scale should be tailored to each
+        # leaf separately, so another valid option would be to 
+        # just use the range itself. But the current option is more quantitative.)
         elif file_path in bboxes:
+            # if valid leaf, use its baselevel
             divisors[file_path] = max(1, baselvls[file_path])
         else:
+            # otherwise use fallback
             divisors[file_path] = max(1, mean_baselvl_per_condition.get(condition, mean_baselvl_all))
 
     # Color range shared by all panels, such that colors are comparable
