@@ -213,6 +213,11 @@ def get_largest_mask(img, method='bg10', apply_smooth=False):
         # if this erased the mask, act accordingly
         if not np.any(img_mask):
             return None, threshold_val
+        
+        # opening can split the mask into multiple regions; again keep the largest
+        img_lbl = label(img_mask)
+        lbl_largest = np.argmax([region.area for region in regionprops(img_lbl)]) + 1
+        img_mask = img_lbl == lbl_largest
 
     return img_mask, threshold_val
 
