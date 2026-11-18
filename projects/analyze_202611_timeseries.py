@@ -40,6 +40,19 @@ condition_path_map = {
 # (damage mask based on reference condition, see step 3)
 REFERENCE_CONDITION = 'Ctrl_3H'
 
+# Colors per condition: blue for control and red for thrips, from light (3H)
+# to dark (12H)
+CONDITION_COLORS = {
+    'Ctrl_3H': '#5BA3DC',
+    'Ctrl_6H': '#2B7BBA',
+    'Ctrl_9H': '#135A96',
+    'Ctrl_12H': '#08306B',
+    'Thrips_3H': '#F4745A',
+    'Thrips_6H': '#D9302A',
+    'Thrips_9H': '#A50F15',
+    'Thrips_12H': '#5F0009'
+}
+
 # Channel configuration (channel index per role; Reference can be None)
 config_channels = {
     'Leaf': 0,      # Set to same channel for illustratory purposes
@@ -80,6 +93,7 @@ df_samples, array_data = lsa.apply_reference_threshold(
 lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
 lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
 lsa.plot_leaf_intensity_profiles(df_samples, array_data, OUTPUTDIR)
+lsa.plot_leaf_intensity_profiles_combined(df_samples, array_data, OUTPUTDIR, condition_colors=CONDITION_COLORS)
 lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
                               y_label = "Estimated base level (damage channel)", 
                               title="Base level per condition\n(damage channel, within leaf)")

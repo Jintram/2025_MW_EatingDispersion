@@ -196,6 +196,9 @@ Continue on this thread.
     black line per valid leaf and one stacked panel per condition (shared axes,
     log-scaled fraction of leaf pixels); saved to
     `plots_general_stats/leaf_intensity_profiles.pdf/.png`.
+    `plot_leaf_intensity_profiles_combined()` shows all leaves in one panel, with
+    a colorblind-friendly default per condition (color and line style), or the
+    colors given in `condition_colors`.
 
 - [X] (Written by Claude:) Refactored `run_complete_analysis()` (15/9/2026).
     The per-image work now lives in a new function `analyse_sample()`, which

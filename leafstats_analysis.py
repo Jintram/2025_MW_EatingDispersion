@@ -1315,6 +1315,82 @@ def plot_leaf_intensity_profiles(df_samples, array_data, outputdir, n_bins=64):
         fig.savefig(plotdir + '/leaf_intensity_profiles.png', dpi=300)
     plt.close(fig)
 
+
+def plot_leaf_intensity_profiles_combined(df_samples, array_data, outputdir,
+                                          condition_colors=None, n_bins=64):
+    """
+    Plot the histogram of the damage signal within the leaf mask, with one line
+    per valid leaf, and all leaves in one panel, identified by condition. Axes
+    are as in plot_leaf_intensity_profiles.
+
+    condition_colors is an optional dict {condition: color}, which should hold
+    all conditions; lines are then solid. By default, each condition gets a
+    combination of a color and a line style. The four default colors are
+    colorblind-friendly and contrast with a white background, but can't all be
+    told apart by color alone, hence the line styles.
+
+    Saves to outputdir/plots_general_stats/leaf_intensity_profiles_combined.pdf
+    and .png.
+
+    (Written by Claude.)
+    """
+
+    plotdir = outputdir + '/plots_general_stats'
+    os.makedirs(plotdir, exist_ok=True)
+
+    df_valid = df_samples[df_samples['leaf_found']]
+    if df_valid.empty:
+        print('WARNING: No valid leaves available for plotting intensity profiles.')
+        return
+
+    conditions = list(dict.fromkeys(df_samples['condition']))
+
+    # Determine the color and line style per condition
+    default_colors = ['#0072B2', '#D55E00', '#008F68', '#B0359A']
+    default_linestyles = ['solid', 'dashed', 'dotted', 'dashdot']
+    line_props = {}
+    for i, condition in enumerate(conditions):
+        if condition_colors is None:
+            line_props[condition] = {'color': default_colors[i % 4],
+                                     'linestyle': default_linestyles[(i // 4) % 4]}
+        elif condition in condition_colors:
+            line_props[condition] = {'color': condition_colors[condition], 'linestyle': 'solid'}
+        else:
+            raise ValueError(f"No color given for condition: {condition}.")
+
+    # Collect the signal within each leaf, and determine bins shared by all leaves
+    leaf_pixels = {f: array_data[f]['img_damage'][array_data[f]['mask_leaf']]
+                   for f in df_valid['file_path']}
+    max_intensity = max(pixels.max() for pixels in leaf_pixels.values())
+    bin_edges = np.linspace(0, float(max_intensity) + 1, n_bins + 1)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    with plt.rc_context(font_size_rc(6)):
+        fig, ax = plt.subplots(1, 1, layout='constrained',
+                               figsize=(12*cm_to_inch, 7*cm_to_inch))
+
+        for condition in conditions:
+            files = df_valid.loc[df_valid['condition'] == condition, 'file_path']
+            for i, file_path in enumerate(files):
+                counts, _ = np.histogram(leaf_pixels[file_path], bins=bin_edges)
+                fractions = counts / len(leaf_pixels[file_path])
+                # empty bins can't be shown on a log scale
+                fractions[counts == 0] = np.nan
+                # one legend entry per condition
+                ax.plot(bin_centers, fractions, alpha=0.9, linewidth=0.5,
+                        label=condition if i == 0 else None, **line_props[condition])
+
+        ax.set_yscale('log')
+        ax.set_xlim(bin_edges[0], bin_edges[-1])
+        ax.set_xlabel('Damage signal intensity')
+        ax.set_ylabel('Fraction of leaf pixels')
+        ax.set_title('Damage signal within leaf mask')
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
+
+        fig.savefig(plotdir + '/leaf_intensity_profiles_combined.pdf', dpi=300)
+        fig.savefig(plotdir + '/leaf_intensity_profiles_combined.png', dpi=300)
+    plt.close(fig)
+
 # %%
 
 def plot_and_save_images(
