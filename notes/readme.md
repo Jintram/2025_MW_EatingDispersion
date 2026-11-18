@@ -184,6 +184,12 @@ Continue on this thread.
     All panels show an equally sized window centered on the leaf, so scale
     bars are comparable. Called from all three example scripts.
 
+- [X] (Written by Claude:) Added `outline_mask='leaf'` to
+    `plot_damage_overview()` (18/11/2026). This saves
+    `overview_damage_leafmask.pdf/.png`, the same overview without damage mask
+    outlines, and with the leaf mask outlined in magenta (dashed grey if rejected
+    by the roundness check), to assess damage by eye and check the leaf masks.
+
 - [X] (Written by Claude:) Refactored `run_complete_analysis()` (15/9/2026).
     The per-image work now lives in a new function `analyse_sample()`, which
     uses early returns for the "no leaf" and "no damage" cases instead of

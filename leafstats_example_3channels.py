@@ -84,6 +84,7 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_d
                               title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.",
                               damage_mask_method='leafthr')
 lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='leafthr')
+lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='leafthr', outline_mask='leaf')
 lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='leafthr')
 
 # 6) Damage mask METHOD B: reference-condition threshold (damage_mask_method='refthr')
@@ -100,6 +101,7 @@ lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_d
                               title=f"Threshold",
                               damage_mask_method='refthr')
 lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='refthr')
+lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='refthr', outline_mask='leaf')
 lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='refthr')
 
 # 7) Export single-value metrics (both methods) to CSV and Excel

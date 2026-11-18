@@ -1444,11 +1444,17 @@ def _nice_number_below(value):
 
 def plot_damage_overview(df_samples, array_data, outputdir,
                          pixel_to_cm2_factor=None, cmap='viridis',
-                         panel_size_cm=3, margin_px=10, damage_mask_method='leafthr'):
+                         panel_size_cm=3, margin_px=10, damage_mask_method='leafthr',
+                         outline_mask='damage'):
     """
     Overview of the damage channel of all images, with the damage mask
     outlined in white. Conditions are shown in columns, and replicates
     (i.e. the images within a condition, sorted by file name) in rows.
+
+    With outline_mask='leaf', the leaf mask is outlined in magenta instead of
+    the damage mask (dashed grey if the mask was rejected by the roundness check),
+    such that the damage signal can be assessed by eye, and the leaf masks
+    can be checked.
 
     All panels show a square window of the same size (in pixels), centered on
     the leaf, such that the (per-panel) scale bars are comparable. The window
@@ -1474,15 +1480,19 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     saturated pixels from dominating the scale; higher values get the top color.
 
     damage_mask_method selects the damage threshold method ('leafthr' or 'refthr')
-    of the outlined damage mask.
+    of the outlined damage mask and of the color scale.
 
     Saves to outputdir/plots_damageregionstats_<damage_mask_method>/overview_damage.pdf
-    and .png, and returns fig.
+    and .png (overview_damage_leafmask.pdf and .png for outline_mask='leaf'), and
+    returns fig.
 
     (Written by Claude, checked by human.)
     """
 
     from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+
+    if outline_mask not in ('damage', 'leaf'):
+        raise ValueError(f"Invalid outline_mask: {outline_mask}. Choose from 'damage' or 'leaf'.")
 
     # select output directory belonging to damage mask method
     plotdir = outputdir + '/plots_damageregionstats_' + damage_mask_method
@@ -1570,11 +1580,21 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                 ax = axs[row, col]
                 
                 img_damage = array_data[file_path]['img_damage']
-                mask_damage = array_data[file_path][f'mask_damage_{damage_mask_method}']
 
                 img_shown = ax.imshow(img_damage / divisors[file_path], cmap=cmap, vmin=0, vmax=color_max)
-                if np.any(mask_damage):
-                    ax.contour(mask_damage, levels=[0.5], colors='white', linewidths=0.5)
+
+                # Outline the requested mask
+                if outline_mask == 'damage':
+                    mask_damage = array_data[file_path][f'mask_damage_{damage_mask_method}']
+                    if np.any(mask_damage):
+                        ax.contour(mask_damage, levels=[0.5], colors='white', linewidths=0.5)
+                else:
+                    # masks rejected by the roundness check are dashed grey
+                    mask_leaf = array_data[file_path]['mask_leaf']
+                    if np.any(mask_leaf):
+                        ax.contour(mask_leaf, levels=[0.5], linewidths=0.5,
+                                   colors='magenta' if file_path in bboxes else 'grey',
+                                   linestyles='solid' if file_path in bboxes else 'dashed')
 
                 # Zoom to a window centered on the leaf (or image center if no leaf)
                 if file_path in bboxes:
@@ -1618,14 +1638,21 @@ def plot_damage_overview(df_samples, array_data, outputdir,
             colorbar_label = 'Signal relative to leaf base level (fold)\nwhite line: damage threshold'
             if len(bboxes) < len(df_samples):
                 colorbar_label += '\n* scaled by mean base level of condition'
-            colorbar.set_label(colorbar_label)
             colorbar.ax.axhline(BASELVL_THRESHOLD_FACTOR, color='white', linewidth=1)
         else:
-            colorbar.set_label('Damage signal intensity')
-        fig.suptitle(f'Damage mask: {method_label}')
+            colorbar_label = 'Damage signal intensity'
 
-        fig.savefig(os.path.join(plotdir, 'overview_damage.pdf'), dpi=300)
-        fig.savefig(os.path.join(plotdir, 'overview_damage.png'), dpi=300)
+        if outline_mask == 'damage':
+            fig.suptitle(f'Damage mask: {method_label}')
+            filename = 'overview_damage'
+        else:
+            colorbar_label += '\nmagenta: leaf mask, dashed grey: rejected mask'
+            fig.suptitle(f'Leaf mask outlines (color scale: {method_label})')
+            filename = 'overview_damage_leafmask'
+        colorbar.set_label(colorbar_label)
+
+        fig.savefig(os.path.join(plotdir, filename + '.pdf'), dpi=300)
+        fig.savefig(os.path.join(plotdir, filename + '.png'), dpi=300)
 
     return fig
 
