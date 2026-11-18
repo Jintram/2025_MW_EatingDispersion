@@ -21,11 +21,14 @@ import leafstats_analysis as lsa
 # Paths below are relative, and are interpreted relative to your working
 # directory, so run this script from the root of the repository.
 # (Use absolute paths instead when your own data lives elsewhere.)
-OUTPUTDIR = '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/ANALYSIS/202611_timeseries/back/'
+OUTPUTDIR_LIST = [None] * 2
+OUTPUTDIR_LIST[0] = '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/ANALYSIS/202611_timeseries/back/'
+OUTPUTDIR_LIST[1] = '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/ANALYSIS/202611_timeseries/front/'
 
 # 1) Tell script where data is and which channels should be used
 # Conditions and paths to images for that condition
-condition_path_map = {
+condition_path_map_list = [None] * 2
+condition_path_map_list[0] = {
     'Ctrl_3H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control/3H/',
     'Ctrl_6H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control/6H/',
     'Ctrl_9H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/control/9H/',
@@ -35,108 +38,122 @@ condition_path_map = {
     'Thrips_9H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/thrips/9H/',
     'Thrips_12H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_back_cut/thrips/12H/'
 }
-
-# Reference condition, used to derive the damage threshold for method (ii)
-# (damage mask based on reference condition, see step 3)
-REFERENCE_CONDITION = 'Ctrl_3H'
-
-# Colors per condition: blue for control and red for thrips, from light (3H)
-# to dark (12H)
-CONDITION_COLORS = {
-    'Ctrl_3H': '#5BA3DC',
-    'Ctrl_6H': '#2B7BBA',
-    'Ctrl_9H': '#135A96',
-    'Ctrl_12H': '#08306B',
-    'Thrips_3H': '#F4745A',
-    'Thrips_6H': '#D9302A',
-    'Thrips_9H': '#A50F15',
-    'Thrips_12H': '#5F0009'
+condition_path_map_list[1] = {
+    'Ctrl_3H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/control/3H/',
+    'Ctrl_6H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/control/6H/',
+    'Ctrl_9H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/control/9H/',
+    'Ctrl_12H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/control/12H/',    
+    'Thrips_3H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/thrips/3H/',
+    'Thrips_6H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/thrips/6H/',
+    'Thrips_9H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/thrips/9H/',
+    'Thrips_12H': '/Users/m.wehrens/Data_UVA/2026_11_eating-dispersion-leaves-thrips/DATA/202611_timeseries/cy7_front_cut/thrips/12H/'    
 }
 
-# Channel configuration (channel index per role; Reference can be None)
-config_channels = {
-    'Leaf': 0,      # Set to same channel for illustratory purposes
-    'Damage': 0,    # Set to same channel for illustratory purposes 
-    'Reference': None
-}
-# Optional conversion from pixel area to cm^2 (set to e.g. 0.0004 if known)
-pixel_to_cm2_factor = 1/(131**2)
-# obtain
-data_file_paths = lsa.get_data_file_paths(condition_path_map)
+for OUTPUTDIR, condition_path_map in zip(OUTPUTDIR_LIST, condition_path_map_list):
+    # OUTPUTDIR = OUTPUTDIR_LIST[0]; condition_path_map = condition_path_map_list[0]
+    # OUTPUTDIR = OUTPUTDIR_LIST[1]; condition_path_map = condition_path_map_list[1]
+    
+    # Reference condition, used to derive the damage threshold for method (ii)
+    # (damage mask based on reference condition, see step 3)
+    REFERENCE_CONDITION = 'Ctrl_3H'
 
-# 2) Run the complete analysis pipeline
-df_samples, array_data = lsa.run_complete_analysis(
-    data_file_paths = data_file_paths,
-    config_channels = config_channels,
-    # optional parameters
-    leaf_threshold_method='triangle',
-    leaf_roundness_threshold=0.8,
-    apply_smooth_leafmask=True,
-    pixel_to_cm2_factor=pixel_to_cm2_factor
-)
+    # Colors per condition: blue for control and red for thrips, from light (3H)
+    # to dark (12H)
+    CONDITION_COLORS = {
+        'Ctrl_3H': '#5BA3DC',
+        'Ctrl_6H': '#2B7BBA',
+        'Ctrl_9H': '#135A96',
+        'Ctrl_12H': '#08306B',
+        'Thrips_3H': '#F4745A',
+        'Thrips_6H': '#D9302A',
+        'Thrips_9H': '#A50F15',
+        'Thrips_12H': '#5F0009'
+    }
 
-# 3) Alternative damage mask: threshold derived from a reference condition
-# (The per-leaf threshold from step 2 assumes the true base level of the damage
-# signal is equal across conditions; the reference threshold allows it to
-# differ, but assumes identical imaging conditions for all images. See readme.)
-# This adds the columns with suffix "_refthr" to df_samples (next to the
-# "_leafthr" columns of the per-leaf threshold), and "mask_damage_refthr"
-# to array_data.
-df_samples, array_data = lsa.apply_reference_threshold(
-    df_samples, array_data,
-    reference_condition = REFERENCE_CONDITION,
-    pixel_to_cm2_factor = pixel_to_cm2_factor
-)
+    # Channel configuration (channel index per role; Reference can be None)
+    config_channels = {
+        'Leaf': 0,      # Set to same channel for illustratory purposes
+        'Damage': 0,    # Set to same channel for illustratory purposes 
+        'Reference': None
+    }
+    # Optional conversion from pixel area to cm^2 (set to e.g. 0.0004 if known)
+    pixel_to_cm2_factor = 1/(131**2)
+    # obtain
+    data_file_paths = lsa.get_data_file_paths(condition_path_map)
 
-# 4) Plots that do not depend on the damage mask (same for both methods)
-# Plots are saved to OUTPUTDIR/plots_general_stats/.
-lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
-lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
-lsa.plot_leaf_intensity_profiles(df_samples, array_data, OUTPUTDIR)
-lsa.plot_leaf_intensity_profiles_combined(df_samples, array_data, OUTPUTDIR, condition_colors=CONDITION_COLORS)
-lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
-                              y_label = "Estimated base level (damage channel)", 
-                              title="Base level per condition\n(damage channel, within leaf)")
-lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal", 
-                              y_label = "Mean damage signal per leaf pixel", 
-                              title="Mean damage signal per condition")
+    # 2) Run the complete analysis pipeline
+    df_samples, array_data = lsa.run_complete_analysis(
+        data_file_paths = data_file_paths,
+        config_channels = config_channels,
+        # optional parameters
+        leaf_threshold_method='triangle',
+        leaf_roundness_threshold=0.8,
+        apply_smooth_leafmask=True,
+        pixel_to_cm2_factor=pixel_to_cm2_factor
+    )
 
-# 5) Damage mask METHOD A: per-leaf threshold (damage_mask_method='leafthr')
-# Assumes equal true base level across conditions; robust to intensity
-# differences between images.
-# Plots are saved to OUTPUTDIR/plots_damageregionstats_leafthr/ and
-# OUTPUTDIR/plots_segmasks_leafthr/ (per-image segmentation plots).
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='leafthr')
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='leafthr')
-lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='leafthr')
-lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask_method='leafthr')
-lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
-                              y_label = "Intensity threshold for damage", 
-                              title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.",
-                              damage_mask_method='leafthr')
-lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='leafthr')
-lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='leafthr', outline_mask='leaf')
-lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='leafthr')
+    # 3) Alternative damage mask: threshold derived from a reference condition
+    # (The per-leaf threshold from step 2 assumes the true base level of the damage
+    # signal is equal across conditions; the reference threshold allows it to
+    # differ, but assumes identical imaging conditions for all images. See readme.)
+    # This adds the columns with suffix "_refthr" to df_samples (next to the
+    # "_leafthr" columns of the per-leaf threshold), and "mask_damage_refthr"
+    # to array_data.
+    df_samples, array_data = lsa.apply_reference_threshold(
+        df_samples, array_data,
+        reference_condition = REFERENCE_CONDITION,
+        pixel_to_cm2_factor = pixel_to_cm2_factor
+    )
 
-# 6) Damage mask METHOD B: reference-condition threshold (damage_mask_method='refthr')
-# Allows the base level to differ per condition; assumes identical imaging
-# conditions for all images.
-# Plots are saved to OUTPUTDIR/plots_damageregionstats_refthr/ and
-# OUTPUTDIR/plots_segmasks_refthr/ (per-image segmentation plots).
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='refthr')
-lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='refthr')
-lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='refthr')
-lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask_method='refthr')
-lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
-                              y_label = "Intensity threshold for damage", 
-                              title=f"Threshold",
-                              damage_mask_method='refthr')
-lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='refthr')
-lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='refthr', outline_mask='leaf')
-lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='refthr')
+    # 4) Plots that do not depend on the damage mask (same for both methods)
+    # Plots are saved to OUTPUTDIR/plots_general_stats/.
+    lsa.plot_acf_norms_avgrs(df_samples, array_data, OUTPUTDIR)
+    lsa.plot_radial_pdfs(df_samples, array_data, OUTPUTDIR)
+    lsa.plot_leaf_intensity_profiles(df_samples, array_data, OUTPUTDIR)
+    lsa.plot_leaf_intensity_profiles_combined(df_samples, array_data, OUTPUTDIR, condition_colors=CONDITION_COLORS)
+    lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="baselvl_dmg", 
+                                y_label = "Estimated base level (damage channel)", 
+                                title="Base level per condition\n(damage channel, within leaf)")
+    lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="mean_dmg_signal", 
+                                y_label = "Mean damage signal per leaf pixel", 
+                                title="Mean damage signal per condition")
 
-# 7) Export single-value metrics (both methods) to CSV and Excel
-df_samples.to_csv(OUTPUTDIR + '/data_leaf_damage_singlemetrics.csv', index=False)
-df_samples.to_excel(OUTPUTDIR + '/data_leaf_damage_singlemetrics.xlsx', index=False)
+    # 5) Damage mask METHOD A: per-leaf threshold (damage_mask_method='leafthr')
+    # Assumes equal true base level across conditions; robust to intensity
+    # differences between images.
+    # Plots are saved to OUTPUTDIR/plots_damageregionstats_leafthr/ and
+    # OUTPUTDIR/plots_segmasks_leafthr/ (per-image segmentation plots).
+    lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='leafthr')
+    lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='leafthr')
+    lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='leafthr')
+    lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask_method='leafthr')
+    lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
+                                y_label = "Intensity threshold for damage", 
+                                title=f"Threshold consistency\nDamage threshold should not\nshow trend per condition.",
+                                damage_mask_method='leafthr')
+    lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='leafthr')
+    lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='leafthr', outline_mask='leaf')
+    lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='leafthr')
+
+    # 6) Damage mask METHOD B: reference-condition threshold (damage_mask_method='refthr')
+    # Allows the base level to differ per condition; assumes identical imaging
+    # conditions for all images.
+    # Plots are saved to OUTPUTDIR/plots_damageregionstats_refthr/ and
+    # OUTPUTDIR/plots_segmasks_refthr/ (per-image segmentation plots).
+    lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=False, damage_mask_method='refthr')
+    lsa.plot_nearest_island_distances(df_samples, OUTPUTDIR, remove_zerocnt=True, damage_mask_method='refthr')
+    lsa.plot_damaged_area(df_samples, OUTPUTDIR, damage_mask_method='refthr')
+    lsa.plot_damaged_percentage(df_samples, OUTPUTDIR, damage_mask_method='refthr')
+    lsa.plot_metric_per_condition(df_samples, OUTPUTDIR, metric_key="threshold_val_dmg", 
+                                y_label = "Intensity threshold for damage", 
+                                title=f"Threshold",
+                                damage_mask_method='refthr')
+    lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='refthr')
+    lsa.plot_damage_overview(df_samples, array_data, OUTPUTDIR, pixel_to_cm2_factor=pixel_to_cm2_factor, damage_mask_method='refthr', outline_mask='leaf')
+    lsa.run_plot_and_save(df_samples, array_data, OUTPUTDIR, config_channels, damage_mask_method='refthr')
+
+    # 7) Export single-value metrics (both methods) to CSV and Excel
+    df_samples.to_csv(OUTPUTDIR + '/data_leaf_damage_singlemetrics.csv', index=False)
+    df_samples.to_excel(OUTPUTDIR + '/data_leaf_damage_singlemetrics.xlsx', index=False)
 
 # %%
