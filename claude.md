@@ -24,3 +24,10 @@ by Claude:)" at the start of a paragraph, or similarly annotated.
 When you write tests, you can store and organize them as you see fit in the
 [tests/](tests/) directory. Please add a note at the top of each script that states
 they where written by you, and not human-checked.
+
+Tests are plain scripts (`pytest` is not installed). Run them from the repo root,
+using the `2026_leafdamage2` conda environment:
+
+```zsh
+for t in tests/test_*.py; do MPLBACKEND=Agg python3 "$t" || echo "FAILED: $t"; done
+```

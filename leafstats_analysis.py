@@ -173,11 +173,12 @@ def check_bool_mask(mask, name='mask'):
     if mask.dtype != bool:
         raise TypeError(f"{name} must be a boolean array, got dtype {mask.dtype}.")
 
-def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False):
+def get_largest_mask(img, method='bg10', apply_smooth=False):
     """
-    Finds Otsu threshold for image, applies threshold, and
+    Determines threshold for image, applies threshold, and
     then selects the largest continuous region.
-    Returns that region as binary mask.
+    Returns that region as binary mask, and the threshold value.
+    The returned mask is None if no region was found.
     """
     # img = img_leaf; method='bg10'
     
@@ -195,9 +196,7 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
         
     img_mask = img > threshold_val
     if not np.any(img_mask):
-        if return_status:
-            return np.zeros(img.shape, dtype=bool), threshold_val, False
-        return np.zeros(img.shape, dtype=bool), threshold_val
+        return None, threshold_val
 
     img_lbl = label(img_mask)
     
@@ -210,13 +209,8 @@ def get_largest_mask(img, method='bg10', return_status=False, apply_smooth=False
         img_mask = opening(img_mask, disk(10))
         # if this erased the mask, act accordingly
         if not np.any(img_mask):
-            if return_status:
-                return np.zeros(img.shape, dtype=bool), threshold_val, False
-            return np.zeros(img.shape, dtype=bool), threshold_val
-        
-    if return_status:
-        return img_mask, threshold_val, True
-    
+            return None, threshold_val
+
     return img_mask, threshold_val
 
 def get_mask(img, mask_user=None, method='otsu', return_status=False,
@@ -582,36 +576,34 @@ def analyse_sample(file_path, condition, config_channels,
         # plt.imshow(img_leaf)
         # plt.imshow(img_damage)
 
-    # Get leaf mask
-    mask_leaf, threshold_val_leaf, this_leaf_found = \
+    # Get leaf mask (None if no leaf was found)
+    mask_leaf, threshold_val_leaf = \
         get_largest_mask(img_leaf,
                          method=leaf_threshold_method,
-                         apply_smooth=apply_smooth_leafmask,
-                         return_status=True)
+                         apply_smooth=apply_smooth_leafmask)
         # plt.imshow(img_leaf); plt.contour(mask_leaf, colors='white'); plt.show(); plt.close()
-
-    # Additional check for leaf validity, check roundness
-    if this_leaf_found:
-        leaf_roundness = determine_leaf_roundness(mask_leaf)
-        if not leaf_roundness > leaf_roundness_threshold:
-            this_leaf_found = False
-            print("WARNING: Leaf roundness below threshold, marking as no leaf found.")
-    else:
-        leaf_roundness = np.nan
 
     # Set up structures to save the data (pre-filled for case data NA)
     metrics = SampleMetrics(condition=condition, file_path=file_path,
-                            leaf_found=this_leaf_found, leaf_roundness=leaf_roundness)
+                            leaf_found=False, leaf_roundness=np.nan)
     arrays = SampleArrays(condition=condition, img_rgb=img,
                           img_leaf=img_leaf, img_damage=img_damage,
-                          mask_leaf=mask_leaf,
-                          mask_damage_leafthr=np.zeros_like(mask_leaf, dtype=bool))
+                          mask_leaf=np.zeros_like(img_leaf, dtype=bool),
+                          mask_damage_leafthr=np.zeros_like(img_leaf, dtype=bool))
 
     # CASE NO LEAF FOUND; nothing to analyse
-    if not this_leaf_found:
+    if mask_leaf is None:
+        return metrics, arrays
+
+    # Additional check for leaf validity, check roundness
+    arrays.mask_leaf = mask_leaf
+    metrics.leaf_roundness = determine_leaf_roundness(mask_leaf)
+    if not metrics.leaf_roundness > leaf_roundness_threshold:
+        print("WARNING: Leaf roundness below threshold, marking as no leaf found.")
         return metrics, arrays
 
     # CASE LEAF FOUND; PERFORM ANALYSIS
+    metrics.leaf_found = True
     # store the size
     metrics.total_leaf_size_px = float(np.sum(mask_leaf))
     if pixel_to_cm2_factor is not None:
@@ -702,6 +694,8 @@ def fill_damage_mask_metrics(metrics, mask_leaf, mask_damage, damage_found, suff
         setattr(metrics, f'{name}_{suffix}', value)
 
     return metrics
+
+# %%
 
 def run_complete_analysis(data_file_paths, config_channels,
                           leaf_threshold_method = 'bg10', leaf_roundness_threshold=0,
