@@ -222,6 +222,10 @@ def get_largest_mask(img, method='bg10', apply_smooth=False):
 
     return img_mask, threshold_val
 
+# Per-leaf damage threshold (method 'baselvl2' of get_mask), as a multiple of
+# the base level of the leaf
+BASELVL_THRESHOLD_FACTOR = 2
+
 def get_mask(img, mask_user=None, method='otsu', return_status=False,
              threshold_val=None):
     """
@@ -264,7 +268,7 @@ def get_mask(img, mask_user=None, method='otsu', return_status=False,
             # raise warning
             warnings.warn("Mode value equals image maximum value, likely due to saturation. Using second mode instead.")
         # set the threshold
-        threshold_val = 2 * np.max([1.0,the_mode])
+        threshold_val = BASELVL_THRESHOLD_FACTOR * np.max([1.0,the_mode])
     elif method == 'pct10':
         threshold_val = 10 * np.percentile(img[mask_user], 10)
         
@@ -1448,8 +1452,21 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     labeled "(no leaf)" and centered on the image center instead.
 
     The scale bar is in mm/cm when pixel_to_cm2_factor is given, and in
-    pixels otherwise. The figure is panel_size_cm per condition wide, and
-    panel_size_cm per replicate high.
+    pixels otherwise. The figure is panel_size_cm per condition wide (plus some
+    space for the colorbar), and panel_size_cm per replicate high.
+
+    All panels share one color range, shown in the colorbar, and the displayed
+    signal matches the damage threshold method:
+    - 'refthr': the absolute damage signal, comparable between images when
+      imaging conditions are identical.
+    - 'leafthr': the damage signal relative to the base level of each leaf
+      (baselvl_dmg), with the damage threshold marked in the colorbar. Images
+      without a valid leaf have no base level of their own; these are scaled by
+      the mean base level of the valid leaves in their condition (or of all
+      valid leaves, if their condition has none), and marked "(no leaf*)".
+    The range runs from 0 to the 99.9th percentile of the displayed signal in
+    all valid leaves (or in all images if there are none), which prevents a few
+    saturated pixels from dominating the scale; higher values get the top color.
 
     damage_mask_method selects the damage threshold method ('leafthr' or 'refthr')
     of the outlined damage mask.
@@ -1489,6 +1506,29 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     else:
         window_px = max(max(array_data[f]['img_damage'].shape) for f in df_samples['file_path'])
 
+    # Value to divide each image by for display: 'leafthr' shows the signal
+    # relative to the base level of each leaf, 'refthr' the absolute signal
+    # (at least 1 to avoid dividing by zero, as in get_mask)
+    baselvls = df_samples.set_index('file_path')['baselvl_dmg']
+    df_valid = df_samples[df_samples['leaf_found']]
+    mean_baselvl_all = df_valid['baselvl_dmg'].mean()
+    mean_baselvl_per_condition = df_valid.groupby('condition')['baselvl_dmg'].mean()
+    divisors = {}
+    for file_path, condition in zip(df_samples['file_path'], df_samples['condition']):
+        if damage_mask_method != 'leafthr':
+            divisors[file_path] = 1
+        elif file_path in bboxes:
+            divisors[file_path] = max(1, baselvls[file_path])
+        else:
+            divisors[file_path] = max(1, mean_baselvl_per_condition.get(condition, mean_baselvl_all))
+
+    # Color range shared by all panels, such that colors are comparable
+    if bboxes:
+        pixels_for_range = [array_data[f]['img_damage'][array_data[f]['mask_leaf']] / divisors[f] for f in bboxes]
+    else:
+        pixels_for_range = [array_data[f]['img_damage'].ravel() / divisors[f] for f in df_samples['file_path']]
+    color_max = np.percentile(np.concatenate(pixels_for_range), 99.9)
+
     # Scale bar of roughly 1/4 of the window
     if pixel_to_cm2_factor is not None:
         mm_per_px = np.sqrt(pixel_to_cm2_factor) * 10
@@ -1501,7 +1541,7 @@ def plot_damage_overview(df_samples, array_data, outputdir,
 
     with plt.rc_context(font_size_rc(6)):
         fig, axs = plt.subplots(n_rows, n_cols, squeeze=False, layout='constrained',
-                                figsize=(n_cols*panel_size_cm*cm_to_inch,
+                                figsize=((n_cols*panel_size_cm + 1.5)*cm_to_inch,
                                          n_rows*panel_size_cm*cm_to_inch))
         # hide all panels; the ones with data are switched on below
         for ax in axs.ravel():
@@ -1516,7 +1556,7 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                 img_damage = array_data[file_path]['img_damage']
                 mask_damage = array_data[file_path][f'mask_damage_{damage_mask_method}']
 
-                ax.imshow(img_damage, cmap=cmap)
+                img_shown = ax.imshow(img_damage / divisors[file_path], cmap=cmap, vmin=0, vmax=color_max)
                 if np.any(mask_damage):
                     ax.contour(mask_damage, levels=[0.5], colors='white', linewidths=0.5)
 
@@ -1538,7 +1578,7 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                 # Title: file name, with the condition (bold) above it on the first row
                 title = os.path.splitext(os.path.basename(file_path))[0]
                 if file_path not in bboxes:
-                    title += ' (no leaf)'
+                    title += ' (no leaf*)' if damage_mask_method == 'leafthr' else ' (no leaf)'
                 # wrap long names to the panel width, preferably after an underscore
                 # (0.55 = approx. character width relative to the font size)
                 title_fontsize = 5
@@ -1556,6 +1596,16 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                                               frameon=False, pad=0.3, sep=2,
                                               size_vertical=window_px/150))
 
+        # all panels share the same color range, so one colorbar applies to all
+        colorbar = fig.colorbar(img_shown, ax=axs, shrink=0.3, extend='max')
+        if damage_mask_method == 'leafthr':
+            colorbar_label = 'Signal relative to leaf base level (fold)\nwhite line: damage threshold'
+            if len(bboxes) < len(df_samples):
+                colorbar_label += '\n* scaled by mean base level of condition'
+            colorbar.set_label(colorbar_label)
+            colorbar.ax.axhline(BASELVL_THRESHOLD_FACTOR, color='white', linewidth=1)
+        else:
+            colorbar.set_label('Damage signal intensity')
         fig.suptitle(f'Damage mask: {method_label}')
 
         fig.savefig(os.path.join(plotdir, 'overview_damage.pdf'), dpi=300)
