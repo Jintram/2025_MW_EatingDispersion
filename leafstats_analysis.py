@@ -1454,7 +1454,7 @@ def plot_damage_overview(df_samples, array_data, outputdir,
     With outline_mask='leaf', the leaf mask is outlined in magenta instead of
     the damage mask (dashed grey if the mask was rejected by the roundness check),
     such that the damage signal can be assessed by eye, and the leaf masks
-    can be checked.
+    can be checked. Panels with a rejected mask are then centered on that mask.
 
     All panels show a square window of the same size (in pixels), centered on
     the leaf, such that the (per-panel) scale bars are comparable. The window
@@ -1596,9 +1596,13 @@ def plot_damage_overview(df_samples, array_data, outputdir,
                                    colors='magenta' if file_path in bboxes else 'grey',
                                    linestyles='solid' if file_path in bboxes else 'dashed')
 
-                # Zoom to a window centered on the leaf (or image center if no leaf)
+                # Zoom to a window centered on the leaf (or image center if no leaf);
+                # the leaf mask plot also centers on rejected masks, to allow checking them
                 if file_path in bboxes:
                     b = bboxes[file_path]
+                    center_r, center_c = (b[0]+b[2])/2, (b[1]+b[3])/2
+                elif outline_mask == 'leaf' and np.any(array_data[file_path]['mask_leaf']):
+                    b = regionprops(array_data[file_path]['mask_leaf'].astype(int))[0].bbox
                     center_r, center_c = (b[0]+b[2])/2, (b[1]+b[3])/2
                 else:
                     center_r, center_c = img_damage.shape[0]/2, img_damage.shape[1]/2

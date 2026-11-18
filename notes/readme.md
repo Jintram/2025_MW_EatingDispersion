@@ -188,7 +188,8 @@ Continue on this thread.
     `plot_damage_overview()` (18/11/2026). This saves
     `overview_damage_leafmask.pdf/.png`, the same overview without damage mask
     outlines, and with the leaf mask outlined in magenta (dashed grey if rejected
-    by the roundness check), to assess damage by eye and check the leaf masks.
+    by the roundness check, with the panel centered on that mask), to assess
+    damage by eye and check the leaf masks.
 
 - [X] (Written by Claude:) Refactored `run_complete_analysis()` (15/9/2026).
     The per-image work now lives in a new function `analyse_sample()`, which
